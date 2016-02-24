@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="drivenotepad.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/keymaster/1.6.1/keymaster.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.3/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.3/ext-modelist.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-url-parser/2.3.1/purl.min.js"></script>
+    <script type="text/javascript" src="app.js"></script>
+    <script type="text/javascript" src="https://apis.google.com/js/client.js?onload=handleClientLoad"></script>
+    <title>Drive Notepad</title>
+</head>
+
+<body class="noselect"><div id="the_widget" class="noselect" style="display:none;"> 
+    <div id="widget_move_handle"></div>
+    <div id="widget_text">ex nihilo omnia</div>
+    <div id="widget_menu">
+    <div class="widget_menu_item" id="users_name">...</div>
+    <div class="widget_menu_item" id="support">
+        <a href="http://drivenotepad.appspot.com/support" target="_blank">About Drive Notepad</a></div>
+    </div>
+    <div id="widget_error">
+        <div id="widget_error_mark">&#x2718;</div><div id="widget_error_text"></div></div>
+    </div>
+    <div id="the_editor"> </div>
+</body>
+</html>
