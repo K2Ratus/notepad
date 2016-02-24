@@ -69,7 +69,7 @@ dn.the_file = {
     is_loading_meta_data: false,
     is_loading_content: false,
     data_to_save: {body: null, title: null, description: null}, //holds the values until confirmation of success for each
-    generation_to_save: {body: 0, title: 0, description: 0},//when saves return they check their this.description etc. against here and clear dataToSave if they match
+    generation_to_save: {body: 0, title: 0, description: 0},//when saves return they check their this.description etc. against here and clear data_to_save if they match
     is_read_only: false,
     is_shared: false,
     is_brand_new: false, // true from the point of creating a new document till the point we get confirmation of a successful save
@@ -612,7 +612,7 @@ dn.create_goto_line = function(){
     dn.el_goto_input.addEventListener('keyup', function(e){
         if(e.which == WHICH.ENTER || e.which == WHICH.ESC){
                 if(e.which == WHICH.ENTER) //if it's esc the normal ToggleWidget shortcut will kick in.
-                    dn.el_widget_goto.toggle(false);
+                    dn.el_widget_goto.style.display = 'none';
             dn.reclaim_focus();
             return;
         }
@@ -640,25 +640,22 @@ dn.show_go_to = function(){
     
 dn.create_menu = function(){
     dn.el_widget_menu.innerHTML = [
-    "<div class='widget_menu_icon' data-info='save' id='menu_save'></div>" ,
-    "<div class='widget_menu_icon' data-info='print' id='menu_print'></div>",
-    "<div class='widget_menu_icon' data-info='sharing' id='menu_sharing'></div>",
-    "<div class='widget_menu_icon' data-info='file history' id='menu_history'></div>" ,
-    "<div class='widget_menu_icon' data-info='new' id='menu_new'></div>",
-    "<div class='widget_menu_icon' data-info='open' id='menu_open'></div>",    
-    "<div class='widget_menu_icon' data-info='shortcuts'id='menu_shortcuts'></div>",
-    "<a class='widget_menu_icon' data-info='drive' id='menu_drive'  href='' target='_blank'></a>",    
-    "<a class='widget_menu_icon' data-info='about' id='menu_about'  href='http://drivenotepad.appspot.com/support' target='_blank'></a>", 
-    
-    "<div class='widget_spacer'></div>",
+    "<div class='widget_toolbar'><div class='widget_toolbar_wheel'>",
+        "<div class='widget_menu_icon' data-info='print' id='menu_print'></div>",
+        "<div class='widget_menu_icon' data-info='sharing' id='menu_sharing'></div>",
+        "<div class='widget_menu_icon' data-info='save' id='menu_save'></div>" ,
+        "<div class='widget_menu_icon' data-info='file history' id='menu_history'></div>" ,
+        "<div class='widget_menu_icon' data-info='file properties' id='menu_file_props'></div>" ,
+        "<div class='widget_menu_icon' data-info='new' id='menu_new'></div>",
+        "<div class='widget_menu_icon' data-info='open' id='menu_open'></div>",    
+        "<div class='widget_menu_icon' data-info='general settings' id='menu_general_settings'></div>" ,
+        "<div class='widget_menu_icon' data-info='shortcuts'id='menu_shortcuts'></div>",
+        "<a class='widget_menu_icon' data-info='drive' id='menu_drive'  href='' target='_blank'></a>",    
+        "<a class='widget_menu_icon' data-info='about' id='menu_about'  href='http://drivenotepad.appspot.com/support' target='_blank'></a>", 
+    "</div></div><div class='widget_content'>",
     "<div class='widget_spacer'></div>",
     
    "<div class='widget_subs'>",
-        "<div class='widget_subs_titles'>",
-            "&nbsp;&nbsp;&nbsp;",
-            "<div class='widget_sub_title tooltip' selected=1 id='sub_file_title' data-info='settings_file'>This File</div>",
-            "<div class='widget_sub_title tooltip' id='sub_general_title' data-info='settings_general'>General</div>",
-        "</div>",
         
        "<div class='widget_sub_box' selected=1 id='sub_file_box'>",
             "<div class='widget_menu_item details_file_title' clickable=1>" ,
@@ -742,13 +739,17 @@ dn.create_menu = function(){
         "</div>",
     "</div>",
     
-    "<div class='widget_spacer'></div>",
+    "<div class='widget_spacer'></div></div>",
     "<div id='menu_status'>...</div>"
 
     ].join('');
 
-    
-    dn.el_widget_menu.getElementsByClassName('widget_menu_icon')[0].addEventListener("click",function(){dn.reclaim_focus();});
+    var els = dn.el_widget_menu.getElementsByClassName('widget_menu_icon');
+    for(var ii=0; ii<els.length; ii++){
+        els[ii].addEventListener("click",function(){dn.reclaim_focus();});
+        rotate(els[ii], ii*15);
+        els[ii].innerHTML = "<div class='menu_caption'>" + els[ii].getAttribute('data-info') + "</div>";
+    }
 
     dn.el_details_title_input  = dn.el_widget_menu.getElementsByClassName('details_file_title_input')[0];
     dn.el_details_title_text = dn.el_widget_menu.getElementsByClassName('details_file_title_text')[0];
@@ -758,7 +759,6 @@ dn.create_menu = function(){
     dn.el_menu_sharing = document.getElementById('menu_sharing');
     dn.el_menu_history = document.getElementById('menu_history');
     
-    dn.el_widget_sub_file_title = document.getElementById('sub_file_title')
     dn.el_widget_sub_file_box = document.getElementById('sub_file_box')
 
     dn.el_details_description_input  = dn.el_widget_menu.getElementsByClassName('details_file_description_input')[0];
@@ -779,7 +779,6 @@ dn.create_menu = function(){
     dn.el_file_tab_soft_text = document.getElementById('file_tab_soft_text');
     dn.el_file_tab_info = document.getElementById('file_tab_info');
 
-    dn.el_widget_sub_general_title = document.getElementById('sub_general_title')
     dn.el_widget_sub_general_box = document.getElementById('sub_general_box')
 
     dn.el_menu_clear_clipboard = document.getElementById("clipboard_history_clear_button");
@@ -834,14 +833,14 @@ dn.create_icon_mouse_over = function(){
 }
 
 dn.create_menu_subs = function(){
-    dn.el_widget_sub_general_title.addEventListener('click', function(){
+    /*dn.el_widget_sub_general_title.addEventListener('click', function(){
         dn.g_settings.set("widgetSub","general");
         dn.reclaim_focus();
     });
     dn.el_widget_sub_file_title.addEventListener('click', function(){
         dn.g_settings.set("widgetSub","file");
         dn.reclaim_focus();
-    });
+    });*/
 }
 dn.widget_move_handle_mouse_down = function(e){
     dn.the_widget_dragging = {
@@ -960,9 +959,10 @@ dn.toggle_widget = function(state){
         dn.el_widget_find_replace,
         dn.el_widget_file_history];
     var was_showing = [];
-    for(var i=0;i<els.length;i++)
-        if(els[i] && els[i].style.display !== 'none')
-            was_showing.push(els[i].toggle(state)); //if state is true then leav $elshowing, othewise hide it
+    for(var i=0;i<els.length;i++) if(els[i] && els[i].style.display !== 'none'){
+            was_showing.push(els[i]);
+            els[i].style.display = state ? '' : 'none'; //if state is true then leav $elshowing, othewise hide it
+    }
 
     if(was_showing.length === 0 && !((typeof state === "number" || typeof state === "boolean") && !state)) 
         dn.el_widget_menu.style.display = '';
@@ -985,13 +985,13 @@ dn.show_status = function(){
         s = "Loading info for file:\n" + f.fileId;
     else if(f.isLoadingContent)
         s = "Downloading file:\n" + f.title
-    else if(f.contentIsLoaded && f.isPristine && !f.isSaving)
+    else if(f.contentIsLoaded && f.is_pristine && !f.is_saving)
         s = "Displaying " + (f.isShared ? "shared " : "") + (f.isReadOnly ? "read-only " : "") + "file:\n" + f.title;
-    else if((f.contentIsLoaded || f.isBrandNew) && !f.isPristine && !f.isSaving)
+    else if((f.contentIsLoaded || f.isBrandNew) && !f.is_pristine && !f.is_saving)
         s = "Unsaved " + (f.isBrandNew ? "new " : "changes for ") + (f.isShared ? "shared " : "") + (f.isReadOnly ? "read-only " : "") + "file:\n" + f.title;
-    else if((f.contentIsLoaded || f.isBrandNew) && f.isPristine && f.isSaving)
-        s = "Saving " + (f.isShared ? "shared " : "") + (f.isReadOnly ? "read-only " : "") + "file:\n" + f.title + (!f.isBrandNew && (f.dataToSave.title || f.dataToSave.description) ? "\n(updating file details)" : "");
-    else if(f.isBrandNew && f.isPristine)
+    else if((f.contentIsLoaded || f.isBrandNew) && f.is_pristine && f.is_saving)
+        s = "Saving " + (f.isShared ? "shared " : "") + (f.isReadOnly ? "read-only " : "") + "file:\n" + f.title + (!f.isBrandNew && (f.data_to_save.title || f.data_to_save.description) ? "\n(updating file details)" : "");
+    else if(f.isBrandNew && f.is_pristine)
         s = "ex nihilo omnia.";
     else
         s = f.title ? "Failed to load file:\n" + f.title : "ex nihilo omnia";
@@ -1243,7 +1243,7 @@ dn.create_shortcuts_info = function(){
     dn.el_widget_shortcuts.style.display = 'none';
 
     dn.el_menu_shortcuts.addEventListener('click', function(){
-        dn.el_widget_shortcuts.toggle(true);
+        dn.el_widget_shortcuts.style.display = '';
         dn.el_widget_menu.style.display = 'none';
     });
     
@@ -1888,8 +1888,8 @@ dn.start_revisions_worker = function(){
                                         init: true});
     dn.file_history.$revisions_display.appendTo($('body'));
     $(window).on("resize",dn.revisions_window_resize);
-    dn.el_widget_file_history.toggle(true);
-    dn.el_widget_menu.toggle(false);
+    dn.el_widget_file_history.style.display = '';
+    dn.el_widget_menu.style.display = 'none';
     dn.file_history.$view.empty();
     $('#the_editor').style.display = 'none';
     return false;
@@ -2112,7 +2112,7 @@ dn.do_save = function (){
 dn.save_done = function(resp){
     if(resp.error){
         if(resp.error.code == 401){
-            dn.reauth(dn.do_save); //will make use of dn.the_file.data_to_save and generationToSave once auth is done.
+            dn.reauth(dn.do_save); //will make use of dn.the_file.data_to_save and generation_to_save once auth is done.
         }else{
             var failures = []
             if(this.body && this.body == dn.the_file.generation_to_save.body){
@@ -2376,7 +2376,7 @@ dn.guess_mime_type = function(){
 
 dn.save_new_file = function(){
     var f = dn.the_file;
-    if(f.isSaving){
+    if(f.is_saving){
         dn.show_error("File is being created. Please wait.");
         return false;
     }
@@ -2386,16 +2386,16 @@ dn.save_new_file = function(){
     var parentId = f.folderId;
     if(parentId) 
         meta.parentNodes =[{id:[parentId]}];
-    f.dataToSave.body = dn.editor.getSession().getValue();
-    f.dataToSave.title = meta.title;
-    f.dataToSave.description = meta.description;
-    var gens = {title: ++f.generationToSave.title, description: ++f.generationToSave.description,body: ++f.generationToSave.body};
-    f.isSaving = true;
-    f.isPristine = true;
+    f.data_to_save.body = dn.editor.getSession().getValue();
+    f.data_to_save.title = meta.title;
+    f.data_to_save.description = meta.description;
+    var gens = {title: ++f.generation_to_save.title, description: ++f.generation_to_save.description,body: ++f.generation_to_save.body};
+    f.is_saving = true;
+    f.is_pristine = true;
     dn.show_file_title();
     dn.el_ace_content.setAttribute('saving', true);
     dn.show_status();
-    dn.save_file(null, meta, f.dataToSave.body, $.proxy(dn.save_done,gens));
+    dn.save_file(null, meta, f.data_to_save.body, $.proxy(dn.save_done,gens));
 }
 
 dn.saved_new_file = function(resp){
@@ -2407,8 +2407,8 @@ dn.saved_new_file = function(resp){
             window.location.href.match(/^https?:\/\/[\w-.]*\/\w*/)[0] +
                 "?state={\"action\":\"open\",\"ids\":[\"" + dn.the_file.file_id + "\"]}");
     dn.set_drivelinkto_folder();
-    dn.the_file.metaData_is_loaded = true;
-    dn.save_allfile_properties();
+    dn.the_file.meta_data_is_loaded = true;
+    dn.save_all_file_properties();
 }
 
 // ############################
@@ -2458,7 +2458,7 @@ dn.load_file_gotmeta_data = function(resp) {
       }
       var token = gapi.auth.getToken().access_token;
       dn.the_file.isLoading_meta_data = false;
-      dn.the_file.metaData_is_loaded = true;
+      dn.the_file.meta_data_is_loaded = true;
       dn.the_file.is_loading_content = true;
       dn.show_file_title(); //includes a showStatus call
       if(resp.downloadUrl){
@@ -2644,7 +2644,7 @@ dn.got_allfile_properties = function(resp){
     }
 }
 
-dn.save_allfile_properties = function(){
+dn.save_all_file_properties = function(){
     //To be used after creating a file, in order to set any of the props which had been modified before saving it
     for(var k in dn.the_file.custom_props)
         dn.set_property(k,dn.the_file.custom_props[k]);    
@@ -2676,7 +2676,7 @@ dn.set_property = function(prop_name,new_val){
             fileId: dn.the_file.file_id, propertyKey: prop_name, visibility: 'PUBLIC', resource: {'value': new_val}
             }).execute(dummyCallback);
         }else{
-            dn.the_file.custom_prop_exists[prop_name] = true; //INSERT the property, because it doesn't yet exist, we may be coming via dn.save_allfile_properties() above
+            dn.the_file.custom_prop_exists[prop_name] = true; //INSERT the property, because it doesn't yet exist, we may be coming via dn.save_all_file_properties() above
             gapi.client.drive.properties.insert({
             'fileId': dn.the_file.file_id, 'resource': {key: prop_name, value: new_val, visibility: 'PUBLIC'}
             }).execute(dummyCallback)

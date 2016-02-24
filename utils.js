@@ -11,6 +11,12 @@ var oxford_comma = function(arr){
     }
 }
 
+var rotate = function(el, deg){
+    el.style.transform = "rotate(" + deg + 'deg)';
+    el.style.webkitTansform = "rotate(" + deg + 'deg)';
+    el.style.mozTransform = "rotate(" + deg + 'deg)';
+}
+
 var translate = function(el, x, y){
     var str = x==null ? "" : "translate(" + x + "px," + y + "px)";
     el.style.transform = str;
