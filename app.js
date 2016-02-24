@@ -1,21 +1,15 @@
 "use strict";
-// DRIVE NOTEPAD 2014
+// DRIVE NOTEPAD 2016
 // by DM
 
-var dn = {};
-dn.VERSION_STR = '2014b';
+var dn = dn || {};
+dn.version_str = '2016a';
 
 // ############################
-// Constants and defaults
+// Constants and defaults, see alsp info.js
 // ############################
-dn.CLIENT_ID = '591525900269';
-dn.SCOPES = [
-  'https://www.googleapis.com/auth/drive.file',
-   'https://www.googleapis.com/auth/userinfo.profile',
-  'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/drive.appdata'
-];
-dn.DEFAULT_SETTINGS = {
+
+dn.default_settings = {
 ext: 'txt',
 wordWrap: [true,null,null],
 wordWrapAt: 80,
@@ -29,476 +23,169 @@ softTabN: 4,
 tabIsHard: 0,
 widgetSub: 'general'
 }
-dn.DEFAULT_CUSTOM_PROPS = {
+dn.default_custom_props = {
     newline: "detect",
     tabs: "detect",
     aceMode: "detect"
 };
-dn.IMPERSONAL_SETTINGS_KEYS = ["wordWrap","wordWrapAt","fontSize","widget_anchor","showGutterHistory","historyRemovedIsExpanded","tabIsHard","softTabN","widgetSub"];
+dn.impersonal_settings_keys = ["wordWrap","wordWrapAt","fontSize","widget_anchor","showGutterHistory","historyRemovedIsExpanded","tabIsHard","softTabN","widgetSub"];
 dn.theme = "ace/theme/chrome"; 
-dn.canShowDragDropError = true;
-dn.MIN_FONT_SIZE = 0.3;
-dn.MAX_FONT_SIZE = 5; 
-dn.MAX_WRAP_AT = 200;
-dn.MIN_WRAP_AT = 20;
-dn.WRAP_AT_INCREMENT = 10;
-dn.MAX_SOFT_TAB_N = 10;
-dn.MIN_SOFT_TAB_N = 2;
-dn.DETECT_TABS_SPACES_FRAC = 0.9;
-dn.DETECT_TABS_TABS_FRAC = 0.9;
-dn.DETECT_TABS_N_SPACES_FRAC = 0.99;
-dn.DETECT_TABS_N_SPACES_FRAC_FOR_DEFAULT = 0.6;
-dn.FONT_SIZE_INCREMENT = 0.15;
-dn.ICON_MOUSEOVER_MS = 300;
-dn.EDITOR_REFOCUS_TIME_MS = 500;
-dn.ERROR_DELAY_MS = 5000;//5 seconds
-dn.FIND_HISTORY_ADD_DELAY = 2000; //ms
-dn.CLIPBOARD_INFO_DELAY = 500; //ms
-dn.CLIPBOARD_MAX_LENGTH = 20; //TODO: decide whether a large clipboard slows page loads and whether we can do anything about it.
-dn.isGettingToken = true;
-dn.isShowingHistory = false;
-dn.apis = {driveIsLoaded: false};
-dn.theFile = {
-    fileId: null,
-    folderId: null,
+dn.can_show_drag_drop_error = true;
+dn.min_font_size = 0.3;
+dn.max_font_size = 5; 
+dn.max_wrap_at = 200;
+dn.min_wrap_at = 20;
+dn.wrap_at_increment = 10;
+dn.max_soft_tab_n = 10;
+dn.min_soft_tab_n = 2;
+dn.detect_tabs_spaces_frac = 0.9;
+dn.detect_tabs_tabs_frac = 0.9;
+dn.detect_tabs_n_spaces_frac = 0.99;
+dn.detect_tabs_n_spaces_frac_for_default = 0.6;
+dn.font_size_increment = 0.15;
+dn.icon_mouse_over_ms = 300;
+dn.editor_refocus_time_ms = 500;
+dn.error_delay_ms = 5000;//5 seconds
+dn.find_history_add_delay = 2000; //ms
+dn.clipboard_info_delay = 500; //ms
+dn.clipboard_max_length = 20; //TODO: decide whether a large clipboard slows page loads and whether we can do anything about it.
+dn.is_getting_token = true;
+dn.is_showing_history = false;
+dn.apis = {drive_is_loaded: false};
+dn.the_file = {
+    file_id: null,
+    folder_id: null,
     title: null,
     description: '',
     ext: '',
-    loadedMimeType: '',
-    newLineDetected: 'none', //'windows', 'unix','mixed', or 'none'
-    tabDetected: {val: 'none'},
-    isPristine: true, //true while the document has no unsaved changes (set to true when we request the save not when we get confirmation, but if there is a save error it will be reverted to false).
-    mimeType: '',
-    metaDataIsLoaded: false,
-    contentIsLoaded: false,
-    isSaving: false,
-    isLoadingMetaData: false,
-    isLoadingContent: false,
-    dataToSave: {body: null, title: null, description: null}, //holds the values until confirmation of success for each
-    generationToSave: {body: 0, title: 0, description: 0},//when saves return they check their this.description etc. against here and clear dataToSave if they match
-    isReadOnly: false,
-    isShared: false,
-    isBrandNew: false, // true from the point of creating a new document till the point we get confirmation of a successful save
-    isReadingFileObject: false, //this is used on drag and drop,
-    customProps: {}, //these are the props potentially stored on the file using the custom properties API
-    customPropExists: {}, //each of the custom props that actually exsits for the file will have an entry in this obj, with the key being the property and the value being true.
-    savingTitleCount: 0 //tracks the number of active save request with just the title.  Whatever the resp, this number is decremented,
+    loaded_mime_type: '',
+    new_line_detected: 'none', //'windows', 'unix','mixed', or 'none'
+    tab_detected: {val: 'none'},
+    is_pristine: true, //true while the document has no unsaved changes (set to true when we request the save not when we get confirmation, but if there is a save error it will be reverted to false).
+    mime_type: '',
+    meta_data_is_loaded: false,
+    content_is_loaded: false,
+    is_saving: false,
+    is_loading_meta_data: false,
+    is_loading_content: false,
+    data_to_save: {body: null, title: null, description: null}, //holds the values until confirmation of success for each
+    generation_to_save: {body: 0, title: 0, description: 0},//when saves return they check their this.description etc. against here and clear dataToSave if they match
+    is_read_only: false,
+    is_shared: false,
+    is_brand_new: false, // true from the point of creating a new document till the point we get confirmation of a successful save
+    is_reading_file_object: false, //this is used on drag and drop,
+    custom_props: {}, //these are the props potentially stored on the file using the custom properties API
+    custom_prop_exists: {}, //each of the custom props that actually exsits for the file will have an entry in this obj, with the key being the property and the value being true.
+    saving_title_count: 0 //tracks the number of active save request with just the title.  Whatever the resp, this number is decremented,
 };
-dn.changeLineHistory = [];
-dn.lastChange = null;
-dn.findingStr = "";
-dn.find_resultMarkers = [];
-dn.CHANGE_LINE_CLASSES =(function(rootStr,trueN,factor){
+dn.change_line_history = [];
+dn.last_change = null;
+dn.finding_str = "";
+dn.find_result_markers = [];
+dn.change_line_classes =(function(rootStr,trueN,factor){
     var x = [''];
     for(var i=trueN;i;i--)for(var k=0;k<factor;k++)
         x.push(rootStr + i);
     return x;
 })('recent_line_',8,5)
-dn.CHANGE_LINE_CLASSES_RM =(function(rootStr,trueN,factor){
+dn.change_line_classes_rm =(function(rootStr,trueN,factor){
     var x = [''];
     for(var i=trueN;i;i--)for(var k=0;k<factor;k++)
         x.push(rootStr + i);
     return x;
 })('recent_line_rm',8,5)
-dn.SHORTCUTS_LIST = [
-"cut|Ctrl-X|Cmd-X",    
-"copy|Ctrl-C|Cmd-C",
-"paste|Ctrl-V|Command-V",
-"cycle clipboard|Cltr-[V then left or right arrow]|Command-[V then left or right arrow]",
-"select all|Ctrl-A|Command-A",
-"find|Ctrl(-Alt)-F",
-"replace|Ctrl-R",
-"go to line|Ctrl(-Alt)-L",
-"undo|Ctrl-Z|Command-Z",
-"redo|Ctrl-Shift-Z,Ctrl-Y|Command-Shift-Z,Command-Y",
-" | ",
-"toggle widget|Esc",
-"save|Ctrl-S|Command-S",
-"print|Ctrl(-Alt)-P|Command-P",
-"file history|Ctrl-H|Command-H",
-"new|Ctrl(-Alt)-N",
-"open|Ctrl(-Alt)-O",
-"  | ",
-"to upper case|Ctrl-U",
-"to lower case|Ctr-Shift-U",
-"modify selection|Shift-(Ctrl-)(Alt-) {Down, Up, Left, Right, End, Home, PageDown, PageUp, End}|Shift-(Command-)(Alt-) {Down, Up, Left, Right, End, Home, PageDown,End}",
-"copy lines down|Ctrl-Alt-Down|Command-Option-Down",
-"copy lines up|Ctrl-Alt-Up|Command-Option-Up",
-"center selection||Ctrl-L",
-"fold all|Alt-0|Option-0",
-"unfold all|Alt-Shift-0|Option-Shift-0",
-"go to end|Ctrl-End,Ctrl-Down|Command-End,Command-Down",
-"go to line end|Alt-Right,End|Command-Right,End,Ctrl-E",
-"go to line start|Alt-Left,Home|Command-Left,Home,Ctrl-A",
-"go to page down|PageDown|Option-PageDown,Ctrl-V",
-"go to page up|PageUp|Option-PageUp",
-"go to start|Ctrl-Home,Ctrl-Up|Command-Home,Command-Up",
-"go to word left|Ctrl-Left|Option-Left",
-"go to word right|Ctrl-Right|Option-Right",
-"indent|Tab",
-"outdent|Shift-Tab",
-"overwrite|Insert",
-"remove line|Ctrl-D|Command-D",
-"remove to line end||Ctrl-K",
-"remove to linestart||Option-Backspace",
-"remove word left||Alt-Backspace,Ctrl-Alt-Backspace",
-"remove word right||Alt-Delete",
-"split line||Ctrl-O",
-"toggle comment|Ctrl-7|Command-7",
-"transpose letters|Ctrl-T"
-]
-dn.EXT_TO_MIME_TYPE = {
-html:"text/html",
-htm:"text/html",
-js:"text/javascript",
-pl:"application/x-perl",
-xml:"text/xml",
-c:"text/x-csrc",
-cpp:"text/x-c++src",
-h:"text/x-chdr",
-json:"application/json",
-php:"application/x-php",
-svg:"text/html",
-css:"text/css",
-java:"text/x-java",
-py:"text/x-python",
-scala:"scala",
-textile:"textile",
-tex:"application/x-tex",
-bib:"application/x-tex",
-rtf:"application/rtf",
-rtx:"application/rtf",
-sh:"application/x-sh",
-sql:"text/x-sql",
-as:"text/x-actionscript"
-//everything else is hopefully ok to be text/plain.
-}
-dn.TOOLTIP_INFO = { //keys correspond to icon data-info attr, which will be the same as keys in SHORTCUTS_LIST
-    "save" : "Save file contents.  ",
-    "print": "Open print view in a new tab.  ",
-    "sharing": "View and modify file's sharing status.",
-    "file history": "Explore the file history.  ",
-    "drive": "Show this file in Google Drive.  ",
-    "about": "Drive Notepad website.",
-    "shortcuts": "Keyboard shortcuts.",
-    "new": "Create new file in a new tab.  ",
-    "open": "Launch open dialoag.  ",
-    "settings_file": "Properties of the current file.",
-    "settings_general": "Your general Drive Notepad preferences.",
-    "title": "Click to edit the file's title.",
-    "description": "Click to edit the file's description."
-}
-var WHICH = {
-ENTER: 13,
-ESC: 27,
-UP: 38,
-DOWN: 40
-};
+
 /* ################################################################################################################
 
     [Some Notes on settings in Drive Notepad]
 
     There are two kinds of settings: per-user settings and per-file settings.
     
-    The user settings are stored in dn.g_settings. When the page is loaded this is a fake Google Realtime model, which uses a mixture of default values and values read from localStorage.  At some point after authenticating the g_settings will become the true Google Realtime model. Whenever a value in g_settings is changed dn.SettingChanged is called with the appropriate paramaters, this is true right from when the page loads, i.e. the first set of values trigger the SettingsChanged, but after that only modifications will trigger a change (regardless of whether g_settings is the true model or not).  Use the .set() and .get() methods on the dn.g_settings.
+    The user settings are stored in dn.g_settings. When the page is loaded this is a fake Google Realtime model, 
+    which uses a mixture of default values and values read from localStorage.  At some point after authenticating 
+    the g_settings will become the true Google Realtime model. Whenever a value in g_settings is changed
+     dn.setting_changed is called with the appropriate paramaters, this is true right from when the page loads, 
+     i.e. the first set of values trigger the SettingsChanged, but after that only modifications will trigger a change
+      (regardless of whether g_settings is the true model or not).  Use the .set() and .get() methods on the dn.g_settings.
     
-    The per-file settings are stored in dn.theFile.customProps.  When the page is loaded they are initialised with default values.  Then, if we have opened an existing file, at some point they will be updated with the true values.  These settings are *not* a realtime model, rather they are Custom Properties (there's an API for it).  Again, as with the per-user settings, whenever the file settings are changed they trigger a call to PropertyUpdated.  Note that since this is not backed by a realtime model we won't get changes on the server push to the browser, only local changes will be observed.  The per-file settings are shared across anyone who has read and/or write access to the file in question. Note that if the default value is chosen the setting value is simply removed from the file.  Use the dn.SetProperty() function to set values and read values straight from the dn.theFile.customProps object.
+    The per-file settings are stored in dn.the_file.custom_props.  When the page is loaded they are initialised with 
+    default values.  Then, if we have opened an existing file, at some point they will be updated with the true values. 
+     These settings are *not* a realtime model, rather they are Custom Properties (there's an API for it).  Again, as
+      with the per-user settings, whenever the file settings are changed they trigger a call to PropertyUpdated.  Note
+       that since this is not backed by a realtime model we won't get changes on the server push to the browser, only
+        local changes will be observed.  The per-file settings are shared across anyone who has read and/or write access 
+        to the file in question. Note that if the default value is chosen the setting value is simply removed from the file.
+          Use the dn.set_property() function to set values and read values straight from the dn.the_file.custom_props object.
     
-    For each key "Something" in customProps there is a function dn.ApplySomethingChoice() which will read the per-user and/or the per-file settings (as appropriate) and use the combined result to apply the chosen setting to the editor, additionally the function will render the file settings tab and/or the general settings tab. As part of this function there will likely be a call to dn.DetectSomething, which will run some fairly simple heuristic over the current file.  [TODO: may want to cache this, as it can end up getting called several times during loading and possibly elsewhere.] [TODO: may want to have an ApplySomethingChoice for all settings not just those that are covered by customProps.]
+    For each key "Something" in customProps there is a function dn.apply_something_choice() which will read the per-user 
+    and/or the per-file settings (as appropriate) and use the combined result to apply the chosen setting to the editor, 
+    additionally the function will render the file settings tab and/or the general settings tab. As part of this function 
+    there will likely be a call to dn.detect_something, which will run some fairly simple heuristic over the current file.
+      [TODO: may want to cache this, as it can end up getting called several times during loading and possibly elsewhere.] 
+      [TODO: may want to have an ApplySomethingChoice for all settings not just those that are covered by customProps.]
 
 ################################################################################################################## */
 
 
-
-
-// ############################
-// Custom jQuery plugins
-// ############################
-
-$.fn.translate = function(x,y){
-   var str = x==null ? "" : "translate(" + x + "px," + y + "px)";
-   this.css({
-      transform: str,
-      webkitTransform: str,
-      mozTransofrm: str
-   });
-   return this;
-}
-
-$.fn.cssAnimation = function(cls,callback,delay){
-    this.toggleClass(cls,false).offset(); //forces class to be removed, so we can actually re-add it.
-    var animTimer = this.data('animTimer');    
-    if(animTimer)
-		clearTimeout(animTimer);
-	this.data('animTimer',setTimeout(callback,delay)); //this is better than trying to use the endtransition event
-	this.toggleClass(cls,true);
-	return this;
-}
-
-$.fn.textMulti = function(text,truncateLongWords){
-	if(truncateLongWords){
-		text = text.replace(/(\S{25})\S*/g,'$1...'); 
-	}
-	this.text(text);  
-    this.html(this.html().replace(/\n/g,'<br/>').replace(/\t/g,'&nbsp;&nbsp;&nbsp; '));
-    return this;
-}
-
-$.fn.fixHeightFromAuto = function(){
-    var heights = [];
-    var d = this.get();
-    for(var i=0;i<d.length;i++)
-        heights.push(getComputedStyle(d[i]).height);
-    
-	this.each(function(ind){this.style.height = heights[ind];});
-
-    return this;
-}
-
-$.fn.insertClonedChildren = function(index,$src,textArray,attrObjArrays){
-    //inserts new nodes before this.children(index)
-    //the new nodes are based on $src, with text set according to the elements of textArray
-    //attrObjArrays is an optional arrays of objects giving key names and values
-    
-    var src = $src.get(0);
-    var frag = document.createDocumentFragment();
-    
-    textArray.map(function(str,ind){
-                    var a = src.cloneNode(false); 
-                    a.textContent = str;
-                    if(attrObjArrays)for(var attr in attrObjArrays[ind])
-                        a.setAttribute(attr,attrObjArrays[ind][attr]);
-                    frag.appendChild(a);
-                });
-    
-    var parent = this.get(0);
-    var new_$els = $(Array.prototype.slice.call(frag.children,0));
-    parent.insertBefore(frag,parent.children[index]);
-    
-    return new_$els;
-}
-
- 
-// ############################
-// Custom Select dropdown 
-// ############################
-
-var DropDown = function(valArray){
-    //constructor, must use <new>
-    
-    var str = valArray.map(function(val){
-                    return "<div class='dropdown_item'>" + val + "</div>";
-                 }).join("");
-    
-    this.valArray = valArray.slice(0); 
-    this.$list = $("<div class='dropdown_itemlist' tabindex='-1'/>").append(str);
-    this.$collapsed = $("<div class='dropdown_collapsed'/>");
-    
-    this.$el = $("<div class='dropdown'/>").append(this.$list.hide()).append(this.$collapsed);
-    this.ind = 0;
-    this.$collapsed.text(valArray[0]);
-    this.eventCallbacks = {}; //map of $.Callbacks() 
-    this.open = false;
-    
-    var dd = this;
-
-    this.$collapsed.on('mousedown',function(){
-        if(!dd.trigger("click"))
-            return;
-        dd.$collapsed.attr("selected",true);
-        dd.$list.show();
-        this.open = true;
-        setTimeout(function(){
-            dd.$list.focus();
-            dd.$list.scrollTop(dd.$list.scrollTop() + dd.$list.children().eq(dd.ind).position().top);
-        },1);
-    });
-    this.$list.on('blur',function(e){
-        dd.$list.hide();
-        this.open = false;
-        dd.trigger("blur");
-    })
-    this.$list.on("click",".dropdown_item",function(){
-        dd.SetInd($(this).index());
-        dd.$list.hide();
-        this.open = false;
-    })
-    
-    return this;
-}
-DropDown.FakeEvent = function(){//static subclass
-    this.isStopped = false;
-}
-DropDown.FakeEvent.prototype.stopImmediatePropagation = function(){
-    this.isStopped = true;
-}
-
-DropDown.prototype.on = function(evt,func){
-    if(!(evt in this.eventCallbacks))
-        this.eventCallbacks[evt] = $.Callbacks();
-    
-    this.eventCallbacks[evt].add(func);
-}
-DropDown.prototype.off = function(evt,func){
-    if(!evt in this.eventCallbacks)
-        return;
-    if(!func)
-        this.eventCallbacks[evt] = undefined;
-    else
-        this.eventCallbacks[evt].remove(func);
-}
-DropDown.prototype.trigger = function(evt,args){
-    var fe = new DropDown.FakeEvent();
-    if(evt in this.eventCallbacks){
-        this.eventCallbacks[evt].fireWith(fe);
-        if(fe.isStopped)
-            return false;
-    }
-    return true;
-}
-DropDown.prototype.IndexOf = function(val){
-    return this.valArray.indexOf(val);
-}
-
-DropDown.prototype.GetVal = function(){
-    return this.valArray[this.ind];
-}
-
-DropDown.prototype.SetInd = function(ind,noTrigger){
-    if(ind === this.ind)
-        return;
-    this.$list.children().eq(this.ind).removeAttr("selected");
-    this.$collapsed.text(this.valArray[ind]);
-    this.ind = ind;
-    this.$list.children().eq(ind).attr("selected",true);
-    if(!noTrigger)
-        this.trigger("change",{ind:ind,str:this.valArray[ind],isOpen: this.open});
-}
-
-DropDown.prototype.SetSelected = function(v){
-    if(v)
-        this.$collapsed.attr("selected",true);
-    else
-        this.$collapsed.removeAttr("selected");
-}
-
-                
-// ############################
-// Worker wrapper
-// ############################
-
-Worker = (function(){  
-	var nativeWorker = Worker;
-
-	// This class (fully?) wraps the native Worker
-	// but the advantage is that it can be returend immediately while we asynchrounously
-	// download the worker code from another location and put it into a blob.
-	// Once the true worker is ready we apply any queued function calls
-	var BlobWorker = function(){
-		this.queuedCallList = [];
-		this.trueWorker = null;
-		this.onmessage = null;
-	}
-	BlobWorker.prototype.postMessage = function(){
-		if(this.trueWorker)
-			this.trueWorker.postMessage.apply(this.trueWorker,arguments);
-		else
-			this.queuedCallList.push(['postMessage',arguments]);
-	};
-	BlobWorker.prototype.terminate = function(){      
-		if(this.trueWorker)
-			this.trueWorker.terminate();
-		else
-			this.queuedCallList.push(['terminate',arguments]);
-	}
-
-	BlobWorker.prototype.FileDataReceived = function(script){
-		this.trueWorker = new nativeWorker(window.URL.createObjectURL(new Blob([script],{type:'text/javascript'})));
-		if(this.onmessage)
-			this.trueWorker.onmessage = this.onmessage;
-
-		while(this.queuedCallList.length){
-			var c = this.queuedCallList.shift();
-			this.trueWorker[c[0]].apply(this.trueWorker,c[1]);
-		}
-	}
-
-	return function(url){
-		var w = new BlobWorker();
-		$.ajax(url,{
-                crossDomain: true,//because of the base tag in the page head jquery thinks this is same origin, but really it is cors.  this helps.
-				success: $.proxy(w.FileDataReceived,w),
-				error: function(s,err){throw err},
-				dataType:"text"});
-		return w;
-	};
-})();
-
- 
-// ############################
-// Custom utils
-// ############################
-
-dn.OxfordComma = function(arr){
-    switch (arr.length){
-        case 1:
-            return arr[0];
-        case 2:
-            return arr[0] + " and " + arr[1];
-        case 3:
-            return arr[0] + ", " + arr[1] + ", and " + arr[2];
-    }
-}
 // ############################
 // Auth stuff
 // ############################
 
-dn.Reauth = function(callback){ 
-    dn.isGettingToken = false;
-    dn.ShowStatus();
+dn.reauth = function(callback){ 
+    dn.is_getting_token = false;
+    dn.show_status();
     
     gapi.auth.authorize(dn.auth_map(true),
                             function(){
-                                dn.isGettingToken = false;
-                                dn.ShowStatus();
+                                dn.is_getting_token = false;
+                                dn.show_status();
                                 callback();
                             });
 }
-dn.handleAuthResult = function(authResult) { 
-    if (authResult && !authResult.error) {
-      dn.isGettingToken = false;
+dn.handle_auth_result = function(auth_result) { 
+    if (auth_result && !auth_result.error) {
+      dn.is_getting_token = false;
       // Access token has been successfully retrieved, requests can be sent to the API
-      gapi.client.load('drive', 'v2', function(){dn.APILoaded('drive')});
-	  gapi.client.load('oauth2','v2', function(){dn.APILoaded('userinfo')});
-	  gapi.load('drive-realtime', function(){dn.APILoaded('drive-realtime')});
-      gapi.load('picker', function(){dn.APILoaded('picker');});
-      gapi.load('drive-share', function(){dn.APILoaded('sharer');});
-	} else {
-	  // No access token could be retrieved, force the authorization flow.
-	  dn.ShowPopupButton();
-	} 
+      gapi.client.load('drive', 'v2', function(){dn.api_loaded('drive')});
+      gapi.client.load('oauth2','v2', function(){dn.api_loaded('userinfo')});
+      gapi.load('drive-realtime', function(){dn.api_loaded('drive-realtime')});
+      gapi.load('picker', function(){dn.api_loaded('picker');});
+      gapi.load('drive-share', function(){dn.api_loaded('sharer');});
+    } else {
+      // No access token could be retrieved, force the authorization flow.
+      dn.show_popup_button();
+    } 
 }
 
-dn.LaunchPopup = function(){
+dn.launch_popup = function(){
   gapi.auth.authorize(dn.auth_map(false), 
-    				dn.handleAuthResult);
+                    dn.handle_auth_result);
 }
 
-dn.ShowPopupButton = function(){
-	dn.$widget_text.text("Please click the button below to launch a Google popup window:");
-	dn.$widget_popup_button.show();
-	dn.$widget.cssAnimation('shake',function(){},dn.ERROR_DELAY_MS);
+dn.show_popup_button = function(){
+    dn.el_widget_text.textContent = "Please click the button below to launch a Google popup window:";
+    dn.el_widget_popup_button.style.display = '';
+    css_animation(dn.el_the_widget, 'shake', function(){}, dn.error_delay_ms);
 }
 
-dn.CreatePopupButton = function(){
-	var $d = $("<div class='widget_popup_button'><div class='major_button popupbutton'>Login and/or grant app permissions...</div>This will allow you to login to your Google account if you have not already done so, and if this is your first time using the latest version of Drive Notepad you will be asked to review and grant the app certain access permisions. <br><br>This will not normally be required when you use the app. <br><br>If you do not see a popup window when you click the button you may need to disable your popup blocker and reload the page.</div>");
-	$d.find('.popupbutton').click(function(){
-		$d.hide();
-		dn.$widget_text.text("Popup window...");
-		dn.LaunchPopup();
-	});
-	dn.$widget_menu.after($d.hide());
-	dn.$widget_popup_button = $d;
+dn.create_popup_button = function(){
+    dn.el_widget_menu.insertAdjacentHTML('afterend', [
+        "<div class='widget_popup_button'>",
+        "<div class='major_button popupbutton'>Login and/or grant app permissions...</div>",
+        "This will allow you to login to your Google account if you have not already done so, ",
+        "and if this is your first time using the latest version of Drive Notepad you will be asked ",
+        "to review and grant the app certain access permisions. <br><br>This will not normally be required ",
+        "when you use the app. <br><br>If you do not see a popup window when you click the button you may ",
+        "need to disable your popup blocker and reload the page.</div>"].join());
+    dn.el_widget_popup_button = dn.el_widget_menu.parentNode.getElementsByClassName('widget_popup_button')[0];
+    dn.el_widget_popup_button.style.display = 'none';
+
+    dn.el_widget_popup_button.getElementsByClassName('popupbutton')[0].addEventListener('click', function(){
+        dn.el_widget_popup_button.style.display = 'none';
+        dn.el_widget_text.textContent = "Popup window...";
+        dn.launch_popup();
+    });
+
 }
 
 
@@ -506,19 +193,19 @@ dn.CreatePopupButton = function(){
 // Sharing stuff
 // ############################
 
-dn.DoShare = function(){
-    if(!dn.theFile.fileId){
-        dn.ShowError("You cannot view/modify the sharing settings until you have saved the file.")
+dn.do_share = function(){
+    if(!dn.the_file.file_id){
+        dn.show_error("You cannot view/modify the sharing settings until you have saved the file.")
         return false;
     }
 
     alert("In a moment you will see the Google Sharing dialog.  Please note that whatever information you see there will be correct - and you can make changes to it in the dialog. \nHowever, until you refresh the page, Drive Notepad will " + 
-        (dn.theFile.isShared ? "continue to show the file as being 'shared' even if that is no longer true." :
+        (dn.the_file.is_shared ? "continue to show the file as being 'shared' even if that is no longer true." :
         "not show any indication that the file is now shared (if that is what you choose).") +
         "\nHopefully this will be fixed at some point soon!")
         
-    dn.$shareDialog.setItemIds([dn.theFile.fileId]);
-    dn.$shareDialog.showSettingsDialog();
+    dn.el_share_dialog.setItemIds([dn.the_file.file_id]);
+    dn.el_share_dialog.showSettingsDialog();
     
     //TODO: see SO question about no callback for share dialog...how are we supposed to know when it's closed and what happened?
     return false;
@@ -528,71 +215,70 @@ dn.DoShare = function(){
 // ############################
 // Newline stuff
 // ############################
-dn.CreateNewLineMenuTool = function(){
-    dn.$newline_menu_windows.click(function(){
+dn.create_newlinemenu_tool = function(){
+    dn.el_newline_menu_windows.addEventListener('click', function(){
         dn.g_settings.set('newLineDefault','windows');
     });
-    dn.$newline_menu_unix.click(function(){
+    dn.el_newline_menu_unix.addEventListener('click', function(){
         dn.g_settings.set('newLineDefault','unix');
     });
 }
 
-dn.DetectNewLine = function(str){
-    dn.theFile.newLineDetected = (function(){
+dn.detect_new_line = function(str){
+    dn.the_file.new_line_detected = (function(){
         //no special reason to use a self-executing function here, it's just lazy coding
         var first_n = str.indexOf("\n");
         if(first_n == -1)
-            return dn.ShowNewlineStatus("none");
+            return dn.show_newline_status("none");
     
         var has_rn = str.indexOf("\r\n") != -1;
         var has_solo_n = str.match(/[^\r]\n/) ? true : false;
         
         if(has_rn && !has_solo_n)
-            return dn.ShowNewlineStatus("windows");
+            return dn.show_newline_status("windows");
         if(has_solo_n && !has_rn)
-            return dn.ShowNewlineStatus("unix")
+            return dn.show_newline_status("unix")
         
-        return dn.ShowNewlineStatus("mixed");
+        return dn.show_newline_status("mixed");
     })();    
 }
 
-dn.ApplyNewlineChoice = function(str){
+dn.apply_newline_choice = function(str){
         
     var newlineDefault = dn.g_settings.get('newLineDefault');
     
     if(newlineDefault == "windows"){
-        dn.$newline_menu_windows.attr("selected",true)
-        dn.$newline_menu_unix.removeAttr("selected");
+        dn.el_newline_menu_windows.setAttribute("selected", true)
+        dn.el_newline_menu_unix.removeAttribute("selected");
     }else{//newlineDefault should be unix
-        dn.$newline_menu_unix.attr("selected",true)
-        dn.$newline_menu_windows.removeAttr("selected");
+        dn.el_newline_menu_unix.setAttribute("selected", true)
+        dn.el_newline_menu_windows.removeAttribute("selected");
     }             
                 
    if(typeof str == "string")
-       dn.DetectNewLine(str); //Note that it only makes sense to detect new line on downloaded content
+       dn.detect_new_line(str); //Note that it only makes sense to detect new line on downloaded content
    
-   dn.ShowNewlineStatus(dn.theFile.newLineDetected); //if default changes after load or we have a new file we need this.
+   dn.show_newline_status(dn.the_file.new_line_detected); //if default changes after load or we have a new file we need this.
    
-    dn.$file_newline_detect.removeAttr("selected");
-    dn.$file_newline_windows.removeAttr("selected");
-    dn.$file_newline_unix.removeAttr("selected");
-   if(dn.theFile.customProps.newline == "detect"){
-        if(dn.theFile.newLineDetected == "windows" || dn.theFile.newLineDetected == "unix")
-            dn.editor.session.setNewLineMode(dn.theFile.newLineDetected);
+    dn.el_file_newline_detect.removeAttribute("selected");
+    dn.el_file_newline_windows.removeAttribute("selected");
+    dn.el_file_newline_unix.removeAttribute("selected");
+   if(dn.the_file.custom_props.newline == "detect"){
+        if(dn.the_file.new_line_detected == "windows" || dn.the_file.new_line_detected == "unix")
+            dn.editor.session.setNewLineMode(dn.the_file.new_line_detected);
         else
             dn.editor.session.setNewLineMode(newlineDefault);    
-        dn.$file_newline_detect.attr("selected",true);
+        dn.el_file_newline_detect.setAttribute("selected",true);
     }else{
-        dn.editor.session.setNewLineMode(dn.theFile.customProps.newline);
-            if(dn.theFile.customProps.newline == "windows")
-                dn.$file_newline_windows.attr("selected",true);
+        dn.editor.session.setNewLineMode(dn.the_file.custom_props.newline);
+            if(dn.the_file.custom_props.newline == "windows")
+                dn.el_file_newline_windows.setAttribute("selected",true);
             else
-                dn.$file_newline_unix.attr("selected",true);
-            
+                dn.el_file_newline_unix.setAttribute("selected",true);            
     }    
 }
 
-dn.ShowNewlineStatus = function(statusStr){
+dn.show_newline_status = function(statusStr){
     var str;
     switch(statusStr){
         case 'none':
@@ -605,7 +291,7 @@ dn.ShowNewlineStatus = function(statusStr){
             str = "detected " + statusStr + "-like newlines";
     }
     
-    dn.$file_newline_info.text("(" + str +")");
+    dn.el_file_newline_info.textContent = "(" + str +")";
     
     return statusStr;
 }
@@ -614,7 +300,7 @@ dn.ShowNewlineStatus = function(statusStr){
 // First time usage stuff
 // ############################
 
-dn.ShowFirstTimeUserInfo = function(){
+dn.show_firsttimeuser_info = function(){
     var $d = $("<div class='widget_box widget_firstime'>" +
     "<div class='widget_box_title widget_firsttime_title'>First-time usage tips</div>" +
     "<ol><li>You can move this thing around by dragging the square in the top left corner.</li>" +
@@ -624,11 +310,11 @@ dn.ShowFirstTimeUserInfo = function(){
     "</ol>" +
     "<div class='major_button firsttime_dissmiss'>Dismiss</div>" + 
     "</div>");
-    $d.find('.firsttime_dissmiss').click(function(){$d.hide();})
-    dn.$widget_menu.after($d);
+    $d.find('.firsttime_dissmiss').addEventListener('click', function(){$d.style.display = 'none';})
+    dn.el_widget_menu.after($d);
 }
 
-dn.Show2014bUserInfo = function(){
+dn.show2014buser_info = function(){
     var $d = $("<div class='widget_box widget_firstime'>" +
     "<div class='widget_box_title widget_firsttime_title'>App recently updated</div>" +
     "<ol><li>The menu is now more compact, with a tab for file properties and a tab for general settings.</li>" +
@@ -640,51 +326,56 @@ dn.Show2014bUserInfo = function(){
     "report bugs here</a> and hopefully they can be resolved quickly." +
     "<div class='major_button firsttime_dissmiss'>Dismiss</div>" + 
     "</div>");
-    $d.find('.firsttime_dissmiss').click(function(){$d.hide();})
-    dn.$widget_menu.after($d);
+    $d.find('.firsttime_dissmiss').addEventListener('click', function(){$d.style.display = 'none';})
+    dn.el_widget_menu.after($d);
 }
 
 // ############################
 // Open stuff
 // ############################
 
-dn.DoOpen = function(){
-    if(!dn.openPicker){
+dn.do_open = function(){
+    if(!dn.open_picker){
         var view = new google.picker.View(google.picker.ViewId.DOCS);
-        dn.openPicker = new google.picker.PickerBuilder()
+        dn.open_picker = new google.picker.PickerBuilder()
         .enableFeature(google.picker.Feature.NAV_HIDDEN)
-        .setAppId(dn.CLIENT_ID)
+        .setAppId(dn.client_id)
         .setOAuthToken(gapi.auth.getToken().access_token)
         .addView(view)
-        .setCallback(dn.PickerCallback)
+        .setCallback(dn.picker_callback)
         .build();
     }
-    dn.openPicker.setVisible(true);
+    dn.open_picker.setVisible(true);
     return false;
 }
 
-dn.CreateOpenTool = function(){
-    dn.$menu_open.click(dn.DoOpen);
-    var $d = $("<div class='widget_box widget_open_tab_choice'>Open file in: <a class='major_button opener_button' id='opener_button_a' target='_self'>this tab</a><a class='major_button opener_button' id='opener_button_b' target='_blank'>a new tab</a></div>");
-    dn.$opener_button_a = $d.find('#opener_button_a').click(function(){dn.$opener_chooser.hide();});
-    dn.$opener_button_b = $d.find('#opener_button_b').click(function(){dn.$opener_chooser.hide();});
-    dn.$widget_menu.after($d.hide());
-    dn.$opener_chooser = $d;
+dn.create_open_tool = function(){
+    dn.el_menu_open.addEventListener('click', dn.do_open);
+    dn.el_widget_menu.insertAdjacentHTML('afterend', [
+        "<div class='widget_box widget_open_tab_choice'>Open file in: <a class='major_button opener_button' ",
+        "id='opener_button_a' target='_self'>this tab</a><a class='major_button opener_button' id='opener_button_b'",
+        " target='_blank'>a new tab</a></div>"].join(''));
+    dn.el_opener_chooser = dn.el_widget_menu.parentNode.getElementsByClassName('widget_open_tab_choice')[0];
+    dn.el_opener_chooser.style.display = 'none';
+    dn.el_opener_button_a = document.getElementById('opener_button_a');
+    dn.el_opener_button_a.addEventListener('click', function(){dn.el_opener_chooser.style.display = 'none';});
+    dn.el_opener_button_b = document.getElementById('opener_button_b');
+    dn.el_opener_button_b.addEventListener('click', function(){dn.el_opener_chooser.style.display = 'none';});
 }
 
-dn.PickerCallback = function(data) {
+dn.picker_callback = function(data) {
   if (data.action == google.picker.Action.PICKED) {
     var fileId = data.docs[0].id;
-    dn.ReclaimFocus();
+    dn.reclaim_focus();
     var url = window.location.href.match(/^https?:\/\/[\w-.]*\/\w*/)[0] +
               "?state={\"action\":\"open\",\"ids\":[\"" + fileId +"\"]}";
-    dn.$opener_button_a.attr('href',url);
-    dn.$opener_button_b.attr('href',url);
-    dn.ToggleWidget(false);
-    dn.$opener_chooser.show();
-    dn.$widget.cssAnimation('shake',function(){},dn.ERROR_DELAY_MS);
+    dn.el_opener_button_a.setAttribute('href', url);
+    dn.el_opener_button_b.setAttribute('href', url);
+    dn.toggle_widget(false);
+    dn.el_opener_chooser.style.display = '';
+    dn.el_the_widget.cssAnimation('shake',function(){},dn.error_delay_ms);
   }else if(data.action == "cancel"){
-      dn.ReclaimFocus();
+      dn.reclaim_focus();
   } 
 }
 
@@ -693,13 +384,13 @@ dn.PickerCallback = function(data) {
 // ############################
 
 //A "quick", no sorry, a "longish" note:
-//Each time DoFind runs it stores its str in dn.findingStr for next time.
-//dn.findHistoryPointer is nan except when we are cycling through history. As soon 
+//Each time DoFind runs it stores its str in dn.finding_str for next time.
+//dn.find_history_pointer is nan except when we are cycling through history. As soon 
 //as we change the search string we leave this history-cyclying mode.  Also, immediately before
 //entering the history-cycling mode we store the current str at the top of the history so it's
 //available to come back to.
 //A search is added to the history if it's not the empty string and has not been modified for 
-//dn.FIND_HISTORY_ADD_DELAY milliseconds.
+//dn.find_history_add_delay milliseconds.
 //Dealing with focus is a bit of a pain.  Basically either of the two input boxes may have it
 //or a third party (such as the editor itself) may have it. We only want to show the markings
 //when one of the two input boxes has the focus and not otherwise.  Also, while the inputs have the focus
@@ -709,14 +400,14 @@ dn.PickerCallback = function(data) {
 //call to BlurFindAndFocusEditor, the fact that it is delayed allows the other input to cancel
 //the call if it is the thing recieving the focus, otherwise it will go ahead.
 //There are other complications too, but this is the bulk of it.
-dn.DoFind = function(str){
+dn.do_find = function(str){
     //this function is to be used internally by the find/replace functions
     
-    while(dn.find_resultMarkers.length)
-        dn.editor.session.removeMarker(dn.find_resultMarkers.pop());
+    while(dn.find_result_markers.length)
+        dn.editor.session.removeMarker(dn.find_result_markers.pop());
                 
     if(str == ""){
-        dn.$findreplace_info.html("Type to search.<br>Ctrl-Up/Down: cycle though history")
+        dn.el_findreplace_info.html("Type to search.<br>Ctrl-Up/Down: cycle though history")
     }else{
         var search = dn.editor.$search;
         search.set({needle: str});
@@ -724,182 +415,184 @@ dn.DoFind = function(str){
         var r = search.findAll(dn.editor.session);
         if(r && r.length > 0){
             for(var i=0;i<r.length;i++)
-                dn.find_resultMarkers.push(dn.editor.session.addMarker(r[i], "find_result", "find_result",false)); 
+                dn.find_result_markers.push(dn.editor.session.addMarker(r[i], "find_result", "find_result",false)); 
             
-                dn.$findreplace_info.html("Found " + r.length + " occurances<br>" +
+                dn.el_findreplace_info.html("Found " + r.length + " occurances<br>" +
                  "Enter: find next<br>Shift+Enter: find previous<br>Esc: hide the find/replace box" +
-                 (dn.showingReplace ?  "<br>Tab: focus on replace field" : "") + "<br>Ctrl-Up/Down: cycle though history");
+                 (dn.showing_replace ?  "<br>Tab: focus on replace field" : "") + "<br>Ctrl-Up/Down: cycle though history");
         }else{
-            dn.$findreplace_info.html("No occurences found.<br>Ctrl-Up/Down: cycle though history")
+            dn.el_findreplace_info.html("No occurences found.<br>Ctrl-Up/Down: cycle though history")
         }
     }
-    dn.findingStr = str;
-    if(dn.g_findHistory && isNaN(dn.findHistoryPointer)){
-        if(dn.findHistoryAddTimeout)
-            clearTimeout(dn.findHistoryAddTimeout);
+    dn.finding_str = str;
+    if(dn.g_find_history && isNaN(dn.find_history_pointer)){
+        if(dn.find_history_add_timeout)
+            clearTimeout(dn.find_history_add_timeout);
         if(str.length)
-            dn.findHistoryAddTimeout = setTimeout(function(){dn.AddToFindHistory(str);},dn.FIND_HISTORY_ADD_DELAY)
+            dn.find_history_add_timeout = setTimeout(function(){dn.add_tofind_history(str);},dn.find_history_add_delay)
     }
 }
 
-dn.AddToFindHistory = function(str){
-    clearTimeout(dn.findHistoryAddTimeout); // in case this was called directly
-    dn.findHistoryAddTimeout = 0;
-    if(!str.length || !isNaN(dn.findHistoryPointer))
+dn.add_tofind_history = function(str){
+    clearTimeout(dn.find_history_add_timeout); // in case this was called directly
+    dn.find_history_add_timeout = 0;
+    if(!str.length || !isNaN(dn.find_history_pointer))
         return;
         
         //TODO: there is an inconsistency here: the find is case-insensitive, but lastIndexOf is case sensitiv
-    if(dn.g_findHistory.lastIndexOf(str) != -1)
-        dn.g_findHistory.remove(dn.g_findHistory.lastIndexOf(str)); //if the string was already in the list somewhere we remove the old item so that values are unique
+    if(dn.g_find_history.lastIndexOf(str) != -1)
+        dn.g_find_history.remove(dn.g_find_history.lastIndexOf(str)); //if the string was already in the list somewhere we remove the old item so that values are unique
     //note that strictly speaking I think these operations should be done within a pair batching flags, but it doesn't really matter here.
-    dn.g_findHistory.push(str); 
+    dn.g_find_history.push(str); 
 }
 
-dn.CancelBlurFindAndFocusEditor = function(){
-    clearTimeout(dn.blurFindAndFocusEditorTimer);
-    dn.blurFindAndFocusEditorTimer = 0;
+dn.cancel_blur_find_and_focus_editor = function(){
+    clearTimeout(dn.blur_find_and_focus_editor_timer);
+    dn.blur_find_and_focus_editor_timer = 0;
 }
-dn.BlurFindAndFocusEditor = function(flag){
-    clearTimeout(dn.blurFindAndFocusEditorTimer);
-    dn.blurFindAndFocusEditorTimer = 0;
+dn.blur_find_and_focus_editor = function(flag){
+    clearTimeout(dn.blur_find_and_focus_editor_timer);
+    dn.blur_find_and_focus_editor_timer = 0;
     if(flag==="delay"){
-        dn.blurFindAndFocusEditorTimer = setTimeout(dn.BlurFindAndFocusEditor,10); //this gives the other input element time to cancel the closing if there is a blur-focus event when focus shifts
+        dn.blur_find_and_focus_editor_timer = setTimeout(dn.blur_find_and_focus_editor,10); //this gives the other input element time to cancel the closing if there is a blur-focus event when focus shifts
         return; //note that we are assuming here that the blur event is triggered on the first element *before* the focus is triggered on the second element..if that isn't guaranteed to be true we'd need to check whether the second element already has the focus when the first element gets its blur event.
     }
-    dn.showingFindResults = false;
-    dn.ReclaimFocus();
-    while(dn.find_resultMarkers.length)
-        dn.editor.session.removeMarker(dn.find_resultMarkers.pop());               
+    dn.showing_find_results = false;
+    dn.reclaim_focus();
+    while(dn.find_result_markers.length)
+        dn.editor.session.removeMarker(dn.find_result_markers.pop());               
 }
 
-dn.CreateFindReplace = function(){
-    var $d = $("<div class='widget_box widget_findreplace'>" +
-                "<input class='find_input' tabindex='1' placeholder='find text'></input>" +
-                "<div class='replace_form'><input tabindex='2' class='replace_input' placeholder='replace with'></input></div>" + 
-                "<div class='findreplace_info'></div>"+
-                "</div>");
-    dn.$replace_form = $d.find(".replace_form");
-    dn.$findreplace_info = $d.find('.findreplace_info');
-    dn.$find_input = $d.find(".find_input");
-    dn.$replace_input = $d.find(".replace_input");
-    dn.$widget_menu.after($d.hide());
-    dn.$widget_findreplace = $d;         
+dn.create_find_replace = function(){
+    dn.el_widget_menu.insertAdjacentHTML('afterend', [
+        "<div class='widget_box widget_find_replace'>",
+        "<input class='find_input' tabindex='1' placeholder='find text'></input>",
+        "<div class='replace_form'><input tabindex='2' class='replace_input' placeholder='replace with'></input></div>",
+        "<div class='find_replace_info'></div>",
+        "</div>"].join(''));
+    dn.el_widget_find_replace = dn.el_widget_menu.parentNode.getElementsByClassName('widget_find_replace')[0];
+    dn.el_widget_find_replace.style.display = 'none';
+    dn.el_replace_form = dn.el_widget_find_replace.getElementsByClassName("replace_form")[0];
+    dn.el_find_replace_info = dn.el_widget_find_replace.getElementsByClassName('find_replace_info')[0];
+    dn.el_find_input = dn.el_widget_find_replace.getElementsByClassName("find_input")[0];
+    dn.el_replace_input = dn.el_widget_find_replace.getElementsByClassName("replace_input")[0];
     
-    dn.$find_input.focus(function(){
-                        dn.CancelBlurFindAndFocusEditor();
-                        dn.showingFindResults = true;
-                        if(dn.showingReplace)
-                            dn.$replace_input.attr("tabindex",parseInt(dn.$find_input.attr("tabindex"))+1); //we want to force the replace input to always be the next tab index
-                        dn.DoFind(dn.findingStr);
-                    })
-                  .blur(function(){
-                        if(dn.showingReplace)
-                            dn.BlurFindAndFocusEditor("delay");
-                        else
-                          dn.BlurFindAndFocusEditor();
-                    })
-                  .on("keydown",function(e){ //we want keydown here so that we can get repeated firing whith keydown (i think on most browsers)
-                      if(e.which == WHICH.ENTER)
-                        if(e.shiftKey)
-                            dn.editor.findPrevious();
-                        else
-                            dn.editor.findNext();
-                                                 
-                        if(e.which == WHICH.ESC){
-                            dn.BlurFindAndFocusEditor(); 
-                            //the normal togglewidget shortcut will kick in
-                        }
-                        if(e.ctrlKey && (e.which == WHICH.UP || e.which == WHICH.DOWN)){
-                            if(isNaN(dn.findHistoryPointer)){
-                                dn.AddToFindHistory(dn.findingStr);  //when we begin delving into history
-                                dn.findHistoryPointer = dn.g_findHistory.length-1;
-                            }
-                            dn.findHistoryPointer += e.which == WHICH.DOWN? -1 : +1;
-                            dn.findHistoryPointer = dn.findHistoryPointer < 0 ? 0 : dn.findHistoryPointer;
-                            dn.findHistoryPointer = dn.findHistoryPointer > dn.g_findHistory.length-1 ? dn.g_findHistory.length-1 : dn.findHistoryPointer; 
-                            var newStr = dn.g_findHistory.get(dn.findHistoryPointer);
-                            dn.$find_input.val(newStr);
-                            dn.DoFind(newStr);
-                            e.preventDefault();
-                        }
-                  })
-                  .on("keyup",function(e){ //we need keyup here in order that the val has the new character or new backspace
-                        if(e.which == WHICH.ENTER || e.which == WHICH.ESC || e.which == WHICH.UP || e.which == WHICH.DOWN)
-                            return; 
-                        if(dn.findingStr == dn.$find_input.val())
-                            return;
-                        if(dn.$find_input.val() != dn.findingStr)
-                            dn.findHistoryPointer = NaN;
-                        dn.DoFind(dn.$find_input.val())
-                  })
-    dn.$replace_input.focus(function(){
-                        dn.CancelBlurFindAndFocusEditor();
-                        if(!dn.showingFindResults)
-                            dn.DoFind(dn.findingStr);
-                            
-                        //we want to force the find input to always be the next tab index
-                        dn.$find_input.attr("tabindex",parseInt(dn.$replace_input.attr("tabindex"))+1); 
-                        if(dn.find_resultMarkers.length)
-                            dn.$findreplace_info.html("Found " + dn.find_resultMarkers.length + " occurances<br>" +
-                             "Enter: replace current selection<br>Ctrl+Enter: replace all<br>Esc: hide the find/replace box<br>Tab: focus on find field");
-                        else
-                            dn.$findreplace_info.html("Nothing to replace.<br>Esc: hide the find/replace box<br>Tab: focus on find field");
-                    })
-                    .on("keydown",function(e){ //we want keydown here so that we can get repeated firing whith keydown (i think on most browsers)
-                        if(e.which == WHICH.ENTER){
-                            if(!dn.find_resultMarkers.length)
-                                return;
-                            var n = e.ctrlKey ? dn.find_resultMarkers.length : 1;
-                            if(e.ctrlKey)
-                                dn.editor.replaceAll(dn.$replace_input.val());
-                            else
-                                dn.editor.replace(dn.$replace_input.val());
-                            if(e.shiftKey)
-                                dn.editor.findPrevious()
-                            else
-                                dn.editor.findNext();
-                            dn.DoFind(dn.findingStr); 
-                            if(dn.find_resultMarkers.length)
-                                dn.$findreplace_info.html ("Replaced " + n + " occurence" + (n>1? "s" : "") + ". <br>" +  dn.find_resultMarkers.length + " occurances remain<br>" +
-                                 "Enter: replace current selection<br>Ctrl+Enter: replace all<br>Esc: hide the find/replace box<br>Tab: focus on find field");
-                            else
-                                dn.$findreplace_info.html("Replaced " + (n>1 ? "all " + n + " occurences" : "the 1 occurance") +". <br> Nothing further to replace.<br>Esc: hide the find/replace box<br>Tab: focus on find field");
-                        }
-                        if(e.which == WHICH.ESC){
-                            dn.BlurFindAndFocusEditor(); 
-                            //the normal togglewidget shortcut will kick in
-                        }
-                    })
-                  .blur(function(){
-                      dn.BlurFindAndFocusEditor("delay");
-                  });
+    dn.el_find_input.addEventListener('focus', function(){
+            dn.cancel_blur_find_and_focus_editor();
+            dn.showing_find_results = true;
+            if(dn.showing_replace)
+                dn.el_replace_input.setAttribute("tabindex", parseInt(dn.el_find_input.getAttribute("tabindex"))+1); //we want to force the replace input to always be the next tab index
+            dn.do_find(dn.finding_str);
+        });
+    dn.el_find_input.addEventListener('blur', function(){
+            if(dn.showing_replace)
+                dn.blur_find_and_focus_editor("delay");
+            else
+              dn.blur_find_and_focus_editor();
+        });
+    dn.el_find_input.addEventListener('keydown',function(e){ //we want keydown here so that we can get repeated firing whith keydown (i think on most browsers)
+        if(e.which == WHICH.ENTER)
+            if(e.shiftKey)
+                dn.editor.findPrevious();
+            else
+                dn.editor.findNext();
+                                     
+        if(e.which == WHICH.ESC){
+            dn.blur_find_and_focus_editor(); 
+            //the normal togglewidget shortcut will kick in
+        }
+        if(e.ctrlKey && (e.which == WHICH.UP || e.which == WHICH.DOWN)){
+            if(isNaN(dn.find_history_pointer)){
+                dn.add_tofind_history(dn.finding_str);  //when we begin delving into history
+                dn.find_history_pointer = dn.g_find_history.length-1;
+            }
+            dn.find_history_pointer += e.which == WHICH.DOWN? -1 : +1;
+            dn.find_history_pointer = dn.find_history_pointer < 0 ? 0 : dn.find_history_pointer;
+            dn.find_history_pointer = dn.find_history_pointer > dn.g_find_history.length-1 ? dn.g_find_history.length-1 : dn.find_history_pointer; 
+            var newStr = dn.g_find_history.get(dn.find_history_pointer);
+            dn.el_find_input.value = newStr;
+            dn.do_find(newStr);
+            e.preventDefault();
+        }
+    });
+
+    dn.el_find_input.addEventListener("keyup", function(e){ //we need keyup here in order that the val has the new character or new backspace
+        if(e.which == WHICH.ENTER || e.which == WHICH.ESC || e.which == WHICH.UP || e.which == WHICH.DOWN)
+            return; 
+        if(dn.finding_str == dn.el_find_input.value)
+            return;
+        if(dn.el_find_input.value != dn.finding_str)
+            dn.find_history_pointer = NaN;
+        dn.do_find(dn.el_find_input.value)
+    })
+    dn.el_replace_input.addEventListener('focus', function(){
+        dn.cancel_blur_find_and_focus_editor();
+        if(!dn.showing_find_results)
+            dn.do_find(dn.finding_str);
+            
+        //we want to force the find input to always be the next tab index
+        dn.el_find_input.setAttribute("tabindex",parseInt(dn.el_replace_input.setAttribute("tabindex"))+1); 
+        if(dn.find_result_markers.length)
+            dn.el_findreplace_info.html("Found " + dn.find_result_markers.length + " occurances<br>" +
+             "Enter: replace current selection<br>Ctrl+Enter: replace all<br>Esc: hide the find/replace box<br>Tab: focus on find field");
+        else
+            dn.el_findreplace_info.html("Nothing to replace.<br>Esc: hide the find/replace box<br>Tab: focus on find field");
+    });
+    dn.el_replace_input.addEventListener("keydown",function(e){ //we want keydown here so that we can get repeated firing whith keydown (i think on most browsers)
+        if(e.which == WHICH.ENTER){
+            if(!dn.find_result_markers.length)
+                return;
+            var n = e.ctrlKey ? dn.find_result_markers.length : 1;
+            if(e.ctrlKey)
+                dn.editor.replaceAll(dn.el_replace_input.value);
+            else
+                dn.editor.replace(dn.el_replace_input.value);
+            if(e.shiftKey)
+                dn.editor.findPrevious()
+            else
+                dn.editor.findNext();
+            dn.do_find(dn.finding_str); 
+            if(dn.find_result_markers.length)
+                dn.el_findreplace_info.html ("Replaced " + n + " occurence" + (n>1? "s" : "") + ". <br>" +  dn.find_result_markers.length + " occurances remain<br>" +
+                 "Enter: replace current selection<br>Ctrl+Enter: replace all<br>Esc: hide the find/replace box<br>Tab: focus on find field");
+            else
+                dn.el_findreplace_info.html("Replaced " + (n>1 ? "all " + n + " occurences" : "the 1 occurance") +". <br> Nothing further to replace.<br>Esc: hide the find/replace box<br>Tab: focus on find field");
+        }
+        if(e.which == WHICH.ESC){
+            dn.blur_find_and_focus_editor(); 
+            //the normal togglewidget shortcut will kick in
+        }
+    })
+    dn.el_replace_input.addEventListener('blur', function(){
+          dn.blur_find_and_focus_editor("delay");
+    });
                   
 }
 
-dn.ShowFind = function(){
-    dn.showingReplace = false;
-    dn.$replace_form.hide();
+dn.show_find = function(){
+    dn.showing_replace = false;
+    dn.el_replace_form.style.display = 'none';
     var sel = dn.editor.session.getTextRange(dn.editor.getSelectionRange());
-    dn.$widget_findreplace.show();
+    dn.el_widget_find_replace.style.display = '';
     if(sel)
-        dn.$find_input.val(sel)
-    dn.$find_input.focus();
+        dn.el_find_input.value = sel;
+    dn.el_find_input.focus();
     if(!sel)
-        dn.$find_input.select();
-    dn.findHistoryPointer = NaN;
+        dn.el_find_input.select();
+    dn.find_history_pointer = NaN;
     return false;
 }
 
-dn.ShowReplace = function(){
-    dn.showingReplace = true;
-    dn.$replace_form.show();
+dn.show_replace = function(){
+    dn.showing_replace = true;
+    dn.el_replace_form.style.display = '';
     var sel = dn.editor.session.getTextRange(dn.editor.getSelectionRange());
-    dn.$widget_findreplace.show();
+    dn.el_widget_find_replace.style.display = '';
     if(sel)
-        dn.$find_input.val(sel)
-    dn.$find_input.focus()
+        dn.el_find_input.value = sel;
+    dn.el_find_input.focus()
     if(!sel)
-        dn.$find_input.select();
+        dn.el_find_input.select();
     return false;
 }
 
@@ -908,32 +601,34 @@ dn.ShowReplace = function(){
 // Goto line stuff
 // ############################
 
-dn.CreateGotoLine = function(){
-    var $d = $("<div class='widget_box widget_goto'>Go to: <input class='gotoline_input' placeholder='line number'></input><br>Esc: hide the goto line box</div>");
-    dn.$widget_goto = $d;
-    dn.$goto_input = $d.find('input');
-    dn.$goto_input.blur(dn.ReclaimFocus)
-                  .keyup(function(e){
-                      if(e.which == WHICH.ENTER || e.which == WHICH.ESC){
-                        if(e.which == WHICH.ENTER) //if it's esc the normal ToggleWidget shortcut will kick in.
-                            dn.$widget_goto.toggle(false);
-                        dn.ReclaimFocus();
-                        return;
-                      }
-                      var val = $(this).val();
-                      if(val){
-                        var line = parseInt(val,10);
-                        if(!isNaN(line))
-                            dn.editor.gotoLine(line,0,true);
-                      }
-                  });
+dn.create_goto_line = function(){
+    dn.el_widget_menu.insertAdjacentHTML('afterend', 
+        "<div class='widget_box widget_goto'>Go to: <input class='gotoline_input' placeholder='line number'></input><br>Esc: hide the goto line box</div>");
+    dn.el_widget_goto = dn.el_widget_menu.parentNode.getElementsByClassName('widget_goto')[0];
+    dn.el_widget_goto.style.display = 'none';
+
+    dn.el_goto_input = dn.el_widget_goto.getElementsByTagName('input')[0];
+    dn.el_goto_input.addEventListener('blur', dn.reclaim_focus);
+    dn.el_goto_input.addEventListener('keyup', function(e){
+        if(e.which == WHICH.ENTER || e.which == WHICH.ESC){
+                if(e.which == WHICH.ENTER) //if it's esc the normal ToggleWidget shortcut will kick in.
+                    dn.el_widget_goto.toggle(false);
+            dn.reclaim_focus();
+            return;
+        }
+        var val = $(this).value;
+        if(val){
+            var line = parseInt(val,10);
+            if(!isNaN(line))
+                dn.editor.gotoLine(line,0,true);
+        }
+    });
                   
-    dn.$widget_menu.after($d.hide());
 }
 
-dn.ShowGoTo = function(){
-    dn.$widget_goto.show();
-    dn.$goto_input.focus()
+dn.show_go_to = function(){
+    dn.el_widget_goto.style.display = '';
+    dn.el_goto_input.focus()
                   .select();
     return false;
 }
@@ -943,10 +638,8 @@ dn.ShowGoTo = function(){
 // ############################
 
     
-dn.CreateMenu = function(){
-    
-    var $d = $("<div/>").append($([
-    
+dn.create_menu = function(){
+    dn.el_widget_menu.innerHTML = [
     "<div class='widget_menu_icon' data-info='save' id='menu_save'></div>" ,
     "<div class='widget_menu_icon' data-info='print' id='menu_print'></div>",
     "<div class='widget_menu_icon' data-info='sharing' id='menu_sharing'></div>",
@@ -980,10 +673,10 @@ dn.CreateMenu = function(){
            
             "<div class='widget_spacer'></div>",
            
-           "<div class='widget_menu_item details_file_aceMode'>Syntax: ",
-                "<div class='inline_button' id='file_aceMode_detect'>detect</div>",
-                "<div class='inline_button' id='file_aceMode_choose'></div>",
-                "<div class='file_info' id='file_aceMode_info'></div>",  
+           "<div class='widget_menu_item details_file_ace_mode'>Syntax: ",
+                "<div class='inline_button' id='file_ace_mode_detect'>detect</div>",
+                "<div class='inline_button' id='file_ace_mode_choose'></div>",
+                "<div class='file_info' id='file_ace_mode_info'></div>",  
             "</div>",
             "<div class='widget_spacer'></div>",
             "<div class='widget_menu_item details_file_newline'>Newline: ",
@@ -1023,8 +716,8 @@ dn.CreateMenu = function(){
             "</div>",
                     
             "<div class='widget_menu_item'>Font size: ",
-                "<div class='inline_button fontSizeDecrement'>&#9660;abc</div>", //TODO: make this a single button
-                "<div class='inline_button fontSizeIncrement'>abc&#9650;</div>",
+                "<div class='inline_button font_size_decrement'>&#9660;abc</div>", //TODO: make this a single button
+                "<div class='inline_button font_size_increment'>abc&#9650;</div>",
             "</div>",
                     
             "<div class='widget_menu_item'>Tab default: ",
@@ -1052,217 +745,239 @@ dn.CreateMenu = function(){
     "<div class='widget_spacer'></div>",
     "<div id='menu_status'>...</div>"
 
-    ].join('')));
+    ].join('');
 
     
-    dn.$details_title_input  = $d.find('.details_file_title_input');
-    dn.$details_title_text = $d.find('.details_file_title_text');
+    dn.el_widget_menu.getElementsByClassName('widget_menu_icon')[0].addEventListener("click",function(){dn.reclaim_focus();});
+
+    dn.el_details_title_input  = dn.el_widget_menu.getElementsByClassName('details_file_title_input')[0];
+    dn.el_details_title_text = dn.el_widget_menu.getElementsByClassName('details_file_title_text')[0];
     
-    dn.$menu_save = $d.find('#menu_save');
-    dn.$menu_print = $d.find('#menu_print');
-    dn.$menu_sharing = $d.find('#menu_sharing');
-    dn.$menu_history = $d.find('#menu_history');
+    dn.el_menu_save = document.getElementById('menu_save');
+    dn.el_menu_print = document.getElementById('menu_print');
+    dn.el_menu_sharing = document.getElementById('menu_sharing');
+    dn.el_menu_history = document.getElementById('menu_history');
     
-    dn.$widget_sub_file_title = $d.find('#sub_file_title')
-    dn.$widget_sub_file_box = $d.find('#sub_file_box')
+    dn.el_widget_sub_file_title = document.getElementById('sub_file_title')
+    dn.el_widget_sub_file_box = document.getElementById('sub_file_box')
 
-    dn.$details_description_input  = $d.find('.details_file_description_input');
-    dn.$details_description_text = $d.find('.details_file_description_text');
-    dn.syntaxDropDown = dn.CreateSyntaxMenu()
+    dn.el_details_description_input  = dn.el_widget_menu.getElementsByClassName('details_file_description_input')[0];
+    dn.el_details_description_text = dn.el_widget_menu.getElementsByClassName('details_file_description_text')[0];
+    dn.syntax_drop_down = dn.create_syntax_menu()
     
-    dn.$file_aceMode_choose = $d.find('#file_aceMode_choose').append(dn.syntaxDropDown.$el);
-    dn.$file_aceMode_detect = $d.find('#file_aceMode_detect');
-    dn.$file_aceMode_info = $d.find('#file_aceMode_info');
-    dn.$file_newline_detect = $d.find('#file_newline_detect');
-    dn.$file_newline_windows = $d.find('#file_newline_windows');
-    dn.$file_newline_unix = $d.find('#file_newline_unix');
-    dn.$file_newline_info = $d.find('#file_newline_info');
-    dn.$file_tab_detect = $d.find('#file_tab_detect');
-    dn.$file_tab_hard = $d.find('#file_tab_hard');
-    dn.$file_tab_soft = $d.find('#file_tab_soft');
-    dn.$file_tab_soft_text = $d.find('#file_tab_soft_text');
-    dn.$file_tab_info = $d.find('#file_tab_info');
+    dn.el_file_ace_mode_choose = document.getElementById('file_ace_mode_choose')
+    dn.el_file_ace_mode_choose.appendChild(dn.syntax_drop_down.el);
+    dn.el_file_ace_mode_detect = document.getElementById('file_ace_mode_detect');
+    dn.el_file_ace_mode_info = document.getElementById('file_ace_mode_info');
+    dn.el_file_newline_detect = document.getElementById('file_newline_detect');
+    dn.el_file_newline_windows = document.getElementById('file_newline_windows');
+    dn.el_file_newline_unix = document.getElementById('file_newline_unix');
+    dn.el_file_newline_info = document.getElementById('file_newline_info');
+    dn.el_file_tab_detect = document.getElementById('file_tab_detect');
+    dn.el_file_tab_hard = document.getElementById('file_tab_hard');
+    dn.el_file_tab_soft = document.getElementById('file_tab_soft');
+    dn.el_file_tab_soft_text = document.getElementById('file_tab_soft_text');
+    dn.el_file_tab_info = document.getElementById('file_tab_info');
 
-    dn.$widget_sub_general_title = $d.find('#sub_general_title')
-    dn.$widget_sub_general_box = $d.find('#sub_general_box')
+    dn.el_widget_sub_general_title = document.getElementById('sub_general_title')
+    dn.el_widget_sub_general_box = document.getElementById('sub_general_box')
 
-    dn.$menu_clear_clipboard = $d.find("#clipboard_history_clear_button");
-    dn.$menu_clear_find_history = $d.find("#find_history_clear_button");
+    dn.el_menu_clear_clipboard = document.getElementById("clipboard_history_clear_button");
+    dn.el_menu_clear_find_history = document.getElementById("find_history_clear_button");
 
-    dn.$gutter_history_show = $d.find('#gutter_history_show');
-    dn.$gutter_history_hide = $d.find('#gutter_history_hide');
-    dn.$word_wrap_off = $d.find('#word_wrap_off');
-    dn.$word_wrap_at = $d.find('#word_wrap_at');
-    dn.$word_wrap_edge = $d.find('#word_wrap_edge');
-    dn.$fontSizeDecrement = $d.find('.fontSizeDecrement')
-    dn.$fontSizeIncrement = $d.find('.fontSizeIncrement')
-    dn.$tab_hard = $d.find('#tab_hard');
-    dn.$tab_soft = $d.find('#tab_soft');
-    dn.$newline_menu_windows = $d.find('#newline_menu_windows');
-    dn.$newline_menu_unix = $d.find('#newline_menu_unix');
+    dn.el_gutter_history_show = document.getElementById('gutter_history_show');
+    dn.el_gutter_history_hide = document.getElementById('gutter_history_hide');
+    dn.el_word_wrap_off = document.getElementById('word_wrap_off');
+    dn.el_word_wrap_at = document.getElementById('word_wrap_at');
+    dn.el_word_wrap_edge = document.getElementById('word_wrap_edge');
+    dn.el_font_size_decrement = dn.el_widget_menu.getElementsByClassName('font_size_decrement')[0];
+    dn.el_font_size_increment = dn.el_widget_menu.getElementsByClassName('font_size_increment')[0];
+    dn.el_tab_hard = document.getElementById('tab_hard');
+    dn.el_tab_soft = document.getElementById('tab_soft');
+    dn.el_newline_menu_windows = document.getElementById('newline_menu_windows');
+    dn.el_newline_menu_unix = document.getElementById('newline_menu_unix');
      
-    dn.$menu_shortcuts = $d.find('#menu_shortcuts');
-    dn.$menu_new = $d.find('#menu_new');
-    dn.$menu_open = $d.find('#menu_open');
-    dn.$menu_status = $d.find('#menu_status');
-    dn.$menu_drive = $d.find('#menu_drive');
-    dn.$widget_menu.html("").prepend($d.children()); 
-    dn.$widget_menu.find('.widget_menu_icon').on("click",function(){dn.ReclaimFocus();});
+    dn.el_menu_shortcuts = document.getElementById('menu_shortcuts');
+    dn.el_menu_new = document.getElementById('menu_new');
+    dn.el_menu_open = document.getElementById('menu_open');
+    dn.el_menu_status = document.getElementById('menu_status');
+    dn.el_menu_drive = document.getElementById('menu_drive');
+
 }
 
-dn.CreateIconMouseOver = function(){
-    dn.$widget_menu.find(".widget_menu_icon, .tooltip")
-        .on("mouseenter",function(){
-            var dataInfo = $(this).data('info');
-            if(!(dataInfo && dataInfo in dn.TOOLTIP_INFO))
-                return;
-            var infoStr = dn.TOOLTIP_INFO[dataInfo]; 
-            clearTimeout(dn.menu_status_timer || 0);
-            dn.menu_status_timer = setTimeout(function(){
-                dn.$menu_status.text(infoStr)
-            },dn.ICON_MOUSEOVER_MS);
-        })
-        .on("mouseleave",function(){
-            clearTimeout(dn.menu_status_timer || 0);
-            dn.menu_status_timer = setTimeout(function(){
-                dn.$menu_status.text(dn.menu_status_default);
-            },dn.ICON_MOUSEOVER_MS);        
-        });
+dn.create_icon_mouse_over = function(){
+    var els = dn.el_widget_menu.getElementsByClassName('widget_menu_icon'); // TODO: check why .tooltip was previously part of the selction
+
+    var mouse_enter = function(){
+        var data_info = this.getAttribute('data-info');
+        if(!(data_info && data_info in dn.tooltip_info))
+            return;
+        var info_str = dn.tooltip_info[data_info]; 
+        clearTimeout(dn.menu_status_timer || 0);
+        dn.menu_status_timer = setTimeout(function(){
+            dn.el_menu_status.textContent = info_str;
+        },dn.icon_mouse_over_ms);
+    };
+
+    var mouse_leave = function(){
+        clearTimeout(dn.menu_status_timer || 0);
+        dn.menu_status_timer = setTimeout(function(){
+            dn.el_menu_status.textContent = dn.menu_status_default;
+        },dn.icon_mouse_over_ms);        
+    };
+
+    for(var ii=0; ii<els.length; ii++){
+        els[ii].addEventListener('mouseenter', mouse_enter);
+        els[ii].addEventListener('mouseleave', mouse_leave);
+    }
+
 }
 
-dn.CreateMenuSubs = function(){
-    dn.$widget_sub_general_title.click(function(){
+dn.create_menu_subs = function(){
+    dn.el_widget_sub_general_title.addEventListener('click', function(){
         dn.g_settings.set("widgetSub","general");
-        dn.ReclaimFocus();
+        dn.reclaim_focus();
     });
-    dn.$widget_sub_file_title.click(function(){
+    dn.el_widget_sub_file_title.addEventListener('click', function(){
         dn.g_settings.set("widgetSub","file");
-        dn.ReclaimFocus();
+        dn.reclaim_focus();
     });
 }
-dn.WidgetMoveHandleMouseDown = function(e){
-    var pos  = dn.$widget.position();
-	dn.$widget.data('dragging', {
-			off_left: /*pos.left*/-e.clientX ,
-			off_top: /*pos.top*/-e.clientY});
-	$(document).attr('dragging','true')
-			   .on('mousemove', dn.DocumentMouseMove_Widget)
-			   .on('mouseup',dn.DocumentMouseUp_Widget);
+dn.widget_move_handle_mouse_down = function(e){
+    dn.the_widget_dragging = {
+            off_left: -e.clientX ,
+            off_top: -e.clientY};
+    document.body.setAttribute('dragging','true');
+    document.addEventListener('mousemove', dn.document_mouse_move_widget);
+    document.addEventListener('mouseup', dn.document_mouse_up_widget);
 }
 
-dn.DocumentMouseMove_Widget = function(e){
-   var dragging = dn.$widget.data('dragging');
-   var x = e.clientX+dragging.off_left;
-   var y = e.clientY+dragging.off_top;
-   dn.$widget.translate(x,y);
+dn.document_mouse_move_widget = function(e){
+   var x = e.clientX+dn.the_widget_dragging.off_left;
+   var y = e.clientY+dn.the_widget_dragging.off_top;
+   translate(dn.el_the_widget, x, y);
    e.stopPropagation();
 };
 
-dn.DocumentMouseUp_Widget = function(e){
-	var pos = dn.$widget.position();
-	dn.$widget.translate(0,0);
-	//dn.$widget.css({left: pos.left + 'px',top: pos.top + 'px'})
-	$(document).removeAttr('dragging')
-			   .off('mousemove',dn.DocumentMouseMove_Widget)
-			   .off('mouseup',dn.DocumentMouseUp_Widget);
+dn.document_mouse_up_widget = function(e){
+    var pos = {
+        left: dn.el_the_widget.offsetLeft,
+        top: dn.el_the_widget.offsetTop};
+    translate(dn.el_the_widget, 0, 0);
+    document.body.removeAttribute('dragging');
+    document.removeEventListener('mousemove',dn.document_mouse_move_widget);
+    document.removeEventListener('mouseup',dn.document_mouse_up_widget);
 
-	if(dn.g_settings){
-		//work out what widget_anchor should be
-		var widget_w = dn.$widget.width();
-		var widget_h = dn.$widget.height();
-		var window_w = $(window).width();
-		var window_h = $(window).height();
-		var anchor = []
-		if(pos.left < window_w - (pos.left + widget_w)){
-			anchor[0] = 'l'; //anchor left side by window width percentage
-			anchor[1] = Math.max(0,pos.left/window_w * 100);
-		}else{
-			anchor[0] = 'r'; //anchor right side by window width percentage
-			anchor[1] = Math.max(0,(window_w - (pos.left + widget_w))/window_w * 100);
-		}
-		if(pos.top < window_h - (pos.top+ widget_h)){
-			anchor[2] = 't'; //anchor top side by window height percentage
-			anchor[3] = Math.max(0,pos.top/window_h * 100);
-		}else{
-			anchor[2] = 'b'; //anchor bottom side by window height percentage
-			anchor[3] = Math.max(0,(window_h - (pos.top + widget_h))/window_h * 100);
-		}
+    if(dn.g_settings){
+        //work out what widget_anchor should be
+        var widget_w = dn.el_the_widget.offsetWidth;
+        var widget_h = dn.el_the_widget.offsetHeight;
+        var window_w = $(window).width();
+        var window_h = $(window).height();
+        var anchor = []
+        if(pos.left < window_w - (pos.left + widget_w)){
+            anchor[0] = 'l'; //anchor left side by window width percentage
+            anchor[1] = Math.max(0,pos.left/window_w * 100);
+        }else{
+            anchor[0] = 'r'; //anchor right side by window width percentage
+            anchor[1] = Math.max(0,(window_w - (pos.left + widget_w))/window_w * 100);
+        }
+        if(pos.top < window_h - (pos.top+ widget_h)){
+            anchor[2] = 't'; //anchor top side by window height percentage
+            anchor[3] = Math.max(0,pos.top/window_h * 100);
+        }else{
+            anchor[2] = 'b'; //anchor bottom side by window height percentage
+            anchor[3] = Math.max(0,(window_h - (pos.top + widget_h))/window_h * 100);
+        }
 
-		dn.g_settings.set("widget_anchor",anchor); 
-	}
+        dn.g_settings.set("widget_anchor",anchor); 
+    }
 };
 
-dn.WidgetApplyAnchor = function(anchor){
-	anchor = $.isArray(anchor) ? anchor : dn.g_settings.get('widget_anchor');
-	var widget_w = dn.$widget.width();
-	var widget_h = dn.$widget.height();
-	var window_w = $(window).width();
-	var window_h = $(window).height();
+dn.widget_apply_anchor = function(anchor){
+    anchor = $.isArray(anchor) ? anchor : dn.g_settings.get('widget_anchor');
+    var widget_w = dn.el_the_widget.offsetWidth;
+    var widget_h = dn.el_the_widget.offsetHeight;
+    var window_w = $(window).width();
+    var window_h = $(window).height();
 
-	if(anchor[0] == 'l'){
-		// horizontal position is anchored to a fixed percentage of window width on left of widget
-		if(window_w * anchor[1]/100 + widget_w > window_w)
-			dn.$widget.css({left: 'inherit',right: '0px'}); //if the widget would overlap the right edge, then instead put it precisely on the right edge
-		else
-			dn.$widget.css({left: anchor[1] + '%', right: ''}); //use the anchor exactly
-	}else{
-		// horizontal position is anchored to a fixed percentage of window width on right of widget
-		if( window_w * anchor[1]/100 + widget_w > window_w)
-			dn.$widget.css({left: '0px',right: ''}); //if the widget would overlap the left edge, then instead put it precisely on the left edge
-		else
-			dn.$widget.css({left: 'inherit', right: anchor[1] + '%'}); //use the anchor exactly
-	}
+    if(anchor[0] == 'l'){
+        // horizontal position is anchored to a fixed percentage of window width on left of widget
+        if(window_w * anchor[1]/100 + widget_w > window_w){
+            dn.el_the_widget.style.left = 'inherit';
+            dn.el_the_widget.style.right = '0px'; //if the widget would overlap the right edge, then instead put it precisely on the right edge
+        }else{
+            dn.el_the_widget.style.left = anchor[1] + '%';
+            dn.el_the_widget.style.right = ''; //use the anchor exactly
+        }
+    }else{
+        // horizontal position is anchored to a fixed percentage of window width on right of widget
+        if( window_w * anchor[1]/100 + widget_w > window_w){
+            dn.el_the_widget.style.left = '0px';
+            dn.el_the_widget.style.right = ''; //if the widget would overlap the left edge, then instead put it precisely on the left edge
+        }else{
+            dn.el_the_widget.style.left = 'inherit';
+            dn.el_the_widget.style.right = anchor[1] + '%'; //use the anchor exactly
+        }
+    }
 
-	if(anchor[2] == 't'){
-		// vertical position is anchored to a fixed percentage of window height on top of widget
-		if(window_h * anchor[3]/100 + widget_h > window_h)
-			dn.$widget.css({top: 'inherit',bottom: '0px'});  
-		else
-			dn.$widget.css({top: anchor[3] + '%', bottom: ''}); 
-	}else{
-		// vertical position is anchored to a fixed percentage of window height on bottom of widget
-		if(window_h * anchor[3]/100 + widget_h > window_h)
-			dn.$widget.css({top: '0px',bottom: ''}); 
-		else
-			dn.$widget.css({top: 'inherit', bottom: anchor[3] + '%'}); 
-	}
+    if(anchor[2] == 't'){
+        // vertical position is anchored to a fixed percentage of window height on top of widget
+        if(window_h * anchor[3]/100 + widget_h > window_h){
+            dn.el_the_widget.style.top = 'inherit';
+            dn.el_the_widget.style.bottom = '0px';  
+        }else{
+            dn.el_the_widget.style.top = anchor[3] + '%';
+            dn.el_the_widget.style.bottom = ''; 
+        }
+    }else{
+        // vertical position is anchored to a fixed percentage of window height on bottom of widget
+        if(window_h * anchor[3]/100 + widget_h > window_h){
+            dn.el_the_widget.style.top = '0px';
+            dn.el_the_widget.style.bottom = ''; 
+        }else{
+            dn.el_the_widget.style.top = 'inherit';
+            dn.el_the_widget.style.bottom = anchor[3] + '%'; 
+        }
+    }
 
 
 
 }
 
-dn.ToggleWidget = function(state){
-    if(dn.ignoreEscape){
-        dn.ignoreEscape = false;
+dn.toggle_widget = function(state){
+    if(dn.ignore_escape){
+        dn.ignore_escape = false;
         return;
     }
-    var $subs_ = [  dn.$widget_menu,
-                    dn.$widget_shortcuts,
-                    dn.$widget_syntax,
-                    dn.$widget_clipboard,
-                    dn.$opener_chooser,
-                    dn.$widget_goto,
-                    dn.$widget_findreplace,
-                    dn.$widget_fileHistory];
-	var wasShowing = [];
-	for(var i=0;i<$subs_.length;i++)
-		if($subs_[i] && $subs_[i].css('display') != 'none')
-			wasShowing.push($subs_[i].toggle(state)); //if state is true then leav $elshowing, othewise hide it
+    var els = [
+        dn.el_widget_menu,
+        dn.el_widget_shortcuts,
+        dn.el_widget_syntax,
+        dn.el_widget_clipboard,
+        dn.el_opener_chooser,
+        dn.el_widget_goto,
+        dn.el_widget_find_replace,
+        dn.el_widget_file_history];
+    var was_showing = [];
+    for(var i=0;i<els.length;i++)
+        if(els[i] && els[i].style.display !== 'none')
+            was_showing.push(els[i].toggle(state)); //if state is true then leav $elshowing, othewise hide it
 
-	if(wasShowing.length === 0 && !((typeof state === "number" || typeof state === "boolean") && !state)) 
-		dn.$widget_menu.show();
+    if(was_showing.length === 0 && !((typeof state === "number" || typeof state === "boolean") && !state)) 
+        dn.el_widget_menu.style.display = '';
         
-    if(dn.isShowingHistory)
-        dn.CloseHistory();
+    if(dn.is_showing_history)
+        dn.close_history();
     
-    dn.ReclaimFocus();
+    dn.reclaim_focus();
     return false;
 }
 
-dn.ShowStatus = function(){
+dn.show_status = function(){
     //TODO: show "updating file details" for custom properties
     
-    var f = dn.theFile;
+    var f = dn.the_file;
     var s = '';
     if(f.isReadingFileObject)
         s = "Reading file from disk:\n" + f.title;
@@ -1281,25 +996,25 @@ dn.ShowStatus = function(){
     else
         s = f.title ? "Failed to load file:\n" + f.title : "ex nihilo omnia";
 
-     if(dn.isGettingToken || !(gapi && gapi.client && gapi.client.drive))
+     if(dn.is_getting_token || !(gapi && gapi.client && gapi.client.drive))
         s += "\nAuthenticating...";
 
-    dn.$widget_text.textMulti(s,true);
+    text_multi(dn.el_widget_text, s,true);
 }
 
-dn.ShowError = function(message){
+dn.show_error = function(message){
     console.log(message); //it's just useful to do this too
-	dn.$widget_error_text.textMulti(message,true);
-	dn.$widget_error.show();
-	dn.$widget.cssAnimation('shake',function(){dn.$widget_error.hide();},dn.ERROR_DELAY_MS);
+    text_multi(dn.el_widget_error_text, message,true);
+    dn.el_widget_error.style.display = '';
+    dn.el_the_widget.cssAnimation('shake',function(){dn.el_widget_error.style.display = 'none';},dn.error_delay_ms);
 };
 
-dn.SetDriveLinkToFolder = function(){
-    var a = dn.$menu_drive;
-    if(a && dn.theFile.folderId)
-        a.attr('href','https://drive.google.com/#folders/' + dn.theFile.folderId);
+dn.set_drivelinkto_folder = function(){
+    var a = dn.el_menu_drive;
+    if(a && dn.the_file.folder_id)
+        a.setAttribute('href','https://drive.google.com/#folders/' + dn.the_file.folder_id);
     else
-        a.attr('href','https://drive.google.com');
+        a.setAttribute('href','https://drive.google.com');
 }
 
 
@@ -1307,7 +1022,7 @@ dn.SetDriveLinkToFolder = function(){
 // Settings stuff
 // ############################
 
-dn.GetSettingsFromCloud = function() {
+dn.get_settingsfrom_cloud = function() {
   gapi.drive.realtime.loadAppDataDocument(
   function(doc) {
     var oldTempG_settings = dn.g_settings;
@@ -1317,58 +1032,58 @@ dn.GetSettingsFromCloud = function() {
         dn.g_settings.set('clipboard', doc.getModel().createList());
         dn.g_clipboard = dn.g_settings.get('clipboard');
     }
-    dn.g_findHistory = dn.g_settings.get('findHistory');
-    if(!dn.g_findHistory){
+    dn.g_find_history = dn.g_settings.get('findHistory');
+    if(!dn.g_find_history){
         dn.g_settings.set('findHistory', doc.getModel().createList());
-        dn.g_findHistory = dn.g_settings.get('findHistory');
+        dn.g_find_history = dn.g_settings.get('findHistory');
     }
     
-	var existingKeys = dn.g_settings.keys();
-	dn.g_settings.addEventListener(gapi.drive.realtime.EventType.VALUE_CHANGED, dn.SettingsChanged);
-	for(var s in dn.DEFAULT_SETTINGS)
-		if(s in oldTempG_settings.getKeeps())
+    var existingKeys = dn.g_settings.keys();
+    dn.g_settings.addEventListener(gapi.drive.realtime.EventType.VALUE_CHANGED, dn.settings_changed);
+    for(var s in dn.default_settings)
+        if(s in oldTempG_settings.getKeeps())
             dn.g_settings.set(s,oldTempG_settings.get(s));
-		else if(existingKeys.indexOf(s) == -1)
-    		dn.g_settings.set(s,dn.DEFAULT_SETTINGS[s]);
+        else if(existingKeys.indexOf(s) == -1)
+            dn.g_settings.set(s,dn.default_settings[s]);
         else if(JSON.stringify(oldTempG_settings.get(s)) !== JSON.stringify(dn.g_settings.get(s)))
-			dn.SettingsChanged({property:s, newValue:dn.g_settings.get(s)});// the gapi doesn't automatically trigger this on load
+            dn.settings_changed({property:s, new_value:dn.g_settings.get(s)});// the gapi doesn't automatically trigger this on load
     
     //Check lastDNVersionUsed at this point - by default it's blank, but could also have an out-of-date value
     if(dn.g_settings.get('lastDNVersionUsed') == "2014a")
-        dn.Show2014bUserInfo();
-    else if(dn.g_settings.get('lastDNVersionUsed') != dn.VERSION_STR)
-        dn.ShowFirstTimeUserInfo();
-    dn.g_settings.set('lastDNVersionUsed',dn.VERSION_STR);
+        dn.show2014buser_info();
+    else if(dn.g_settings.get('lastDNVersionUsed') != dn.version_str)
+        dn.show_firsttimeuser_info();
+    dn.g_settings.set('lastDNVersionUsed',dn.version_str);
   },
   null,
   function(resp){
-		console.log("g_settings error");
-		console.dir(arguments);
-		if ((resp.type && resp.type == "token_refresh_required") || resp.error.code == 401) //not sure if it has an error.code field but it does seem to have a type field
-		  	dn.Reauth(function(){console.log("reauthed triggered by g_settings")}); //no real callback here, I think the realtime api somehow disovers that we're back in buisiness
-	})
+        console.log("g_settings error");
+        console.dir(arguments);
+        if ((resp.type && resp.type == "token_refresh_required") || resp.error.code == 401) //not sure if it has an error.code field but it does seem to have a type field
+            dn.reauth(function(){console.log("reauthed triggered by g_settings")}); //no real callback here, I think the realtime api somehow disovers that we're back in buisiness
+    })
 
 }
 
-dn.LoadDefaultSettings = function(){
+dn.load_default_settings = function(){
   //Lets show the user either the defualt settings or the 
   //ones last used on this browser (restricted to impersonal settings only)
 
   dn.g_settings = (function(){ //mock realtime model to be used until the real model is initialised
-	  var ob = {};
+      var ob = {};
       var keeps = {}
       return {get: function(k){return ob[k]}, 
               set: function(k,v){ob[k] = v;
-                                 dn.SettingsChanged({property: k, newValue: v});
+                                 dn.settings_changed({property: k, new_value: v});
                                  },
               keep: function(k){keeps[k] = true},
               getKeeps: function(){return keeps;}};
                                  
   })();
   try{
-    for(var s in dn.DEFAULT_SETTINGS)
-    if(dn.IMPERSONAL_SETTINGS_KEYS.indexOf(s) == -1 || !localStorage || !localStorage["g_settings_" +s])
-        dn.g_settings.set(s,dn.DEFAULT_SETTINGS[s]);
+    for(var s in dn.default_settings)
+    if(dn.impersonal_settings_keys.indexOf(s) == -1 || !localStorage || !localStorage["g_settings_" +s])
+        dn.g_settings.set(s,dn.default_settings[s]);
     else
         dn.g_settings.set(s,JSON.parse(localStorage["g_settings_" + s]));
   }catch(err){
@@ -1378,93 +1093,93 @@ dn.LoadDefaultSettings = function(){
   }
 }
 
-dn.SettingsChanged = function(e){
-	console.log("[user settings] " + e.property +": " + e.newValue);
-	if(dn.IMPERSONAL_SETTINGS_KEYS.indexOf(e.property)>-1 && localStorage){
-        localStorage["g_settings_" + e.property] = JSON.stringify(e.newValue);
-	}
+dn.settings_changed = function(e){
+    console.log("[user settings] " + e.property +": " + e.new_value);
+    if(dn.impersonal_settings_keys.indexOf(e.property)>-1 && localStorage){
+        localStorage["g_settings_" + e.property] = JSON.stringify(e.new_value);
+    }
     try{
-		switch(e.property){
-			case "widget_anchor":
-				if(!dn.$widget.attr('dragging')){
-					dn.WidgetApplyAnchor(e.newValue);
-				}
-				break;
-			case "fontSize":
-                var scrollLine = dn.GetScrollLine();
-				dn.editor.setFontSize(e.newValue + 'em')	
+        switch(e.property){
+            case "widget_anchor":
+                if(!dn.el_the_widget.getAttribute('dragging')){
+                    dn.widget_apply_anchor(e.new_value);
+                }
+                break;
+            case "fontSize":
+                var scrollLine = dn.get_scroll_line();
+                dn.editor.setFontSize(e.new_value + 'em')    
                 dn.editor.scrollToLine(scrollLine);
-				break;
-			case "wordWrap":
-				var s = dn.editor.getSession();
-                var scrollLine = dn.GetScrollLine();
-				s.setUseWrapMode(e.newValue[0]);
-				s.setWrapLimitRange(e.newValue[1],e.newValue[2]);
+                break;
+            case "wordWrap":
+                var s = dn.editor.getSession();
+                var scrollLine = dn.get_scroll_line();
+                s.setUseWrapMode(e.new_value[0]);
+                s.setWrapLimitRange(e.new_value[1],e.new_value[2]);
                  dn.editor.scrollToLine(scrollLine);
-                if(!e.newValue[0])
-                    dn.$word_wrap_off.attr('selected',true);
+                if(!e.new_value[0])
+                    dn.el_word_wrap_off.setAttribute('selected',true);
                 else
-                    dn.$word_wrap_off.removeAttr('selected');
-                if(e.newValue[0] && !e.newValue[1])
-                    dn.$word_wrap_edge.attr('selected',true);
+                    dn.el_word_wrap_off.removeAttribute('selected');
+                if(e.new_value[0] && !e.new_value[1])
+                    dn.el_word_wrap_edge.setAttribute('selected',true);
                 else
-                    dn.$word_wrap_edge.removeAttr('selected');
-                if(e.newValue[0] && e.newValue[1])
-                    dn.$word_wrap_at.attr('selected',true);
+                    dn.el_word_wrap_edge.removeAttribute('selected');
+                if(e.new_value[0] && e.new_value[1])
+                    dn.el_word_wrap_at.setAttribute('selected',true);
                 else
-                    dn.$word_wrap_at.removeAttr('selected');
+                    dn.el_word_wrap_at.removeAttribute('selected');
 
-				break;
+                break;
             case "wordWrapAt":
-                dn.$word_wrap_at_text.text("at " + e.newValue);
+                dn.el_word_wrap_at_text.textContent = "at " + e.new_value;
                 var curWrap = dn.g_settings.get('wordWrap');
-                if(curWrap[1] && curWrap[1] != e.newValue)
-                    dn.g_settings.set('wordWrap',[1,e.newValue,e.newValue]);
-                dn.editor.setPrintMarginColumn(e.newValue);
+                if(curWrap[1] && curWrap[1] != e.new_value)
+                    dn.g_settings.set('wordWrap',[1,e.new_value,e.new_value]);
+                dn.editor.setPrintMarginColumn(e.new_value);
                 break;
             case "showGutterHistory":
                 var s = dn.editor.getSession(); 
-                if(e.newValue){
-                    dn.$gutter_history_show.attr('selected',true)
-                    dn.$gutter_history_hide.removeAttr('selected');
+                if(e.new_value){
+                    dn.el_gutter_history_show.setAttribute('selected',true)
+                    dn.el_gutter_history_hide.removeAttribute('selected');
                 }else{
-                    var h = dn.changeLineHistory;
+                    var h = dn.change_line_history;
                     for(var i=0;i<h.length;i++)if(h[i])
-                        s.removeGutterDecoration(i,h[i]<0 ? dn.CHANGE_LINE_CLASSES_RM[-h[i]] : dn.CHANGE_LINE_CLASSES[h[i]]);
-                    dn.changeLineHistory = []; 
-                    dn.$gutter_history_hide.attr('selected',true)
-                    dn.$gutter_history_show.removeAttr('selected');
+                        s.removeGutterDecoration(i,h[i]<0 ? dn.change_line_classes_rm[-h[i]] : dn.change_line_classes[h[i]]);
+                    dn.change_line_history = []; 
+                    dn.el_gutter_history_hide.setAttribute('selected',true)
+                    dn.el_gutter_history_show.removeAttribute('selected');
                 }
                 break;
             case "newLineDefault":
-                dn.ApplyNewlineChoice();
+                dn.apply_newline_choice();
                 break;
             case "historyRemovedIsExpanded":
-                dn.RevisionSetIsExpaned(e.newValue);
+                dn.revision_setis_expaned(e.new_value);
                 break;
             case "softTabN":
             case "tabIsHard":          
-                dn.ApplyTabChoice(); 
+                dn.apply_tab_choice(); 
                 break;
             case "widgetSub":
-                if(e.newValue === "general"){
-                    dn.$widget_sub_general_box.attr("selected",1);
-                    dn.$widget_sub_file_box.removeAttr("selected");
-                    dn.$widget_sub_general_title.attr("selected",1);
-                    dn.$widget_sub_file_title.removeAttr("selected");
+                if(e.new_value === "general"){
+                    dn.el_widget_sub_general_box.setAttribute("selected",1);
+                    dn.el_widget_sub_file_box.removeAttribute("selected");
+                    dn.el_widget_sub_general_title.setAttribute("selected",1);
+                    dn.el_widget_sub_file_title.removeAttribute("selected");
                 }else{//file
-                    dn.$widget_sub_file_box.attr("selected",1);
-                    dn.$widget_sub_general_box.removeAttr("selected");
-                    dn.$widget_sub_file_title.attr("selected",1);
-                    dn.$widget_sub_general_title.removeAttr("selected");
+                    dn.el_widget_sub_file_box.setAttribute("selected",1);
+                    dn.el_widget_sub_general_box.removeAttribute("selected");
+                    dn.el_widget_sub_file_title.setAttribute("selected",1);
+                    dn.el_widget_sub_general_title.removeAttribute("selected");
                 }
                 break;
-		}
-	}catch(err){
-		console.log("Error while uptating new settings value.")
-		console.dir(e);
-		console.dir(err);
-	}
+        }
+    }catch(err){
+        console.log("Error while uptating new settings value.")
+        console.dir(e);
+        console.dir(err);
+    }
 }
 
 
@@ -1474,63 +1189,67 @@ dn.SettingsChanged = function(e){
 
 dn.platform = (function(){
     if(navigator.platform.indexOf("Win") >-1)
-		return "Windows";
-	else if(navigator.platform.indexOf("Linux") >-1)
-		return "Linux";
-	else if(navigator.platform.indexOf("Mac")>-1)
-		return "Mac";
+        return "Windows";
+    else if(navigator.platform.indexOf("Linux") >-1)
+        return "Linux";
+    else if(navigator.platform.indexOf("Mac")>-1)
+        return "Mac";
         
     return null;
 })();
 
-dn.CreateShortcutsInfo = function(){
+dn.create_shortcuts_info = function(){
 //This is hardly the world's most efficient way of doing this....(but it probably doesn't matter)...
 
-	var arry = dn.SHORTCUTS_LIST;
-	var dict = {};
-	var platform = dn.platform;
+    var arry = dn.shortcuts_list;
+    var dict = {};
+    var platform = dn.platform;
 
-	if(platform == "Windows" || platform == "Linux"){
-	   for(var i=0;i<arry.length;i++){
-			var parts = arry[i].split("|");
-			if(parts[1].length)
-				dict[parts[0]] = parts[1];
-		}
-	}else if(platform == "Mac"){
-		for(var i=0;i<arry.length;i++){
-			var parts = arry[i].split("|");
-			if(parts[1].length)
-				dict[parts[0]] = parts.length > 2? parts[2] : parts[1];
-		}
-	}else{
-		//TODO: show something here, maybe let user switch, maybe have touch info for ipad & android.
-	}
+    if(platform == "Windows" || platform == "Linux"){
+       for(var i=0;i<arry.length;i++){
+            var parts = arry[i].split("|");
+            if(parts[1].length)
+                dict[parts[0]] = parts[1];
+        }
+    }else if(platform == "Mac"){
+        for(var i=0;i<arry.length;i++){
+            var parts = arry[i].split("|");
+            if(parts[1].length)
+                dict[parts[0]] = parts.length > 2? parts[2] : parts[1];
+        }
+    }else{
+        //TODO: show something here, maybe let user switch, maybe have touch info for ipad & android.
+    }
     
-	var $d = dn.$widget_shortcuts = $("<div class='widget_box' id='widget_shortcuts'/>");
-	var $title = $("<div class='widget_box_title shortcuts_title'>Keyboard Shortcuts " + 
-					(platform ? "(" + platform + ")" : "" )+
-					"</div>");
-                    
-    dn.$menu_shortcuts.click(
-			function(){
-				dn.$widget_shortcuts.toggle(true);
-				dn.$widget_menu.hide();
-			});
-	$d.append($title);
-	$d.append($("<div class='shortcuts_header_action'>action</div><div class='shortcuts_header_key'>key</div>"))
-	var $list = $("<div class='shortcuts_list'></div>");
-	$d.append($list);
+    var html = [];
+    for(var action in dict)
+        html.push("<div class='shortcut_item'><div class='shortcut_action'>" + 
+                   action + "</div><div class='shortcut_key'>" + dict[action].replace(",","<br>") +
+                   "</div></div>");
+    for(var action in dn.tooltip_info)if(action in dict)
+        dn.tooltip_info[action] += dict[action];
 
-	for(var action in dict)
-		$list.append($("<div class='shortcut_item'><div class='shortcut_action'>" + action + "</div><div class='shortcut_key'>" + dict[action].replace(",","<br>") + "</div></div>"));
-	dn.$widget_menu.after($d.hide());
-    
-    for(var action in dn.TOOLTIP_INFO)if(action in dict)
-        dn.TOOLTIP_INFO[action] +=  dict[action];
+    dn.el_widget_menu.insertAdjacentHTML('afterend', 
+        ["<div class='widget_box' id='widget_shortcuts'>",
+            "<div class='widget_box_title shortcuts_title'>Keyboard Shortcuts ",
+            platform ? "(" + platform + ")" : "" ,
+            "</div>",
+            "<div class='shortcuts_header_action'>action</div><div class='shortcuts_header_key'>key</div>",
+            "<div class='shortcuts_list'>",
+            html.join(''),
+            "</div>",
+        "</div>"].join(''));
+    dn.el_widget_shortcuts = document.getElementById('widget_shortcuts');
+    dn.el_widget_shortcuts.style.display = 'none';
+
+    dn.el_menu_shortcuts.addEventListener('click', function(){
+        dn.el_widget_shortcuts.toggle(true);
+        dn.el_widget_menu.style.display = 'none';
+    });
     
 };
 
-dn.MakeKeyboardShortcuts = function(){
+dn.make_keyboard_shortcuts = function(){
     //perviously was using ace for handling these shorcuts because it neater (and efficient?) but it was
     //annoying trying to ensure the editor always had focus, and not clear what to do when the editor wasn't showing.
     
@@ -1538,32 +1257,32 @@ dn.MakeKeyboardShortcuts = function(){
     dn.editor.commands.removeCommands(["find","findprevious","findnext","replace", "jumptomatching","sortlines","selecttomatching","gotoline"]);
 
     //then add new commands on to the $(document) using keymaster.js...
-    key('command+s, ctrl+s,  ctrl+alt+s,  command+alt+s', dn.SaveContent);
-    key('command+p, ctrl+p,  ctrl+alt+p,  command+alt+p', dn.DoPrint);
-    key('command+o, ctrl+o,  ctrl+alt+o,  command+alt+o', dn.DoOpen);
-    key('command+n, ctrl+n,  ctrl+alt+n,  command+alt+n', dn.DoNew);
-    key('command+l, ctrl+l,  ctrl+alt+l,  command+alt+l', dn.ShowGoTo);
-    key('command+f, ctrl+f,  ctrl+alt+f,  command+alt+f', dn.ShowFind);
+    key('command+s, ctrl+s,  ctrl+alt+s,  command+alt+s', dn.save_content);
+    key('command+p, ctrl+p,  ctrl+alt+p,  command+alt+p', dn.do_print);
+    key('command+o, ctrl+o,  ctrl+alt+o,  command+alt+o', dn.do_open);
+    key('command+n, ctrl+n,  ctrl+alt+n,  command+alt+n', dn.do_new);
+    key('command+l, ctrl+l,  ctrl+alt+l,  command+alt+l', dn.show_go_to);
+    key('command+f, ctrl+f,  ctrl+alt+f,  command+alt+f', dn.show_find);
     key('command+r, ctrl+r,  ctrl+alt+r,  command+alt+r' + 
-       ', command+g, ctrl+g,  ctrl+alt+g,  command+alt+g', dn.ShowReplace);
-    key('command+h, ctrl+h,  ctrl+alt+h,  command+alt+h', dn.StartRevisionsWorker);
-    key('esc',dn.ToggleWidget);    
+       ', command+g, ctrl+g,  ctrl+alt+g,  command+alt+g', dn.show_replace);
+    key('command+h, ctrl+h,  ctrl+alt+h,  command+alt+h', dn.start_revisions_worker);
+    key('esc',dn.toggle_widget);    
     key.filter = function(){return 1;}
 
 
     // it seems like the clipboard history cycling only works the old way, i.e. using ace....
     var HashHandler = require("ace/keyboard/hash_handler").HashHandler
     var extraKeyEvents = new HashHandler([
-        {bindKey: {win: "Ctrl-Left",mac: "Command-Left"}, descr: "Clipboard cyle back on paste", exec: dn.Document_ClipboardLeft},
-        {bindKey: {win: "Ctrl-Down",mac: "Command-Down"}, descr: "Clipboard cyle back on paste", exec: dn.Document_ClipboardLeft},
-        {bindKey: {win: "Ctrl-Right",mac:"Command-Right"}, descr: "Clipboard cyle forward on paste", exec: dn.Document_ClipboardRight},
-        {bindKey: {win: "Ctrl-Up",mac:"Command-Up"}, descr: "Clipboard cyle forward on paste", exec: dn.Document_ClipboardRight}
-	]);
-	dn.editor.keyBinding.addKeyboardHandler(extraKeyEvents);
+        {bindKey: {win: "Ctrl-Left",mac: "Command-Left"}, descr: "Clipboard cyle back on paste", exec: dn.document_clipboard_left},
+        {bindKey: {win: "Ctrl-Down",mac: "Command-Down"}, descr: "Clipboard cyle back on paste", exec: dn.document_clipboard_left},
+        {bindKey: {win: "Ctrl-Right",mac:"Command-Right"}, descr: "Clipboard cyle forward on paste", exec: dn.document_clipboard_right},
+        {bindKey: {win: "Ctrl-Up",mac:"Command-Up"}, descr: "Clipboard cyle forward on paste", exec: dn.document_clipboard_right}
+    ]);
+    dn.editor.keyBinding.addKeyboardHandler(extraKeyEvents);
 }
 
 
-dn.ReclaimFocus = function(){
+dn.reclaim_focus = function(){
     dn.editor.focus(); //this was much more complciated previously when the non-ace shortcuts went through the editor rather than through the document
 }
 
@@ -1571,19 +1290,19 @@ dn.ReclaimFocus = function(){
 // Font size stuff
 // ############################
 
-dn.CreateFontSizeTool = function(){
-	dn.$fontSizeDecrement.click(function(){
-		var fontSize = dn.g_settings.get('fontSize');
-		fontSize -= dn.FONT_SIZE_INCREMENT;
-		fontSize = fontSize  < dn.MIN_FONT_SIZE ? dn.MIN_FONT_SIZE:fontSize;
-		dn.g_settings.set('fontSize',fontSize);
-	})
-    dn.$fontSizeIncrement.click(function(){
-		var fontSize = dn.g_settings.get('fontSize');
-		fontSize += dn.FONT_SIZE_INCREMENT;
-		fontSize = fontSize  > dn.MAX_FONT_SIZE ? dn.MAX_FONT_SIZE:fontSize;
-		dn.g_settings.set('fontSize',fontSize);
-	})
+dn.create_fontsize_tool = function(){
+    dn.el_font_size_decrement.addEventListener('click', function(){
+        var fontSize = dn.g_settings.get('fontSize');
+        fontSize -= dn.font_size_increment;
+        fontSize = fontSize  < dn.min_font_size ? dn.min_font_size:fontSize;
+        dn.g_settings.set('fontSize',fontSize);
+    })
+    dn.el_font_size_increment.addEventListener('click', function(){
+        var fontSize = dn.g_settings.get('fontSize');
+        fontSize += dn.font_size_increment;
+        fontSize = fontSize  > dn.max_font_size ? dn.max_font_size:fontSize;
+        dn.g_settings.set('fontSize',fontSize);
+    })
 }
 
 
@@ -1591,25 +1310,28 @@ dn.CreateFontSizeTool = function(){
 // Word wrap stuff
 // ############################
 
-dn.CreateWordWrapTool = function(){
-	dn.$word_wrap_off.click(function(){dn.g_settings.set('wordWrap',[0,0,0])});
-	dn.$word_wrap_at.click(function(){
+dn.create_wordwrap_tool = function(){
+    dn.el_word_wrap_off.addEventListener('click', function(){
+        dn.g_settings.set('wordWrap',[0,0,0])
+    });
+    dn.el_word_wrap_at.addEventListener('click', function(){
         var at = dn.g_settings.get('wordWrapAt');
         dn.g_settings.set('wordWrap',[1,at,at]);
-        });
-    dn.$word_wrap_at_text = dn.$word_wrap_at.find('#word_wrap_at_text');
-    dn.$word_wrap_at.find('#word_wrap_at_dec').click(function(){
-        var at = dn.g_settings.get('wordWrapAt') - dn.WRAP_AT_INCREMENT;
-        at = at < dn.MIN_WRAP_AT ? dn.MIN_WRAP_AT : at;
+    });
+    dn.el_word_wrap_at_text = document.getElementById('word_wrap_at_text');
+    document.getElementById('word_wrap_at_dec').addEventListener('click', function(){
+        var at = dn.g_settings.get('wordWrapAt') - dn.wrap_at_increment;
+        at = at < dn.min_wrap_at ? dn.min_wrap_at : at;
         dn.g_settings.set('wordWrapAt',at);
-        });
-    dn.$word_wrap_at.find('#word_wrap_at_inc').click(function(){
-        var at = dn.g_settings.get('wordWrapAt') + dn.WRAP_AT_INCREMENT;
-        at = at > dn.MAX_WRAP_AT ? dn.MAX_WRAP_AT : at;
+    });
+    document.getElementById('word_wrap_at_inc').addEventListener('click', function(){
+        var at = dn.g_settings.get('wordWrapAt') + dn.wrap_at_increment;
+        at = at > dn.max_wrap_at ? dn.max_wrap_at : at;
         dn.g_settings.set('wordWrapAt',at);
-        });
-    
-	dn.$word_wrap_edge.click(function(){dn.g_settings.set('wordWrap',[1,null,null])});
+    });
+    dn.el_word_wrap_edge.addEventListener('click', function(){
+        dn.g_settings.set('wordWrap',[1,null,null])
+    });
 }
 
 // ############################
@@ -1617,29 +1339,29 @@ dn.CreateWordWrapTool = function(){
 // ############################
 // Note that there is a whitespace extension for ace but it doesn't look that mature and we actually have slightly different requirements here.
 
-dn.CreateTabTool = function(){
-    dn.$tab_soft_text = dn.$tab_soft.find('#tab_soft_text');
+dn.create_tab_tool = function(){
+    dn.el_tab_soft_text = document.getElementById('tab_soft_text');
 
-    dn.$tab_hard.click(function(){
+    dn.el_tab_hard.addEventListener('click', function(){
         dn.g_settings.set('tabIsHard',1)
-        });
-	dn.$tab_soft.click(function(){
+    });
+    dn.el_tab_soft.addEventListener('click', function(){
         dn.g_settings.set('tabIsHard',0);
-        });
-    dn.$tab_soft.find('#tab_soft_dec').click(function(){
+    });
+    document.getElementById('tab_soft_dec').addEventListener('click', function(){
         var at = dn.g_settings.get('softTabN') - 1;
-        at = at < dn.MIN_SOFT_TAB_N ? dn.MIN_SOFT_TAB_N : at;
+        at = at < dn.min_soft_tab_n ? dn.min_soft_tab_n : at;
         dn.g_settings.set('softTabN',at);
-        });
-    dn.$tab_soft.find('#tab_soft_inc').click(function(){
+    });
+    document.getElementById('tab_soft_inc').addEventListener('click', function(){
         var at = dn.g_settings.get('softTabN') + 1;
-        at = at > dn.MAX_SOFT_TAB_N ? dn.MAX_SOFT_TAB_N : at;
+        at = at > dn.max_soft_tab_n ? dn.max_soft_tab_n : at;
         dn.g_settings.set('softTabN',at);
-        });
+    });
 }
 
-dn.DetectTab = function(str){    
-    dn.theFile.tabDetected = (function(){ //no need to use a self-executing function here, just lazy coding....
+dn.detect_tab = function(str){    
+    dn.the_file.tab_detected = (function(){ //no need to use a self-executing function here, just lazy coding....
         //This function returns an object with a field "val" that takes one of the folling values:
         // none: no indents detected at all
         // mixture: no strong bias in favour of spaces or tabs
@@ -1659,7 +1381,7 @@ dn.DetectTab = function(str){
         indents = indents.filter(function(str){return str !== '';});
         
         if(!indents.length)
-            return dn.ShowTabStatus({val: "none"});
+            return dn.show_tab_status({val: "none"});
             
         //TODO: if first thousand lines happen to have few indents it may be worth checking further down.
         
@@ -1679,41 +1401,41 @@ dn.DetectTab = function(str){
         
         console.dir(stats);
             
-        if(stats.nWithOnlyTabs/stats.nSamp >= dn.DETECT_TABS_TABS_FRAC)
-            return dn.ShowTabStatus({val: "tab"});
+        if(stats.nWithOnlyTabs/stats.nSamp >= dn.detect_tabs_tabs_frac)
+            return dn.show_tab_status({val: "tab"});
     
-        if(stats.nWithOnlySpaces/stats.nSamp < dn.DETECT_TABS_SPACES_FRAC)
-            return dn.ShowTabStatus({val: "mixture"});
+        if(stats.nWithOnlySpaces/stats.nSamp < dn.detect_tabs_spaces_frac)
+            return dn.show_tab_status({val: "mixture"});
     
         stats.spaceModHist = [];
         var s;
-        for(s=dn.MIN_SOFT_TAB_N;s<=dn.MAX_SOFT_TAB_N;s++){
+        for(s=dn.min_soft_tab_n;s<=dn.max_soft_tab_n;s++){
             var m = 0;    
             for(var i=s;i<stats.spaceHist.length;i+=s)
                 m += stats.spaceHist[i] !== undefined ? stats.spaceHist[i] : 0;
             stats.spaceModHist[s] = m;
         }
         
-        for(s=dn.MAX_SOFT_TAB_N;s>=dn.MIN_SOFT_TAB_N;s--)
-            if(stats.spaceModHist[s]/stats.nWithOnlySpaces > dn.DETECT_TABS_N_SPACES_FRAC)
+        for(s=dn.max_soft_tab_n;s>=dn.min_soft_tab_n;s--)
+            if(stats.spaceModHist[s]/stats.nWithOnlySpaces > dn.detect_tabs_n_spaces_frac)
                 break;
                 
-        if(s < dn.MIN_SOFT_TAB_N){
+        if(s < dn.min_soft_tab_n){
             // nothing was over threshold, but rather than give up lets use a weaker threshold on the default space count
             var defaultNSpaces = dn.g_settings.get('softTabN');    
-            if(stats.spaceModHist[defaultNSpaces]/stats.nWithOnlySpaces > dn.DETECT_TABS_N_SPACES_FRAC_FOR_DEFAULT)
-                return dn.ShowTabStatus({val: 'spaces', n: defaultNSpaces, isDefault: true, threshold: "weak"});
+            if(stats.spaceModHist[defaultNSpaces]/stats.nWithOnlySpaces > dn.detect_tabs_n_spaces_frac_for_default)
+                return dn.show_tab_status({val: 'spaces', n: defaultNSpaces, isDefault: true, threshold: "weak"});
             else
-                return dn.ShowTabStatus({val: "spaces", n: defaultNSpaces, isDefault: true, threshold: "failed"});
+                return dn.show_tab_status({val: "spaces", n: defaultNSpaces, isDefault: true, threshold: "failed"});
         }else{
             // s is the index of the last element in the spaceModHist array which is over threshold
-                return dn.ShowTabStatus({val: "spaces", n: s, isDefault: false, threshold: "strong"});
+                return dn.show_tab_status({val: "spaces", n: s, isDefault: false, threshold: "strong"});
         }
     })();
 }
 
 
-dn.ShowTabStatus = function(d){
+dn.show_tab_status = function(d){
     var str;
     var defaultStr = "";
     if(dn.g_settings.get("tabIsHard"))
@@ -1745,11 +1467,11 @@ dn.ShowTabStatus = function(d){
             }
     }
     
-    dn.$file_tab_info.text("(" + str +")");
+    dn.el_file_tab_info.textContent = "(" + str +")";
     return d;
 }
 
-dn.ApplyTabChoice = function(){
+dn.apply_tab_choice = function(){
     var defaultTabIsHard = dn.g_settings.get('tabIsHard');
     var defaultSoftTabN = dn.g_settings.get('softTabN');               
                 
@@ -1758,13 +1480,13 @@ dn.ApplyTabChoice = function(){
     var nSpaces;
     var isDetected;
     
-    dn.DetectTab();   
-    if(dn.theFile.customProps.tabs == "detect"){
-        d = dn.theFile.tabDetected;             
+    dn.detect_tab();   
+    if(dn.the_file.custom_props.tabs == "detect"){
+        d = dn.the_file.tab_detected;             
         isDetected = true
     }else{
         try{
-            d = JSON.parse(dn.theFile.customProps.tabs);
+            d = JSON.parse(dn.the_file.custom_props.tabs);
         }catch(err){
             d = {val: "none"};
         }
@@ -1792,38 +1514,38 @@ dn.ApplyTabChoice = function(){
         dn.editor.session.setTabSize(nSpaces);
     }
     
-    dn.$tab_soft_text.text(defaultSoftTabN + " spaces");
+    dn.el_tab_soft_text.textContent = defaultSoftTabN + " spaces";
     if(defaultTabIsHard){
-        dn.$tab_hard.attr('selected',true);
-        dn.$tab_soft.removeAttr('selected');
+        dn.el_tab_hard.setAttribute('selected',true);
+        dn.el_tab_soft.removeAttribute('selected');
     }else{
-        dn.$tab_soft.attr('selected',true);
-        dn.$tab_hard.removeAttr('selected');
+        dn.el_tab_soft.setAttribute('selected',true);
+        dn.el_tab_hard.removeAttribute('selected');
     }
     
     
-    dn.$file_tab_detect.removeAttr("selected");
-    dn.$file_tab_hard.removeAttr("selected");
-    dn.$file_tab_soft.removeAttr("selected");
+    dn.el_file_tab_detect.removeAttribute("selected");
+    dn.el_file_tab_hard.removeAttribute("selected");
+    dn.el_file_tab_soft.removeAttribute("selected");
     if(isDetected){
-        dn.$file_tab_detect.attr("selected",true);
-        dn.$file_tab_soft_text.text(nSpaces+ " spaces");
+        dn.el_file_tab_detect.setAttribute("selected",true);
+        dn.el_file_tab_soft_text.textContent = nSpaces+ " spaces";
     }else{
         if(d.val == "tab")
-            dn.$file_tab_hard.attr("selected",true);
+            dn.el_file_tab_hard.setAttribute("selected",true);
         else
-            dn.$file_tab_soft.attr("selected",true);
-        dn.$file_tab_soft_text.text(nSpaces + " spaces");
+            dn.el_file_tab_soft.setAttribute("selected",true);
+        dn.el_file_tab_soft_text.textContent = nSpaces + " spaces";
     }     
 
 
 }
 
-dn.SetFileTabsToSoftOrHard = function(val,delta){
-    var f = dn.theFile;
-    var current = f.customProps.tabs;
+dn.set_file_tabs_to_soft_or_hard = function(val,delta){
+    var f = dn.the_file;
+    var current = f.custom_props.tabs;
     if(current == "detect"){
-        current = f.tabDetected;
+        current = f.tab_detected;
         if(current.val == 'none' || current.val == "mixture")
             current = { val: dn.g_settings.get('tabIsHard') ? "tab" : "spaces",
                         n: dn.g_settings.get('softTabN')};
@@ -1836,43 +1558,43 @@ dn.SetFileTabsToSoftOrHard = function(val,delta){
         }
     }
     var newT = {val: val, n: current.n + delta};
-    dn.SetProperty("tabs",JSON.stringify(newT));
+    dn.set_property("tabs",JSON.stringify(newT));
 }
 // ############################
 // Syntax stuff
 // ############################
 
-dn.ShowSyntaxStatus = function(d){
+dn.show_syntax_status = function(d){
     var str = "detected " + d.syntax + " from file extension";
     //TODO: if we improve upon DetectSyntax will need to add stuff here
-    dn.$file_aceMode_info.text("(" + str + ")");
+    dn.el_file_ace_mode_info.textContent = "(" + str + ")";
     return d.syntax;
 }
-dn.DetectSyntax = function(){
-    dn.theFile.syntaxDetected = (function(){ //no need to use self-ex-func here, just laziness...
+dn.detect_syntax = function(){
+    dn.the_file.syntax_detected = (function(){ //no need to use self-ex-func here, just laziness...
         //TODO: improve upon this
-        var title = dn.theFile.title || "untitled.txt";
+        var title = dn.the_file.title || "untitled.txt";
         var mode  = require("ace/ext/modelist").getModeForPath(title)
-        dn.theFile.syntaxDetected = mode.caption;
-        dn.ShowSyntaxStatus({syntax: dn.theFile.syntaxDetected});
+        dn.the_file.syntax_detected = mode.caption;
+        dn.show_syntax_status({syntax: dn.the_file.syntax_detected});
         return mode;
     })();
 }
 
-dn.ApplySyntaxChoice = function(){
-    dn.DetectSyntax();
-    if(dn.theFile.customProps["aceMode"] == "detect"){
-        dn.SetSyntax(dn.theFile.syntaxDetected);
-        dn.$file_aceMode_detect.attr("selected",true);
-        dn.syntaxDropDown.SetSelected(false);
+dn.apply_syntax_choice = function(){
+    dn.detect_syntax();
+    if(dn.the_file.custom_props["aceMode"] == "detect"){
+        dn.set_syntax(dn.the_file.syntax_detected);
+        dn.el_file_ace_mode_detect.setAttribute("selected",true);
+        dn.syntax_drop_down.SetSelected(false);
     }else{
-        dn.SetSyntax(dn.theFile.customProps["aceMode"])
-        dn.$file_aceMode_detect.removeAttr("selected");
-        dn.syntaxDropDown.SetSelected(true);
+        dn.set_syntax(dn.the_file.custom_props["aceMode"])
+        dn.el_file_ace_mode_detect.removeAttribute("selected");
+        dn.syntax_drop_down.SetSelected(true);
     }
 }
 
-dn.GetCurrentSyntaxName = function(){
+dn.get_currentsyntax_name = function(){
     try{
         var modesArray = require("ace/ext/modelist").modesByName;
         return modesArray[dn.editor.session.getMode().$id.split('/').pop()].caption
@@ -1883,244 +1605,255 @@ dn.GetCurrentSyntaxName = function(){
     }  
 }
 
-dn.SetSyntax = function(val){
+dn.set_syntax = function(val){
 
-	var modesArray = require("ace/ext/modelist").modes;
+    var modesArray = require("ace/ext/modelist").modes;
     var mode;
     var ind;
     
-	if(typeof val == "number"){
-		//val is index into mdoes array
+    if(typeof val == "number"){
+        //val is index into mdoes array
         mode = modesArray[val].mode;
         ind = val;
-	}else if(modesArray.indexOf(val) > -1){
-		//val is an element of the modelist array
+    }else if(modesArray.indexOf(val) > -1){
+        //val is an element of the modelist array
         mode = val.mode;
-		ind = modesArray.indexOf(val);
-	}else{
+        ind = modesArray.indexOf(val);
+    }else{
         //val is caption of mode in modes array
         for(ind=0;ind<modesArray.length;ind++)if(modesArray[ind].caption == val){
             mode = modesArray[ind].mode;
             break;
         }    
-	}
+    }
     
-    if(dn.syntaxDropDown)
-        dn.syntaxDropDown.SetInd(ind,true);
+    if(dn.syntax_drop_down)
+        dn.syntax_drop_down.SetInd(ind,true);
     dn.editor.getSession().setMode(mode);
 }
 
-dn.CreateSyntaxMenu = function(){
-	var modes = require("ace/ext/modelist").modes;
+dn.create_syntax_menu = function(){
+    var modes = require("ace/ext/modelist").modes;
     
-    var syntaxDropDown = new DropDown(modes.map(function(m){return m.caption;}));
+    var syntax_drop_down = new DropDown(modes.map(function(m){return m.caption;}));
     
-    syntaxDropDown.on("click",dn.ReadOnlyBail);
+    syntax_drop_down.addEventListener("click", dn.read_only_bail);
     
-    syntaxDropDown.on("click",function(){
-        dn.SetProperty("aceMode",syntaxDropDown.GetVal());
+    syntax_drop_down.addEventListener("click",function(){
+        dn.set_property("aceMode",syntax_drop_down.GetVal());
     })
-    syntaxDropDown.on("change",function(){
-        dn.SetProperty("aceMode",syntaxDropDown.GetVal());
+    syntax_drop_down.addEventListener("change",function(){
+        dn.set_property("aceMode",syntax_drop_down.GetVal());
     })
-    syntaxDropDown.on("blur",function(){
-        dn.ReclaimFocus();
+    syntax_drop_down.addEventListener("blur",function(){
+        dn.reclaim_focus();
     })
-    return syntaxDropDown;
+    return syntax_drop_down;
 }
 
 // ############################
 // File details stuff
 // ############################
-dn.ReadOnlyBail = function(e){
-    if(dn.theFile.isReadOnly){
-        dn.ShowError("The file is read-only, so you cannot change its properties.");
+dn.read_only_bail = function(e){
+    if(dn.the_file.is_read_only){
+        dn.show_error("The file is read-only, so you cannot change its properties.");
         e.stopImmediatePropagation();
-        dn.ReclaimFocus();
+        dn.reclaim_focus();
     }
 }
-dn.CreateFileDetailsTool = function(){
-
-    dn.$details_title_text.add(dn.$details_description_text).add(dn.$file_newline_detect).add(dn.$file_newline_windows)
-        .add(dn.$file_newline_unix).add(dn.$file_tab_detect).add(dn.$file_tab_soft).add(dn.$file_tab_hard)
-        .add(dn.$file_aceMode_detect) 
-        .on("click",dn.ReadOnlyBail); //If file is read only, ReadOnlyBail will prevent the click handlers below from running.
+dn.create_filedetails_tool = function(){
+    var els = [dn.el_details_title_text,
+               dn.el_details_description_text,
+               dn.el_file_newline_detect,
+               dn.el_file_newline_windows,
+               dn.el_file_newline_unix,
+               dn.el_file_tab_detect,
+               dn.el_file_tab_soft,
+               dn.el_file_tab_hard,
+               dn.el_file_ace_mode_detect];
+    for(var ii=0; ii< els.length; ii++)
+        els[ii].addEventListener("click",dn.read_only_bail); //If file is read only, ReadOnlyBail will prevent the click handlers below from running.
         
     //Title change stuff
-    dn.$details_title_text.click(function(){                
-            dn.$details_title_text.hide();
-            dn.$details_title_input.show();
-            dn.$details_title_input.focus()
-                                   .select();
-        });
-    dn.$details_title_input.on("blur",function(){
-            dn.$details_title_input.hide();
-            dn.$details_title_text.show();
-            var newVal = dn.$details_title_input.val();
-            if(newVal == dn.theFile.title)
+    dn.el_details_title_text.addEventListener('click', function(){                
+            dn.el_details_title_text.style.display = 'none';
+            dn.el_details_title_input.style.display = '';
+            dn.el_details_title_input.focus();
+            dn.el_details_title_input.select();
+    });
+    dn.el_details_title_input.addEventListener("blur", function(){
+            dn.el_details_title_input.style.display = 'none';
+            dn.el_details_title_text.style.display = '';
+            var new_al = dn.el_details_title_input.value;
+            if(new_val == dn.the_file.title)
                 return;
-            dn.theFile.title = newVal
-            dn.ShowFileTitle(); //includes showStatus
-            dn.ApplySyntaxChoice();
-            dn.SaveFileTitle();
-            dn.ReclaimFocus();
-        }).on('keyup',function(e){
+            dn.the_file.title = new_val
+            dn.show_file_title(); //includes showStatus
+            dn.apply_syntax_choice();
+            dn.save_file_title();
+            dn.reclaim_focus();
+    });
+    dn.el_details_title_input.addEventListener('keyup', function(e){
             if(e.which == WHICH.ENTER)
-                dn.$details_title_input.trigger('blur');
-        }).on('keydown',function(e){
-            if(e.which == WHICH.ESC){
-                dn.$details_title_input.val(dn.theFile.title);
-                dn.$details_title_input.trigger('blur');
-                dn.ignoreEscape = true; //stops ToggleWidget
-            }
-        });
+                dn.el_details_title_input.trigger('blur');
+    });
+    dn.el_details_title_input.addEventListener('keydown', function(e){
+        if(e.which == WHICH.ESC){
+            dn.el_details_title_input.value = dn.the_file.title;
+            dn.el_details_title_input.trigger('blur');
+            dn.ignore_escape = true; //stops ToggleWidget
+        }
+    });
 
     // File action buttons stuff
-    dn.$menu_save.click(dn.SaveContent);
-    dn.$menu_print.click(dn.DoPrint);
-    dn.$menu_sharing.click(dn.DoShare);
-    dn.$menu_history.click(dn.StartRevisionsWorker);
+    dn.el_menu_save.addEventListener('click', dn.save_content);
+    dn.el_menu_print.addEventListener('click', dn.do_print);
+    dn.el_menu_sharing.addEventListener('click', dn.do_share);
+    dn.el_menu_history.addEventListener('click', dn.start_revisions_worker);
 
     // Description stuff
-    dn.$details_description_text.click(function(){            
-            dn.$details_description_text.hide();
-            dn.$details_description_input.show();
-            dn.$details_description_input.focus();
-        });
-    dn.$details_description_input.on("blur",function(){
-            dn.$details_description_input.hide();
-            dn.$details_description_text.show();
-            var newVal = dn.$details_description_input.val();
-            if(dn.theFile.description === newVal)
+    dn.el_details_description_text.addEventListener('click', function(){            
+            dn.el_details_description_text.style.display = 'none';
+            dn.el_details_description_input.style.display = '';
+            dn.el_details_description_input.focus();
+    });
+    dn.el_details_description_input.addEventListener("blur", function(){
+            dn.el_details_description_input.style.display = 'none';
+            dn.el_details_description_text.style.display = '';
+            var new_val = dn.el_details_description_input.value;
+            if(dn.the_file.description === new_val)
                 return;
-            dn.theFile.description = newVal;
-            dn.ShowDescription();
-            dn.SaveFileDescription();
-            dn.ReclaimFocus();
-        }).on('keydown',function(e){
+            dn.the_file.description = new_val;
+            dn.show_description();
+            dn.save_file_description();
+            dn.reclaim_focus();
+    });
+    dn.el_details_description_input.addEventListener('keydown',function(e){
             if(e.which == WHICH.ESC){
-                dn.$details_description_input.val(dn.theFile.description);
-                dn.$details_description_input.trigger('blur');
-                dn.ignoreEscape = true;
+                dn.el_details_description_input.value = dn.the_file.description;
+                dn.el_details_description_input.trigger('blur');
+                dn.ignore_escape = true;
             }
-        });;
+    });
         
     // File custom props stuff
-    dn.$file_newline_detect.click(function(){
-         dn.SetProperty("newline","detect");
-         dn.ReclaimFocus();      
+    dn.el_file_newline_detect.addEventListener('click', function(){
+         dn.set_property("newline","detect");
+         dn.reclaim_focus();      
     });
-    dn.$file_newline_windows.click(function(){
-         dn.SetProperty("newline","windows");
-         dn.ReclaimFocus();
+    dn.el_file_newline_windows.addEventListener('click', function(){
+         dn.set_property("newline","windows");
+         dn.reclaim_focus();
         });
-    dn.$file_newline_unix.click(function(){
-         dn.SetProperty("newline","unix");
-         dn.ReclaimFocus();
+    dn.el_file_newline_unix.addEventListener('click', function(){
+         dn.set_property("newline","unix");
+         dn.reclaim_focus();
         });
-    dn.$file_tab_detect.attr("selected","true").click(function(){
-        dn.SetProperty("tabs","detect");
-        dn.ReclaimFocus();
+    dn.el_file_tab_detect.setAttribute("selected","true");
+    dn.el_file_tab_detect.addEventListener('click', function(){
+        dn.set_property("tabs","detect");
+        dn.reclaim_focus();
     });
-    dn.$file_tab_soft.click(function(){
-        dn.SetFileTabsToSoftOrHard("spaces",0);
-        dn.ReclaimFocus();
+    dn.el_file_tab_soft.addEventListener('click', function(){
+        dn.set_file_tabs_to_soft_or_hard("spaces",0);
+        dn.reclaim_focus();
     });
-    dn.$file_tab_soft.find('#file_tab_soft_dec').click(function(){
-        dn.SetFileTabsToSoftOrHard("spaces",-1);
-        dn.ReclaimFocus();
+    document.getElementById('file_tab_soft_dec').addEventListener('click', function(){
+        dn.set_file_tabs_to_soft_or_hard("spaces",-1);
+        dn.reclaim_focus();
     });
-    dn.$file_tab_soft.find('#file_tab_soft_inc').click(function(){
-        dn.SetFileTabsToSoftOrHard("spaces",+1);
-        dn.ReclaimFocus();
+    document.getElementById('file_tab_soft_inc').addEventListener('click', function(){
+        dn.set_file_tabs_to_soft_or_hard("spaces",+1);
+        dn.reclaim_focus();
     })
-    dn.$file_tab_hard.click(function(){
-        dn.SetFileTabsToSoftOrHard("tab",0);
-        dn.ReclaimFocus();
+    dn.el_file_tab_hard.addEventListener('click', function(){
+        dn.set_file_tabs_to_soft_or_hard("tab",0);
+        dn.reclaim_focus();
     });
-    dn.$file_aceMode_detect.click(function(){
-       dn.SetProperty("aceMode","detect"); 
+    dn.el_file_ace_mode_detect.addEventListener('click', function(){
+       dn.set_property("aceMode","detect"); 
     });
 }
 
-dn.SaveFileDescription = function(){
-    if(dn.theFile.isBrandNew){
-        dn.SaveNewFile(); 
+dn.save_file_description = function(){
+    if(dn.the_file.is_brand_new){
+        dn.save_new_file(); 
         return;
     }
     
-    dn.SaveFile(dn.theFile.fileId, {description: dn.theFile.description}, undefined, 
-                $.proxy(dn.SaveDone,{description: ++dn.theFile.generationToSave.description}))
-    dn.ShowStatus();
+    dn.save_file(dn.the_file.file_id, {description: dn.the_file.description}, undefined, 
+                $.proxy(dn.save_done,{description: ++dn.the_file.generation_to_save.description}))
+    dn.show_status();
     return;
     
 }
 
-dn.SaveFileTitle = function(){
-    if(dn.theFile.isBrandNew){
-        dn.SaveNewFile(); 
+dn.save_file_title = function(){
+    if(dn.the_file.is_brand_new){
+        dn.save_new_file(); 
         return;
     }
     //TODO: mime-type IMPORTANT!
 
-    dn.SaveFile(dn.theFile.fileId, {title: dn.theFile.title}, undefined, 
-                $.proxy(dn.SaveDone,{title: ++dn.theFile.generationToSave.title}))
-    dn.ShowStatus();    
+    dn.save_file(dn.the_file.file_id, {title: dn.the_file.title}, undefined, 
+                $.proxy(dn.save_done,{title: ++dn.the_file.generation_to_save.title}))
+    dn.show_status();    
 }
 
-dn.ShowFileTitle = function(){
-    dn.$details_title_text.text('Title: ' + dn.theFile.title);
-    dn.$details_title_input.val(dn.theFile.title);
-    document.title = (dn.theFile.isPristine ? "" : "*") + dn.theFile.title;
-    dn.ShowStatus();
+dn.show_file_title = function(){
+    dn.el_details_title_text.textContent = 'Title: ' + dn.the_file.title;
+    dn.el_details_title_input.value = dn.the_file.title;
+    document.title = (dn.the_file.is_pristine ? "" : "*") + dn.the_file.title;
+    dn.show_status();
 }
 
-dn.ShowDescription = function(){
-    dn.$details_description_text.textMulti('Description: ' + dn.theFile.description,true);
-    dn.$details_description_input.val(dn.theFile.description);
+dn.show_description = function(){
+    text_multi(dn.el_details_description_text, 'Description: ' + dn.the_file.description,true);
+    dn.el_details_description_input.value = dn.the_file.description;
 }
 
 // ############################
 // Revisions stuff
 // ############################
-dn.CloseHistory = function(){
-    dn.fileHistory.$revisions_display.remove();
-    $(window).off("resize",dn.Revisions_WindowResize);
-    $('#the_editor').show();
+dn.close_history = function(){
+    dn.file_history.$revisions_display.remove();
+    $(window).off("resize",dn.revisions_window_resize);
+    $('#the_editor').style.display = '';
     dn.editor.resize();
-    dn.isShowingHistory = false;
+    dn.is_showing_history = false;
 }
-dn.Revisions_WindowResize = function(){
-    if(dn.fileHistory.canShowResizeError){
-        dn.ShowError("The history explorer displays poorly if you resize the window while it is open. (This is a bug.)");
-        dn.fileHistory.canShowResizeError = false; //wait at least ERROR_DELAY_MS until displaying the error again
-        setTimeout(function(){dn.fileHistory.canShowResizeError = true;},dn.ERROR_DELAY_MS);
+dn.revisions_window_resize = function(){
+    if(dn.file_history.canShowResizeError){
+        dn.show_error("The history explorer displays poorly if you resize the window while it is open. (This is a bug.)");
+        dn.file_history.canShowResizeError = false; //wait at least ERROR_DELAY_MS until displaying the error again
+        setTimeout(function(){dn.file_history.canShowResizeError = true;},dn.error_delay_ms);
     }    
 }
 
-dn.StartRevisionsWorker = function(){
-    if(dn.theFile.isBrandNew){
-        dn.ShowError("This is a new file.  It doesn't have any history to explore.")
+dn.start_revisions_worker = function(){
+    if(dn.the_file.is_brand_new){
+        dn.show_error("This is a new file.  It doesn't have any history to explore.")
         return;
     }
-    dn.isShowingHistory = true;
+    dn.is_showing_history = true;
     
-    if(!dn.fileHistory){
-        var $d = $("<div class='widget_box widget_revisions'>" + 
-                    "<div class='widget_box_title widget_revisions_title'>File History</div>" +
-                    "<div class='revision_caption_at'></div>" +
-                    "<div class='revision_timeline'></div>" +
-                    "<div class='revision_caption_from'></div>" +
-                    "<div>Removed lines: <div class='inline_button' id='expand_removed'>expand</div>" + 
-                            "<div class='inline_button' id='collapse_removed'>collapse</div></div>" +
-                    "<br><div class='widget_divider'></div>" + 
-                    "<div id='revisions_status'>Initialising...</div>" + 
-                    "Press Esc to return to editing." +
-                    "<br><div class='widget_divider'></div>" + 
-                    "Please note that the history viewing tool is missing some important features and those that have been implemented may include the odd bug.</div>")
-        dn.$widget_fileHistory = $d;
-        dn.$widget_menu.after($d.hide());
-        dn.fileHistory = {
+    if(!dn.file_history){
+        dn.el_widget_menu.innerHTML('afterend', 
+            "<div class='widget_box widget_revisions'>" + 
+            "<div class='widget_box_title widget_revisions_title'>File History</div>" +
+            "<div class='revision_caption_at'></div>" +
+            "<div class='revision_timeline'></div>" +
+            "<div class='revision_caption_from'></div>" +
+            "<div>Removed lines: <div class='inline_button' id='expand_removed'>expand</div>" + 
+                    "<div class='inline_button' id='collapse_removed'>collapse</div></div>" +
+            "<br><div class='widget_divider'></div>" + 
+            "<div id='revisions_status'>Initialising...</div>" + 
+            "Press Esc to return to editing." +
+            "<br><div class='widget_divider'></div>" + 
+            "Please note that the history viewing tool is missing some important features and those that have been implemented may include the odd bug.</div>");
+        dn.el_widget_file_history = dn.el_widget_menu.parentNode.getElementsByClassName('widget_revisions')[0];
+        dn.el_widget_file_history.style.display = 'none';
+        dn.file_history = {
             $revisions_display: $("<div class='revisions_view'><ol></ol></div>"),
             $view: null, 
             $new_li: $("<li class='rev_line' v='-1'/>"),
@@ -2142,46 +1875,46 @@ dn.StartRevisionsWorker = function(){
             worker: new Worker("revisionsworker.js")
         };
     
-        dn.fileHistory.$view = dn.fileHistory.$revisions_display.find('ol'); 
-        dn.fileHistory.$expand_removed.click(function(){dn.g_settings.set('historyRemovedIsExpanded',true)});
-        dn.fileHistory.$collapse_removed.click(function(){dn.g_settings.set('historyRemovedIsExpanded',false)});
-        dn.RevisionSetIsExpaned(dn.g_settings.get('historyRemovedIsExpanded'))
+        dn.file_history.$view = dn.file_history.$revisions_display.find('ol'); 
+        dn.file_history.$expand_removed.addEventListener('click', function(){dn.g_settings.set('historyRemovedIsExpanded',true)});
+        dn.file_history.$collapse_removed.addEventListener('click', function(){dn.g_settings.set('historyRemovedIsExpanded',false)});
+        dn.revision_setis_expaned(dn.g_settings.get('historyRemovedIsExpanded'))
 
-        var w = dn.fileHistory.worker;
-        w.onmessage = dn.RevisionWorkerDelivery;
+        var w = dn.file_history.worker;
+        w.onmessage = dn.revision_worker_delivery;
     }
-    dn.fileHistory.worker.postMessage({ fileId: dn.theFile.fileId, 
+    dn.file_history.worker.postMessage({ fileId: dn.the_file.file_id, 
                                         token: gapi.auth.getToken().access_token,
                                         init: true});
-    dn.fileHistory.$revisions_display.appendTo($('body'));
-    $(window).on("resize",dn.Revisions_WindowResize);
-    dn.$widget_fileHistory.toggle(true);
-    dn.$widget_menu.toggle(false);
-    dn.fileHistory.$view.empty();
-    $('#the_editor').hide();
+    dn.file_history.$revisions_display.appendTo($('body'));
+    $(window).on("resize",dn.revisions_window_resize);
+    dn.el_widget_file_history.toggle(true);
+    dn.el_widget_menu.toggle(false);
+    dn.file_history.$view.empty();
+    $('#the_editor').style.display = 'none';
     return false;
 }
 
-dn.RevisionSetIsExpaned = function(v){
-    var h = dn.fileHistory;
+dn.revision_setis_expaned = function(v){
+    var h = dn.file_history;
     if(!h) return; //if we haven't yet initialised fileHistory stuff then ignore this for now, when we do initialise we will read and apply the g_settings value
     
     if(v){
-        h.$expand_removed.attr("selected","true")
-        h.$collapse_removed.removeAttr("selected");
-        h.$view.attr("removed","expanded");
+        h.$expand_removed.setAttribute("selected","true")
+        h.$collapse_removed.removeAttribute("selected");
+        h.$view.setAttribute("removed","expanded");
     }else{
-        h.$collapse_removed.attr("selected","true")
-        h.$expand_removed.removeAttr("selected");
-        h.$view.attr("removed","collapsed")
+        h.$collapse_removed.setAttribute("selected","true")
+        h.$expand_removed.removeAttribute("selected");
+        h.$view.setAttribute("removed","collapsed")
     }
 }
-dn.RevisionSetAt = function(r,fromChangeEvent,fromTimelineCreation){
-    var h = dn.fileHistory;
+dn.revision_set_at = function(r,fromChangeEvent,fromTimelineCreation){
+    var h = dn.file_history;
     h.at = r;
     if(!fromChangeEvent)
-        h.$at_range.val(r.ind);    
-    h.$revision_caption_at.textMulti(
+        h.$at_range.value = r.ind;    
+    text_multi(h.$revision_caption_at,
             r.modifiedDate.toLocaleDateString({},{month:"short",day:"numeric",year: "numeric"}) + "\n" +
             r.modifiedDate.toLocaleTimeString({},{hour: "numeric",minute: "numeric"})
         )
@@ -2191,12 +1924,12 @@ dn.RevisionSetAt = function(r,fromChangeEvent,fromTimelineCreation){
                       fromEtag: h.from.etag  });
 }
 
-dn.RevisionSetFrom = function(r,fromChangeEvent,fromTimelineCreation){
-    var h = dn.fileHistory;
+dn.revision_set_from = function(r,fromChangeEvent,fromTimelineCreation){
+    var h = dn.file_history;
     h.from = r;
     if(!fromChangeEvent)
-        h.$from_range.val(r.ind);
-    h.$revision_caption_from.textMulti(
+        h.$from_range.value = r.ind;
+    text_multi(h.$revision_caption_from,
             r.modifiedDate.toLocaleDateString({},{month:"short",day:"numeric",year: "numeric"}) + "\n" +
             r.modifiedDate.toLocaleTimeString({},{hour: "numeric",minute: "numeric"})
         )
@@ -2206,8 +1939,8 @@ dn.RevisionSetFrom = function(r,fromChangeEvent,fromTimelineCreation){
                           fromEtag: h.from.etag  });
 }
 
-dn.DisplayRevisionTimeline = function(newRevisions){
-    var h = dn.fileHistory;
+dn.display_revision_timeline = function(newRevisions){
+    var h = dn.file_history;
     var rs = h.revisions;
     //TODO: update display based on newRevisions rather than starting from scratch
     
@@ -2228,33 +1961,33 @@ dn.DisplayRevisionTimeline = function(newRevisions){
     h.$timeline.empty().append(h.$at_range).append(h.$tick_box).append(h.$from_range);
 
     h.$at_range.on("change",function(){
-            dn.RevisionSetAt(dn.fileHistory.revisions[this.value],true);
+            dn.revision_set_at(dn.file_history.revisions[this.value],true);
         })
     h.$from_range.on("change",function(){
-            dn.RevisionSetFrom(dn.fileHistory.revisions[this.value],true);
+            dn.revision_set_from(dn.file_history.revisions[this.value],true);
         })
 
-    dn.RevisionSetFrom(rs.length > 1 ? rs[1] : rs[0],false,true);
-    dn.RevisionSetAt(rs[0],false,true);
+    dn.revision_set_from(rs.length > 1 ? rs[1] : rs[0],false,true);
+    dn.revision_set_at(rs[0],false,true);
 }
 
-dn.RevisionWorkerDelivery = function(e){
+dn.revision_worker_delivery = function(e){
     if(!e.data)
         return; //not sure if this is possible
 
     if(e.data.debug)
         console.log(e.data);
         
-    var h = dn.fileHistory;
+    var h = dn.file_history;
     //TODO: probably ought to use a more sensivle message system with a string command switching thign...but this is ok for now
     
     if(e.data.status)
-        h.$revisions_status.textMulti(e.data.status);
+        text_multi(h.$revisions_status, e.data.status);
         
     if(e.data.revisions){    
         h.revisions = e.data.revisions;
         e.data.revisions.forEach(function(r){ h.revisionFromEtag[r.etag] = r;});
-        dn.DisplayRevisionTimeline(e.data.revisions);
+        dn.display_revision_timeline(e.data.revisions);
         h.worker.postMessage({ showEtag: h.at.etag,
                                fromEtag: h.from.etag }); 
     }
@@ -2290,30 +2023,30 @@ dn.RevisionWorkerDelivery = function(e){
         var $rl_ = h.$rev_lines_;
         
         if(h.needToFixHeights.length){
-            h.$revisions_status.textMulti("Obtaining line height data...");
+            text_multi(h.$revisions_status, "Obtaining line height data...");
             h.needToFixHeights.fixHeightFromAuto();
             h.needToFixHeights = $([]);
-            h.$revisions_status.textMulti("Selecting lines...");
+            text_multi(h.$revisions_status, "Selecting lines...");
         }
         
         var vals = new Uint8Array(e.data.vals_ui8buffer)
-        $rl_.attr('v',function(i){return vals[i]});
+        $rl_.setAttribute('v',function(i){return vals[i]});
             
         // We have to manually set the width of the numbers (our version of ace's gutter)
         switch(e.data.digits){
             case 0:
             case 1:
             case 2:
-                h.$view.attr('digits','');
+                h.$view.setAttribute('digits','');
                 break;
             case 3:
-                h.$view.attr('digits','###');
+                h.$view.setAttribute('digits','###');
                 break;
             case 4:
-                h.$view.attr('digits','####');
+                h.$view.setAttribute('digits','####');
                 break;
             default:
-                h.$view.attr('digits','#####');
+                h.$view.setAttribute('digits','#####');
         }
     }
     
@@ -2324,142 +2057,142 @@ dn.RevisionWorkerDelivery = function(e){
 // Save stuff
 // ############################
 
-dn.SaveContent = function(){
-    if(dn.theFile.isBrandNew){
-        dn.SaveNewFile(); 
+dn.save_content = function(){
+    if(dn.the_file.is_brand_new){
+        dn.save_new_file(); 
         return false;
     }
     
-    if(!dn.theFile.isPristine){
-        dn.theFile.dataToSave.body = dn.editor.getSession().getValue();
-        dn.theFile.generationToSave.body++;
-        $('.ace_content').attr('saving',true);
-        dn.theFile.isSaving = true;
-        dn.theFile.isPristine = true;
+    if(!dn.the_file.is_pristine){
+        dn.the_file.data_to_save.body = dn.editor.getSession().getValue();
+        dn.the_file.generation_to_save.body++;
+        dn.el_ace_content.setAttribute('saving',true);
+        dn.the_file.is_saving = true;
+        dn.the_file.is_pristine = true;
     }
     
-    dn.ShowFileTitle(); //includes a showstatus calls
-    dn.DoSave();
+    dn.show_file_title(); //includes a showstatus calls
+    dn.do_save();
     return false;
 }
 
-dn.DoSave = function (){
+dn.do_save = function (){
     
-    if(dn.theFile.isReadOnly){
-        dn.ShowError("Cannot save read-only file.");
+    if(dn.the_file.is_read_only){
+        dn.show_error("Cannot save read-only file.");
         return false;
     }
     
-    if(!(dn.theFile.dataToSave.body || dn.theFile.dataToSave.title || dn.theFile.dataToSave.description)){
-        dn.ShowError("No changes since last save.");
+    if(!(dn.the_file.data_to_save.body || dn.the_file.data_to_save.title || dn.the_file.data_to_save.description)){
+        dn.show_error("No changes since last save.");
         return false;
     }
 
     var gens = {};
     var body, meta;
-    if(dn.theFile.dataToSave.body){
-        body = dn.theFile.dataToSave.body;
-        gens.body = dn.theFile.generationToSave.body;
+    if(dn.the_file.data_to_save.body){
+        body = dn.the_file.data_to_save.body;
+        gens.body = dn.the_file.generation_to_save.body;
     }
-    if(dn.theFile.dataToSave.title || dn.theFile.dataToSave.description){
+    if(dn.the_file.data_to_save.title || dn.the_file.data_to_save.description){
         meta = {};
-        if(dn.theFile.dataToSave.title){
-            meta.title = dn.theFile.dataToSave.title;
-            gens.title = dn.theFile.generationToSave.title;
+        if(dn.the_file.data_to_save.title){
+            meta.title = dn.the_file.data_to_save.title;
+            gens.title = dn.the_file.generation_to_save.title;
         }
-        if(dn.theFile.dataToSave.description){
-            meta.description = dn.theFile.dataToSave.description; 
-            gens.description = dn.theFile.generationToSave.description;
+        if(dn.the_file.data_to_save.description){
+            meta.description = dn.the_file.data_to_save.description; 
+            gens.description = dn.the_file.generation_to_save.description;
         }
     }
-    dn.SaveFile(dn.theFile.fileId, meta, body, $.proxy(dn.SaveDone,gens))
+    dn.save_file(dn.the_file.file_id, meta, body, $.proxy(dn.save_done,gens))
     return false;
 }
 
-dn.SaveDone = function(resp){
+dn.save_done = function(resp){
     if(resp.error){
         if(resp.error.code == 401){
-            dn.Reauth(dn.DoSave); //will make use of dn.theFile.dataToSave and generationToSave once auth is done.
+            dn.reauth(dn.do_save); //will make use of dn.the_file.data_to_save and generationToSave once auth is done.
         }else{
             var failures = []
-            if(this.body && this.body == dn.theFile.generationToSave.body){
+            if(this.body && this.body == dn.the_file.generation_to_save.body){
                 failures.push("body");
-                dn.theFile.isSaving = false;
-                dn.theFile.isPristine = false;
-                dn.ShowFileTitle();
-                $('.ace_content').removeAttr('saving');
-                dn.theFile.dataToSave.body = null;
+                dn.the_file.is_saving = false;
+                dn.the_file.is_pristine = false;
+                dn.show_file_title();
+                dn.el_ace_content.removeAttribute('saving');
+                dn.the_file.data_to_save.body = null;
             }
-            if(this.title && this.title == dn.theFile.generationToSave.title)
+            if(this.title && this.title == dn.the_file.generation_to_save.title)
                 failures.push("title");
-            if(this.description && this.description == dn.theFile.generationToSave.description)
+            if(this.description && this.description == dn.the_file.generation_to_save.description)
                 failures.push("description");
             
             if(failures.length){//it's possible that all parts of the save request have since been superceded, so we can ignore this failure
-                dn.ShowError("Failed to save " +  dn.OxfordComma(failures) + ". Error #" + resp.error.code + (resp.error.message? "\n" + resp.error.message : ""));
+                dn.show_error("Failed to save " +  oxford_comma(failures) + ". Error #" + resp.error.code + (resp.error.message? "\n" + resp.error.message : ""));
                 console.dir(resp);
             }            
         }
     }else{//success...
-        if(this.body && this.body == dn.theFile.generationToSave.body){
-            dn.theFile.isSaving = false;
-            $('.ace_content').removeAttr('saving');
-            dn.theFile.ext = resp.fileExtension;
+        if(this.body && this.body == dn.the_file.generation_to_save.body){
+            dn.the_file.is_saving = false;
+            dn.el_ace_content.removeAttribute('saving');
+            dn.the_file.ext = resp.fileExtension;
             dn.g_settings.set('ext',resp.fileExtension);
-            dn.theFile.dataToSave.body = null;
+            dn.the_file.data_to_save.body = null;
             
-            if(dn.theFile.isBrandNew)
-                dn.SavedNewFile(resp); 
+            if(dn.the_file.is_brand_new)
+                dn.saved_new_file(resp); 
         }
-        if(this.title && this.title == dn.theFile.generationToSave.title){
-            dn.theFile.dataToSave.title = null;
+        if(this.title && this.title == dn.the_file.generation_to_save.title){
+            dn.the_file.data_to_save.title = null;
         }
-        if(this.description && this.description == dn.theFile.generationToSave.description){
-            dn.theFile.dataToSave.description = null;
+        if(this.description && this.description == dn.the_file.generation_to_save.description){
+            dn.the_file.data_to_save.description = null;
         }
 
     }
-    dn.ShowStatus();
+    dn.show_status();
 }
 
-dn.SaveFile = function (fileId, fileMetadata, fileText, callback) {
-    //if fileId is null then a new file is created (can set fileMetadata.parents = [parentFolderId])
-	//fileMetadata or fileText can be null.
-	//See https://developers.google.com/drive/v2/reference/files/insert - Request Body for valid metaData.
+dn.save_file = function (fileId, fileMetadata, fileText, callback) {
+    //if fileId is null then a new file is created (can set fileMetadata.parentNodes = [parentFolderId])
+    //fileMetadata or fileText can be null.
+    //See https://developers.google.com/drive/v2/reference/files/insert - Request Body for valid metaData.
 
-	//build a multipart message body
-	var boundary = dn.MakeBoundary();
-	var delimiter = "\r\n--" + boundary + "\r\n";
-	var close_delim = "\r\n--" + boundary + "--";
+    //build a multipart message body
+    var boundary = dn.make_boundary();
+    var delimiter = "\r\n--" + boundary + "\r\n";
+    var close_delim = "\r\n--" + boundary + "--";
 
-	var	messageBody = delimiter +
-				'Content-Type: application/json\r\n' +
-				'\r\n' + JSON.stringify(fileMetadata ? fileMetadata : {}); //note than in the multipart message upload you must provide some json metadata, even if it's empty.
+    var messageBody = delimiter +
+                'Content-Type: application/json\r\n' +
+                '\r\n' + JSON.stringify(fileMetadata ? fileMetadata : {}); //note than in the multipart message upload you must provide some json metadata, even if it's empty.
 
-	if(fileText){ 
-		messageBody += delimiter +
-				'Content-Type: application/octet-stream\r\n' +
-				'Content-Transfer-Encoding: base64\r\n' +
-				'\r\n' + btoa(unescape(encodeURIComponent(fileText))); //javascript strings are utf16 encoded, but btoa only accespts ASCII, somehow the two extra functions here smooth over this problem and produce the expected result at the server end.
-	}
-	messageBody += close_delim;
+    if(fileText){ 
+        messageBody += delimiter +
+                'Content-Type: application/octet-stream\r\n' +
+                'Content-Transfer-Encoding: base64\r\n' +
+                '\r\n' + btoa(unescape(encodeURIComponent(fileText))); //javascript strings are utf16 encoded, but btoa only accespts ASCII, somehow the two extra functions here smooth over this problem and produce the expected result at the server end.
+    }
+    messageBody += close_delim;
 
-	var request = gapi.client.request({
-		path: '/upload/drive/v2/files/' + (fileId ? fileId : ""),
-		method: (fileId? 'PUT' : 'POST'),
-		params: {'uploadType': 'multipart'},
-		headers: {'Content-Type': 'multipart/mixed; boundary="' + boundary + '"'} ,
-		body: 	messageBody}
-		);
+    var request = gapi.client.request({
+        path: '/upload/drive/v2/files/' + (fileId ? fileId : ""),
+        method: (fileId? 'PUT' : 'POST'),
+        params: {'uploadType': 'multipart'},
+        headers: {'Content-Type': 'multipart/mixed; boundary="' + boundary + '"'} ,
+        body:   messageBody}
+        );
 
     request.execute(callback);
 }
 
-dn.MakeBoundary = function(){
-	//for MIME protocol, require a boundary that doesn't exist in the message content.
-	//we could check explicitly, but this is essentially guaranteed to be fine:
-	// e.g. "13860126288389.206091766245663"
-	return (new Date).getTime() + "" + Math.random()*10;
+dn.make_boundary = function(){
+    //for MIME protocol, require a boundary that doesn't exist in the message content.
+    //we could check explicitly, but this is essentially guaranteed to be fine:
+    // e.g. "13860126288389.206091766245663"
+    return (new Date).getTime() + "" + Math.random()*10;
 }
 
 
@@ -2467,40 +2200,40 @@ dn.MakeBoundary = function(){
 // Print stuff
 // ############################
 
-dn.DoPrint = function(){
+dn.do_print = function(){
     var content = dn.editor.session.doc.getAllLines();
     var html = Array(content.length);
 
     for(var i=0; i<content.length;i++)
-        html[i] = "<li><div class='printline'>" + dn.LineToHTML(i) + '</div></li>';
+        html[i] = "<li><div class='printline'>" + dn.line_tohtml(i) + '</div></li>';
 
     var printWindow = window.open('','');
     printWindow.document.writeln(
-    		"<html><head><title>" + dn.theFile.title 
-			+ "</title></head><style>"
-			+ ace.require(dn.theme).cssText + "\nbody{font-size:"
-			+ dn.g_settings.get('fontSize') *14 +"px; white-space:pre-wrap;" + 
-			"font-family:'Monaco','Menlo','Ubuntu Mono','Droid Sans Mono','Consolas',monospace;}"
-			+ "\nli{color:gray;}\n.printline{color:black;}</style>" + 
-			"<body class='"+ dn.theme.replace("/theme/","-") +"'><ol id='content'>" + 
-			html.join("") +
-			"</ol></body></html>");
-	printWindow.print();
+            "<html><head><title>" + dn.the_file.title 
+            + "</title></head><style>"
+            + ace.require(dn.theme).cssText + "\nbody{font-size:"
+            + dn.g_settings.get('fontSize') *14 +"px; white-space:pre-wrap;" + 
+            "font-family:'Monaco','Menlo','Ubuntu Mono','Droid Sans Mono','Consolas',monospace;}"
+            + "\nli{color:gray;}\n.printline{color:black;}</style>" + 
+            "<body class='"+ dn.theme.replace("/theme/","-") +"'><ol id='content'>" + 
+            html.join("") +
+            "</ol></body></html>");
+    printWindow.print();
     return false;
 }
 
-dn.LineToHTML = function (n){
+dn.line_tohtml = function (n){
     var printLayer = Object.create(ace.require('ace/layer/text').Text.prototype); 
-	var tokens  = dn.editor.getSession().getTokens(n);
-	var html = [];
-	var screenColumn = 0;
-	for (var i = 0; i < tokens.length; i++) {
-	   var token = tokens[i];
-	   var value = token.value.replace(/\t/g,'   ');//TODO:deal with tabs properly
-	   if(value)
-		   printLayer.$renderToken(html, 0, token, value);
-	}
-	return html.join('').replace(/&#160;/g,' ');
+    var tokens  = dn.editor.getSession().getTokens(n);
+    var html = [];
+    var screenColumn = 0;
+    for (var i = 0; i < tokens.length; i++) {
+       var token = tokens[i];
+       var value = token.value.replace(/\t/g,'   ');//TODO:deal with tabs properly
+       if(value)
+           printLayer.$renderToken(html, 0, token, value);
+    }
+    return html.join('').replace(/&#160;/g,' ');
 }
 
 
@@ -2508,36 +2241,36 @@ dn.LineToHTML = function (n){
 // Clipboard stuff
 // ############################
 
-dn.Document_ClipboardLeft = function(){
-        if(!dn.clipboardActive)
+dn.document_clipboard_left = function(){
+        if(!dn.clipboard_active)
             return false;
 
-        if( dn.clipboardIndex <= 0)
+        if( dn.clipboard_index <= 0)
             return true;
-        dn.clipboardIndex--;
+        dn.clipboard_index--;
         dn.editor.undo();
-        dn.editor.insert(dn.g_clipboard.get(dn.clipboardIndex));
+        dn.editor.insert(dn.g_clipboard.get(dn.clipboard_index));
         return true;
 }
 
-dn.Document_ClipboardRight = function(){
-        if(!dn.clipboardActive)
+dn.document_clipboard_right = function(){
+        if(!dn.clipboard_active)
             return false;
 
-        if( dn.clipboardIndex >= dn.g_clipboard.length-1)
+        if( dn.clipboard_index >= dn.g_clipboard.length-1)
             return true;
 
-        dn.clipboardIndex++;
+        dn.clipboard_index++;
         dn.editor.undo();
-        dn.editor.insert(dn.g_clipboard.get(dn.clipboardIndex));
+        dn.editor.insert(dn.g_clipboard.get(dn.clipboard_index));
         return true;
 }
 
-dn.Document_ClipboardKeyup = function(e){
+dn.document_clipboard_keyup = function(e){
     if(e.which == 17 || e.which == 91 || !e.ctrlKey){
-        $(document).off('keyup',dn.Document_ClipboardKeyup);
-        dn.clipboardActive = false;
-        dn.$widget_clipboard.hide();
+        $(document).off('keyup',dn.document_clipboard_keyup);
+        dn.clipboard_active = false;
+        dn.el_widget_clipboard.style.display = 'none';
         if(dn.clipboard_info_timer){
             clearTimeout(dn.clipboard_info_timer);
             dn.clipboard_info_timer = null;
@@ -2545,17 +2278,17 @@ dn.Document_ClipboardKeyup = function(e){
     }
 }
 
-dn.OnPaste = function(text){
+dn.on_paste = function(text){
     if (dn.g_clipboard === undefined)
         return;
     
-    $(document).on('keyup',dn.Document_ClipboardKeyup);
-    dn.clipboardActive = true;
+    $(document).on('keyup',dn.document_clipboard_keyup);
+    dn.clipboard_active = true;
         
-    dn.clipboardIndex = dn.g_clipboard.lastIndexOf(text); 
-    if(dn.clipboardIndex == -1){ //it's possible the user copied some text from outside the DN, in which case we will add it to the clipboard now
-       dn.clipboardIndex = dn.g_clipboard.push(text);
-       while(dn.g_clipboard.length >dn.CLIPBOARD_MAX_LENGTH) //same as on copy
+    dn.clipboard_index = dn.g_clipboard.lastIndexOf(text); 
+    if(dn.clipboard_index == -1){ //it's possible the user copied some text from outside the DN, in which case we will add it to the clipboard now
+       dn.clipboard_index = dn.g_clipboard.push(text);
+       while(dn.g_clipboard.length >dn.clipboard_max_length) //same as on copy
          dn.g_clipboard.remove(0);
     }
     if(dn.clipboard_info_timer)
@@ -2563,30 +2296,33 @@ dn.OnPaste = function(text){
 
     dn.clipboard_info_timer = setTimeout(function(){
         dn.clipboard_info_timer = null;
-        dn.$widget_clipboard.show();
-    },dn.CLIPBOARD_INFO_DELAY);
+        dn.el_widget_clipboard.style.display = '';
+    },dn.clipboard_info_delay);
 }
 
-dn.OnCopy = function(text){
+dn.on_copy = function(text){
     if (dn.g_clipboard === undefined)
         return;
     
     dn.g_clipboard.push(text);
-    while(dn.g_clipboard.length >dn.CLIPBOARD_MAX_LENGTH)
+    while(dn.g_clipboard.length >dn.clipboard_max_length)
         dn.g_clipboard.remove(0);
 }
 
-dn.CreateClipboardTool = function(){
-    var $d = $("<div class='widget_box widget_clipboard'>When you paste with 'ctrl-v' (or 'cmd-v') you can cycle through your Drive Notepad clipboard by pressing 'left' or 'right' before releaing the 'ctrl' (or 'cmd') key. <br><br> You can clear your clipboard history by clicking the relevant button in the widget menu.</div>");
-    dn.$widget_clipboard = $d;
-    dn.$widget_menu.after($d.hide());
+dn.create_clipboard_tool = function(){
+    dn.el_widget_menu.insertAdjacentHTML('afterend',[
+        "<div class='widget_box widget_clipboard'>When you paste with 'ctrl-v' (or 'cmd-v') you can cycle through your Drive Notepad clipboard ",
+        "by pressing 'left' or 'right' before releaing the 'ctrl' (or 'cmd') key. <br><br> You can clear your clipboard history by clicking the ",
+        "relevant button in the widget menu.</div>"].join(''));
+    dn.el_widget_clipboard = dn.el_widget_menu.parentNode.getElementsByClassName('widget_clipboard')[0];
+    dn.el_widget_clipboard.style.display = 'none';
 
-    dn.$menu_clear_clipboard.click(function(){
+    dn.el_menu_clear_clipboard.addEventListener('click', function(){
             dn.g_clipboard.clear();
-        });
-    dn.$menu_clear_find_history.click(function(){
-            dn.g_findHistory.clear();
-        });
+    });
+    dn.el_menu_clear_find_history.addEventListener('click', function(){
+            dn.g_find_history.clear();
+    });
 }
 
 
@@ -2594,99 +2330,99 @@ dn.CreateClipboardTool = function(){
 // New file stuff
 // ############################
 
-dn.DoNew = function(){
+dn.do_new = function(){
     //TODO: this could actually just be a link, updated in settingschanged-ext
     var base = window.location.href.match(/^https?:\/\/[\w-.]*\/\w*/)[0];
     window.open(base + "?state=" + JSON.stringify({
                 action: "create",
-                folderId: dn.theFile.folderId ? dn.theFile.folderId : '',
+                folderId: dn.the_file.folder_id ? dn.the_file.folder_id : '',
                 ext: dn.g_settings.get('ext')}),"_blank");
     return false;
 }
 
-dn.CreateNewTool = function(){
-    dn.$menu_new.click(dn.DoNew);
+dn.create_new_tool = function(){
+    dn.el_menu_new.addEventListener('click', dn.do_new);
 }
 
-dn.CreateFile = function(){
-    dn.ApplySyntaxChoice();
-    dn.theFile.isBrandNew = true;
-    dn.ShowFileTitle();
-    dn.ShowDescription();
-    dn.ApplyNewlineChoice();
-    dn.ApplyTabChoice();
-    dn.theFile.contentIsLoaded = true;
-    dn.ToggleWidget(false);
+dn.create_file = function(){
+    dn.apply_syntax_choice();
+    dn.the_file.is_brand_new = true;
+    dn.show_file_title();
+    dn.show_description();
+    dn.apply_newline_choice();
+    dn.apply_tab_choice();
+    dn.the_file.content_is_loaded = true;
+    dn.toggle_widget(false);
     dn.g_settings.set("widgetSub","file");  
     if(dn.g_settings.keep)
         dn.g_settings.keep("widgetSub");
 }
 
-dn.GuessMimeType = function(){
+dn.guess_mime_type = function(){
     // we set the mimeType on new files, it's too complicated to try and guess it otherwise (at least for now)
-    if(dn.theFile.loadedMimeType)
-        return dn.theFile.loadedMimeType;
+    if(dn.the_file.loaded_mime_type)
+        return dn.the_file.loaded_mime_type;
     var plain = "text/plain";
-    var ext = dn.theFile.title.match(/\.[0-9a-z]+$/i);
+    var ext = dn.the_file.title.match(/\.[0-9a-z]+$/i);
 
     if(!ext)
         return plain;
     else
         ext = ext[0].substr(1);
     
-    return (ext in dn.EXT_TO_MIME_TYPE)? dn.EXT_TO_MIME_TYPE[ext] : plain;
+    return (ext in dn.ext_to_mime_type)? dn.ext_to_mime_type[ext] : plain;
 
 }
 
-dn.SaveNewFile = function(){
-    var f = dn.theFile;
+dn.save_new_file = function(){
+    var f = dn.the_file;
     if(f.isSaving){
-        dn.ShowError("File is being created. Please wait.");
+        dn.show_error("File is being created. Please wait.");
         return false;
     }
     var meta = {title: f.title, 
                 description: f.description,
-                mimeType: dn.GuessMimeType()};
+                mimeType: dn.guess_mime_type()};
     var parentId = f.folderId;
     if(parentId) 
-        meta.parents =[{id:[parentId]}];
+        meta.parentNodes =[{id:[parentId]}];
     f.dataToSave.body = dn.editor.getSession().getValue();
     f.dataToSave.title = meta.title;
     f.dataToSave.description = meta.description;
     var gens = {title: ++f.generationToSave.title, description: ++f.generationToSave.description,body: ++f.generationToSave.body};
     f.isSaving = true;
     f.isPristine = true;
-    dn.ShowFileTitle();
-    $('.ace_content').attr('saving',true);
-    dn.ShowStatus();
-    dn.SaveFile(null, meta, f.dataToSave.body, $.proxy(dn.SaveDone,gens));
+    dn.show_file_title();
+    dn.el_ace_content.setAttribute('saving', true);
+    dn.show_status();
+    dn.save_file(null, meta, f.dataToSave.body, $.proxy(dn.save_done,gens));
 }
 
-dn.SavedNewFile = function(resp){
-    dn.theFile.isBrandNew = false;
-    dn.theFile.fileId = resp.id;
-    dn.theFile.isShared = resp.shared;
-    dn.theFile.ext = resp.fileExtension;
-    history.replaceState({},dn.theFile.title,
+dn.saved_new_file = function(resp){
+    dn.the_file.is_brand_new = false;
+    dn.the_file.file_id = resp.id;
+    dn.the_file.is_shared = resp.shared;
+    dn.the_file.ext = resp.fileExtension;
+    history.replaceState({},dn.the_file.title,
             window.location.href.match(/^https?:\/\/[\w-.]*\/\w*/)[0] +
-                "?state={\"action\":\"open\",\"ids\":[\"" + dn.theFile.fileId + "\"]}");
-    dn.SetDriveLinkToFolder();
-    dn.theFile.metaDataIsLoaded = true;
-    dn.SaveAllFileProperties();
+                "?state={\"action\":\"open\",\"ids\":[\"" + dn.the_file.file_id + "\"]}");
+    dn.set_drivelinkto_folder();
+    dn.the_file.metaData_is_loaded = true;
+    dn.save_allfile_properties();
 }
 
 // ############################
 // Scrolling stuff
 // ############################
 
-dn.SaveScrollLine = function(){
-	dn.PatchProperty(dn.theFile.fileId, 
+dn.save_scroll_line = function(){
+    dn.patch_property(dn.the_file.file_id, 
                     "ScrollToLine",
-                    dn.GetScrollLine(),
+                    dn.get_scroll_line(),
                     'PUBLIC',null);
 }
 
-dn.GetScrollLine = function(){
+dn.get_scroll_line = function(){
     return  dn.editor.getSession().screenToDocumentPosition(dn.editor.renderer.getScrollTopRow(),0).row;
 }
 
@@ -2694,80 +2430,80 @@ dn.GetScrollLine = function(){
 // Load stuff
 // ############################
 
-dn.LoadFile = function(flag){
+dn.load_file = function(flag){
     //we assume that we only ever load one fileid per page load
 
-    var fileId = dn.theFile.fileId; 
-    dn.theFile.isLoadingMetaData = true;
-    dn.ShowStatus();
-    if(dn.apis.driveIsLoaded){
+    var fileId = dn.the_file.file_id; 
+    dn.the_file.isLoading_meta_data = true;
+    dn.show_status();
+    if(dn.apis.drive_is_loaded){
         if(flag === "document-ready")
             console.log("gapi.client.drive was loaded in time for document-ready.")
-        gapi.client.drive.files.get({'fileId': fileId}).execute(dn.LoadFile_GotMetaData);
+        gapi.client.drive.files.get({'fileId': fileId}).execute(dn.load_file_gotmeta_data);
     }
 }
 
-dn.LoadFile_GotMetaData = function(resp) {
-	if (!resp.error) {
-	  dn.theFile.title = resp.title;
-      dn.theFile.description = resp.description || '';
-      dn.ShowDescription();
-      dn.theFile.ext = resp.fileExtension
-      dn.theFile.isReadOnly = !resp.editable;
-      dn.theFile.isShared = resp.shared;
-      dn.theFile.loadedMimeType = resp.mimeType;
-      if(resp.parents && resp.parents.length){
-          dn.theFile.folderId = resp.parents[0].id;
-          dn.SetDriveLinkToFolder();
+dn.load_file_gotmeta_data = function(resp) {
+    if (!resp.error) {
+      dn.the_file.title = resp.title;
+      dn.the_file.description = resp.description || '';
+      dn.show_description();
+      dn.the_file.ext = resp.fileExtension
+      dn.the_file.is_read_only = !resp.editable;
+      dn.the_file.is_shared = resp.shared;
+      dn.the_file.loaded_mime_type = resp.mimeType;
+      if(resp.parentNodes && resp.parentNodes.length){
+          dn.the_file.folder_id = resp.parentNodes[0].id;
+          dn.set_drivelinkto_folder();
       }
-	  var token = gapi.auth.getToken().access_token;
-      dn.theFile.isLoadingMetaData = false;
-      dn.theFile.metaDataIsLoaded = true;
-      dn.theFile.isLoadingContent = true;
-      dn.ShowFileTitle(); //includes a showStatus call
+      var token = gapi.auth.getToken().access_token;
+      dn.the_file.isLoading_meta_data = false;
+      dn.the_file.metaData_is_loaded = true;
+      dn.the_file.is_loading_content = true;
+      dn.show_file_title(); //includes a showStatus call
       if(resp.downloadUrl){
           $.ajax(resp.downloadUrl, {
-        		headers: {Authorization: 'Bearer ' + token},
-    			complete:dn.LoadFile_GotFileBody,
+                headers: {Authorization: 'Bearer ' + token},
+                complete:dn.load_file_gotfile_body,
                 dataType: 'text'
-    			});    
+                });    
       }else{
-        dn.theFile.isLoadingContent = false;
+        dn.the_file.is_loading_content = false;
         document.title = "Drive Notepad";
-        dn.ShowStatus();
-    	dn.ShowError("Download Error: " + "no download link for the file")
+        dn.show_status();
+        dn.show_error("Download Error: " + "no download link for the file")
       }
 
-	} else if (resp.error.code == 401) {
-	  // Access token might have expired.
-        dn.theFile.isLoadingMetaData = false;
-        dn.Reauth(dn.LoadFile);
-	} else {
-        dn.theFile.isLoadingMetaData = false;
+    } else if (resp.error.code == 401) {
+      // Access token might have expired.
+        dn.the_file.isLoading_meta_data = false;
+        dn.reauth(dn.load_file);
+    } else {
+        dn.the_file.isLoading_meta_data = false;
         document.title = "Drive Notepad";
-        dn.ShowStatus();
-        dn.ShowError(resp.error.message); 
-	}
+        dn.show_status();
+        dn.show_error(resp.error.message); 
+    }
 } 
 
-dn.LoadFile_GotFileBody = function(resp,status){
-	if(status == "success"){
-        dn.theFile.isLoadingContent = false;
-        dn.theFile.contentIsLoaded = true;
-        dn.ShowStatus();
-		                
-        dn.settingSessionValue = true;
+dn.load_file_gotfile_body = function(resp,status){
+    if(status == "success"){
+        dn.the_file.is_loading_content = false;
+        dn.the_file.content_is_loaded = true;
+        dn.show_status();
+                        
+        dn.settingsession_value = true;
         dn.editor.session.setValue(resp.responseText);
-        dn.settingSessionValue = false;
-        dn.ApplyNewlineChoice(resp.responseText);
-        dn.ApplySyntaxChoice();
-        dn.ApplyTabChoice(); 
-	}else{
-        dn.theFile.isLoadingContent = false;
+        dn.settingsession_value = false;
+        dn.apply_newline_choice(resp.responseText);
+        dn.apply_syntax_choice();
+        dn.apply_tab_choice(); 
+    }else{
+        dn.the_file.is_loading_content = false;
         document.title = "Drive Notepad";
-        dn.ShowStatus();
-		dn.ShowError("Download Error: " + resp.statusText)
-	}
+        dn.show_status();
+        dn.show_error("Download Error: " + resp.statusText)
+    }
 }
 
 
@@ -2775,57 +2511,57 @@ dn.LoadFile_GotFileBody = function(resp,status){
 // Change/history stuff
 // ############################
 
-dn.OnChange = function(e){
+dn.on_change = function(e){
     //console.dir(e);
 
-    if(!e.data || !e.data.range || dn.settingSessionValue)
+    if(!e.data || !e.data.range || dn.settingsession_value)
         return;
         
-    if(dn.theFile.isPristine){
-        dn.theFile.isPristine = false;
-        dn.ShowFileTitle();
+    if(dn.the_file.is_pristine){
+        dn.the_file.is_pristine = false;
+        dn.show_file_title();
     }
 
     if(!dn.g_settings.get('showGutterHistory'))
         return;
 
-    var nClasses = dn.CHANGE_LINE_CLASSES.length-1;
-    var h = dn.changeLineHistory;
+    var nClasses = dn.change_line_classes.length-1;
+    var h = dn.change_line_history;
     var s = dn.editor.getSession(); 
 
     var startRow = e.data.range.start.row;
     var endRow = e.data.range.end.row;
 
-    if(dn.lastChange && dn.lastChange.startRow == startRow && dn.lastChange.endRow == endRow && startRow == endRow
-        && dn.lastChange.action.indexOf("Text") != -1 && e.data.action.indexOf("Text") != -1){
+    if(dn.last_change && dn.last_change.startRow == startRow && dn.last_change.endRow == endRow && startRow == endRow
+        && dn.last_change.action.indexOf("Text") != -1 && e.data.action.indexOf("Text") != -1){
             //if this change and the last change were both on the same single lines with action (insert|remove)Text...
 
-            if(dn.lastChange.action == e.data.action){
+            if(dn.last_change.action == e.data.action){
                 return; //same action as last time
             }else if(e.data.action == "removeText"){ // new action is removeText, old action was insertText
-                s.removeGutterDecoration(startRow,dn.CHANGE_LINE_CLASSES[nClasses]);
-                s.addGutterDecoration(startRow,dn.CHANGE_LINE_CLASSES_RM[nClasses]);
+                s.removeGutterDecoration(startRow,dn.change_line_classes[nClasses]);
+                s.addGutterDecoration(startRow,dn.change_line_classes_rm[nClasses]);
                 h[startRow] = -nClasses;
-                dn.lastChange.action = "removeText";
+                dn.last_change.action = "removeText";
                 return;
             }else{// new action is isnertText, old action was removeText
-                s.removeGutterDecoration(startRow,dn.CHANGE_LINE_CLASSES_RM[nClasses]);
-                s.addGutterDecoration(startRow,dn.CHANGE_LINE_CLASSES[nClasses]);
+                s.removeGutterDecoration(startRow,dn.change_line_classes_rm[nClasses]);
+                s.addGutterDecoration(startRow,dn.change_line_classes[nClasses]);
                 h[startRow] = nClasses;
-                dn.lastChange.action = "insertText";
+                dn.last_change.action = "insertText";
                 return;
             }
 
     }else{
         //otherwise we have an acutal new change
-        dn.lastChange = {startRow: startRow, endRow: endRow, action: e.data.action};
+        dn.last_change = {startRow: startRow, endRow: endRow, action: e.data.action};
     }
 
     //remove all visible decorations and update the changeLineHistory values (we'll add in the new classes at the end)
     for(var i=0;i<h.length;i++)if(h[i])
         s.removeGutterDecoration(i,h[i] < 0 ? 
-                    dn.CHANGE_LINE_CLASSES_RM[-h[i]++] : 
-                    dn.CHANGE_LINE_CLASSES[h[i]--]);
+                    dn.change_line_classes_rm[-h[i]++] : 
+                    dn.change_line_classes[h[i]--]);
 
     //Update the changeLineHistory relating to the current changed lines
     if(e.data.action == "removeLines"){
@@ -2848,101 +2584,101 @@ dn.OnChange = function(e){
 
     for(var i=0;i<h.length;i++)if(h[i])
         s.addGutterDecoration(i,h[i]<0 ?
-                dn.CHANGE_LINE_CLASSES_RM[-h[i]] :
-                dn.CHANGE_LINE_CLASSES[h[i]]);
+                dn.change_line_classes_rm[-h[i]] :
+                dn.change_line_classes[h[i]]);
 } 
 
-dn.CreateGutterHistoryTool = function(){
-    dn.$gutter_history_show.click(function(){
+dn.create_gutterhistory_tool = function(){
+    dn.el_gutter_history_show.addEventListener('click', function(){
             dn.g_settings.set('showGutterHistory',1);
         });
-    dn.$gutter_history_hide.click(function(){
+    dn.el_gutter_history_hide.addEventListener('click', function(){
         dn.g_settings.set('showGutterHistory',0);
         });
 }
 
-dn.QueryUnload = function(){
-    if(!dn.theFile.isPristine)
-        return "If you leave the page now you will loose the unsaved " + (dn.theFile.isBrandNew ? "new " : "changes to ") + "file '" + dn.theFile.title + "'."
+dn.query_unload = function(){
+    if(!dn.the_file.is_pristine)
+        return "If you leave the page now you will loose the unsaved " + (dn.the_file.is_brand_new ? "new " : "changes to ") + "file '" + dn.the_file.title + "'."
 }
 
 
 // ############################
 // Properties stuff
 // ############################
-dn.PropertyUpdated = function(propKey,newVal){
-    console.log("[file custom property]  " + propKey + ": " + newVal);
+dn.property_updated = function(propKey,new_val){
+    console.log("[file custom property]  " + propKey + ": " + new_val);
     switch(propKey){
         case "newline":
-            dn.ApplyNewlineChoice();
+            dn.apply_newline_choice();
             break;
         case "tabs":            
-            dn.ApplyTabChoice();
+            dn.apply_tab_choice();
             break;
         case "aceMode":
-            dn.ApplySyntaxChoice();
+            dn.apply_syntax_choice();
             break;
     }
     
 }
 
-dn.LoadDefaultProperties = function(){
-    for(var k in dn.DEFAULT_CUSTOM_PROPS)
-        dn.SetProperty(k,dn.DEFAULT_CUSTOM_PROPS[k]);
+dn.load_default_properties = function(){
+    for(var k in dn.default_custom_props)
+        dn.set_property(k,dn.default_custom_props[k]);
 }
 
-dn.GetPropertiesFromCloud = function() {    
+dn.get_propertiesfrom_cloud = function() {    
     gapi.client.drive.properties.list({
-    'fileId': dn.theFile.fileId
-    }).execute(dn.GotAllFileProperties);
+    'fileId': dn.the_file.file_id
+    }).execute(dn.got_allfile_properties);
 }
 
-dn.GotAllFileProperties = function(resp){
+dn.got_allfile_properties = function(resp){
     if(resp.items){
-        dn.theFile.customPropExists = {};
+        dn.the_file.custom_prop_exists = {};
         for(var i=0;i<resp.items.length;i++){
-            dn.theFile.customProps[resp.items[i].key] = resp.items[i].value;
-            dn.theFile.customPropExists[resp.items[i].key] = true;
-            dn.PropertyUpdated(resp.items[i].key,resp.items[i].value);
+            dn.the_file.custom_props[resp.items[i].key] = resp.items[i].value;
+            dn.the_file.custom_prop_exists[resp.items[i].key] = true;
+            dn.property_updated(resp.items[i].key,resp.items[i].value);
         }
     }
 }
 
-dn.SaveAllFileProperties = function(){
+dn.save_allfile_properties = function(){
     //To be used after creating a file, in order to set any of the props which had been modified before saving it
-    for(var k in dn.theFile.customProps)
-        dn.SetProperty(k,dn.theFile.customProps[k]);    
+    for(var k in dn.the_file.custom_props)
+        dn.set_property(k,dn.the_file.custom_props[k]);    
 }
 
-dn.SetProperty = function(propName,newVal){
+dn.set_property = function(prop_name,new_val){
 
-    var oldVal = dn.theFile.customProps[propName]; 
-    dn.theFile.customProps[propName] = newVal;
-    if(oldVal !== newVal)
-        dn.PropertyUpdated(propName,newVal);
+    var oldVal = dn.the_file.custom_props[prop_name]; 
+    dn.the_file.custom_props[prop_name] = new_val;
+    if(oldVal !== new_val)
+        dn.property_updated(prop_name,new_val);
 
-    if(!(gapi && gapi.drive && dn.theFile.fileId))
+    if(!(gapi && gapi.drive && dn.the_file.file_id))
         return;
 
     var dummyCallback = function(){}; //TODO: may want to do some error handling or something
     
-    if(dn.DEFAULT_CUSTOM_PROPS[propName] == newVal){ //note that this is true in particular when SetProperty is called within LoadDefaultProperties
-        if(dn.theFile.customPropExists[propName]){
-             dn.theFile.customPropExists[propName] = false;
+    if(dn.default_custom_props[prop_name] == new_val){ //note that this is true in particular when SetProperty is called within LoadDefaultProperties
+        if(dn.the_file.custom_prop_exists[prop_name]){
+             dn.the_file.custom_prop_exists[prop_name] = false;
              gapi.client.drive.properties.delete({ //DELTE the property, which does exist, but is no longer required because the value has been set to the default
-                fileId: dn.theFile.fileId, propertyKey: propName, visibility: 'PUBLIC'
+                fileId: dn.the_file.file_id, propertyKey: prop_name, visibility: 'PUBLIC'
                 }).execute(dummyCallback);
         }
         //if the property doesn't exist and it's just been set to the default then we don't need to do anything.
     }else{            
-        if(dn.theFile.customPropExists[propName] && oldVal !== newVal){
+        if(dn.the_file.custom_prop_exists[prop_name] && oldVal !== new_val){
             gapi.client.drive.properties.patch({ //PATCH the property, which already exists
-            fileId: dn.theFile.fileId, propertyKey: propName, visibility: 'PUBLIC', resource: {'value': newVal}
+            fileId: dn.the_file.file_id, propertyKey: prop_name, visibility: 'PUBLIC', resource: {'value': new_val}
             }).execute(dummyCallback);
         }else{
-            dn.theFile.customPropExists[propName] = true; //INSERT the property, because it doesn't yet exist, we may be coming via dn.SaveAllFileProperties() above
+            dn.the_file.custom_prop_exists[prop_name] = true; //INSERT the property, because it doesn't yet exist, we may be coming via dn.save_allfile_properties() above
             gapi.client.drive.properties.insert({
-            'fileId': dn.theFile.fileId, 'resource': {key: propName, value: newVal, visibility: 'PUBLIC'}
+            'fileId': dn.the_file.file_id, 'resource': {key: prop_name, value: new_val, visibility: 'PUBLIC'}
             }).execute(dummyCallback)
         }
     }
@@ -2954,24 +2690,24 @@ dn.SetProperty = function(propName,newVal){
 // ############################
 //TODO: this may have a few bugs since it's not been tested for a while
 
-dn.DocumentDragOver = function (evt) {
+dn.document_drag_over = function (evt) {
     evt = evt.originalEvent;
     evt.stopPropagation();
     evt.preventDefault();
-    if(!(dn.theFile.isBrandNew && dn.theFile.isPristine)){
+    if(!(dn.the_file.is_brand_new && dn.the_file.is_pristine)){
         evt.dataTransfer.dropEffect = 'none';
-        if(dn.canShowDragDropError){
-            dn.ShowError("File drag-drop is only permitted when the Drive Notpad page is displaying a new and unmodified file.")
-            dn.canShowDragDropError = false; //wait at least ERROR_DELAY_MS until displaying the error again
-            setTimeout(function(){dn.canShowDragDropError = true;},dn.ERROR_DELAY_MS);
+        if(dn.can_show_drag_drop_error){
+            dn.show_error("File drag-drop is only permitted when the Drive Notpad page is displaying a new and unmodified file.")
+            dn.can_show_drag_drop_error = false; //wait at least ERROR_DELAY_MS until displaying the error again
+            setTimeout(function(){dn.can_show_drag_drop_error = true;},dn.error_delay_ms);
         }
         return;
     }
     evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
 }
     
-dn.DocumentDropFile = function(evt){
-     if(!(dn.theFile.isBrandNew && dn.theFile.isPristine))
+dn.document_drop_file = function(evt){
+     if(!(dn.the_file.is_brand_new && dn.the_file.is_pristine))
         return;
         
    evt = evt.originalEvent;
@@ -2980,22 +2716,22 @@ dn.DocumentDropFile = function(evt){
    
    var files = evt.dataTransfer.files;
    if(files.length > 1){
-       dn.ShowError("You cannot drag-drop multiple files onto the Drive Notepad page, only individual files.")
+       dn.show_error("You cannot drag-drop multiple files onto the Drive Notepad page, only individual files.")
    }
    var file = files[0];
-   dn.theFile.title = file.name;
-   dn.CreateFile();
-   dn.theFile.isReadingFileObject = true;   
-   dn.ShowStatus();
+   dn.the_file.title = file.name;
+   dn.create_file();
+   dn.the_file.isReading_file_object = true;   
+   dn.show_status();
    var r = new FileReader();
-   r.onload = dn.DroppedFileRead;
+   r.onload = dn.dropped_file_read;
    r.readAsText(file);      
 }
 
-dn.DroppedFileRead = function(e){
-    dn.theFile.isReadingFileObject = false;
+dn.dropped_file_read = function(e){
+    dn.the_file.isReading_file_object = false;
     dn.editor.getSession().setValue(e.target.result);
-    // Note we don't encolse the above in a dn.settingSessionValue = true block so the change event will fire and set pristine to false and ShowStatus etc.
+    // Note we don't encolse the above in a dn.settingsession_value = true block so the change event will fire and set pristine to false and ShowStatus etc.
 }
 
 // ############################
@@ -3003,134 +2739,143 @@ dn.DroppedFileRead = function(e){
 // ############################
 
 
-dn.DocumentReady = function(e){
-    dn.$widget = $('#the_widget')
-				.translate(0,0)
-				.on("mousedown",function(e){e.stopPropagation();})
-				.show();
-	dn.$widget_text= $('#widget_text')
-					.click(dn.ToggleWidget);
-	dn.$widget_move_handle = $('#widget_move_handle') 
-							.mousedown(dn.WidgetMoveHandleMouseDown);
-	dn.$widget_error_text = $('#widget_error_text');
-	dn.$widget_error = $('#widget_error')
-						.hide();
-	dn.$widget_menu = $('#widget_menu')
-						.hide(); 
-    $("#the_editor").html("");
-	dn.editor = ace.edit("the_editor");
-    $('#the_editor').on('contextmenu',function(e){
-        dn.ShowError("See the list of keyboard shortcuts for copy/paste, select-all, and undo/redo.")
+dn.document_ready = function(e){
+    dn.el_the_widget = document.getElementById('the_widget');
+    dn.el_the_widget.addEventListener('mousedown', function(e){e.stopPropagation();});
+    translate(dn.el_the_widget, 0, 0);
+    dn.el_the_widget.style.display = '';
+    dn.el_widget_text = document.getElementById('widget_text');
+    dn.el_widget_text.addEventListener('click', dn.toggle_widget);
+    dn.el_widget_move_handle = document.getElementById('widget_move_handle') 
+    dn.el_widget_move_handle.addEventListener('mousedown', dn.widget_move_handle_mouse_down);
+
+    dn.el_widget_error_text = document.getElementById('widget_error_text');
+    dn.el_widget_error = document.getElementById('widget_error');
+    dn.el_widget_error.style.display = 'none';
+
+    dn.el_widget_menu = document.getElementById('widget_menu');
+    dn.el_widget_menu.style.display = 'none';
+
+    var editor_el = document.getElementById('the_editor');
+    editor_el.innerHTML = '';
+    editor_el.addEventListener('contextmenu', function(e){
+        dn.show_error("See the list of keyboard shortcuts for copy/paste, select-all, and undo/redo.")
     });
-    dn.editor.on('focus',dn.BlurFindAndFocusEditor)
-	dn.editor.focus();
-	dn.editor.setTheme(dn.theme);
-    dn.editor.getSession().on("change",dn.OnChange);
-    dn.editor.on("paste", dn.OnPaste);
-    dn.editor.on("copy", dn.OnCopy);
+    dn.editor = ace.edit("the_editor");
+    dn.el_ace_content = document.getElementsByClassName('ace_content')[0];
+    dn.editor.on('focus', dn.blur_find_and_focus_editor)
+    dn.editor.focus();
+    dn.editor.setTheme(dn.theme);
+    dn.editor.getSession().on("change",dn.on_change);
+    dn.editor.on("paste", dn.on_paste);
+    dn.editor.on("copy", dn.on_copy);
     dn.editor.setAnimatedScroll(true);
     
     
-    dn.CreateMenu();
-    dn.CreateFileDetailsTool();
-    dn.CreateMenuSubs();
-    dn.CreateIconMouseOver();
+    dn.create_menu();
+    dn.create_filedetails_tool();
+    dn.create_menu_subs();
+    dn.create_icon_mouse_over();
     
-    dn.CreateShortcutsInfo();
-    dn.CreateNewLineMenuTool();
-    dn.CreateTabTool();
+    dn.create_shortcuts_info();
+    dn.create_newlinemenu_tool();
+    dn.create_tab_tool();
 
-	dn.CreateFontSizeTool();
-	dn.CreateWordWrapTool();
-    dn.CreateGutterHistoryTool();
-    dn.CreateClipboardTool();
+    dn.create_fontsize_tool();
+    dn.create_wordwrap_tool();
+    dn.create_gutterhistory_tool();
+    dn.create_clipboard_tool();
 
-    dn.CreateNewTool();
-    dn.CreateOpenTool();
+    dn.create_new_tool();
+    dn.create_open_tool();
 
-    dn.LoadDefaultSettings();
-    dn.LoadDefaultProperties();
+    dn.load_default_settings();
+    dn.load_default_properties();
     
-	dn.MakeKeyboardShortcuts();
-	dn.CreatePopupButton();
-    dn.CreateGotoLine();
-    dn.CreateFindReplace();
+    dn.make_keyboard_shortcuts();
+    dn.create_popup_button();
+    dn.create_goto_line();
+    dn.create_find_replace();
     
-	$(window).resize(dn.WidgetApplyAnchor)
-             .on("beforeunload",dn.QueryUnload);
+    window.addEventListener('resize', dn.widget_apply_anchor);
+    window.onbeforeunload = dn.query_unload;
 
     //work out what caused the page to load
-	var url = $.url(); 
-	if(url.param('state')){
-		var state = {};
-		try{
-			state = JSON.parse(url.param('state'));
-		}catch(e){
-			dn.ShowError("Unable to parse state:\n" + url.param('state'));
-		}
-		if(state.action && state.action == "open" &&state.ids && state.ids.length > 0){
-            dn.theFile.fileId = state.ids[0];
-			dn.LoadFile("document-ready") //will use the specified fileId
-		}else if(state.action && state.action == "create"){
-            dn.theFile.title = "untitled." + (state.ext ? state.ext : dn.g_settings.get('ext'));
-			if(state.folderId)
-                dn.theFile.folderId = state.folderId;
-			dn.CreateFile(); //will use the specified title and folderId
-		}
-	}else{
-        dn.theFile.title = "untitled." + dn.g_settings.get('ext');
-        dn.CreateFile();
-	}
+    var url = $.url(); 
+    if(url.param('state')){
+        var state = {};
+        try{
+            state = JSON.parse(url.param('state'));
+        }catch(e){
+            dn.show_error("Unable to parse state:\n" + url.param('state'));
+        }
+        if(state.action && state.action == "open" &&state.ids && state.ids.length > 0){
+            dn.the_file.file_id = state.ids[0];
+            dn.load_file("document-ready") //will use the specified fileId
+        }else if(state.action && state.action == "create"){
+            dn.the_file.title = "untitled." + (state.ext ? state.ext : dn.g_settings.get('ext'));
+            if(state.folderId)
+                dn.the_file.folder_id = state.folderId;
+            dn.create_file(); //will use the specified title and folderId
+        }
+    }else{
+        dn.the_file.title = "untitled." + dn.g_settings.get('ext');
+        dn.create_file();
+    }
 
 }
 
-dn.APILoaded = function(APIName){
+dn.api_loaded = function(APIName){
     if(APIName == "drive"){
-        dn.apis.driveIsLoaded = true;
-        if(dn.theFile.isBrandNew)
-            dn.$widget_menu.show();
-        if(dn.theFile.fileId){ 
+        dn.apis.drive_is_loaded = true;
+        if(dn.the_file.is_brand_new)
+            dn.el_widget_menu.style.display = '';
+        if(dn.the_file.file_id){ 
             console.log("gapi.client.drive was not loaded in time for document-ready. But did eventually arive.")
-			dn.LoadFile();
-            dn.GetPropertiesFromCloud();
+            dn.load_file();
+            dn.get_propertiesfrom_cloud();
         }
-        else if(dn.theFile.title)
-            dn.ShowStatus();        
-	}
-	if(APIName == 'userinfo'){
-	   gapi.client.oauth2.userinfo.get().execute(function(a){
-	   dn.userinfo = a;
+        else if(dn.the_file.title)
+            dn.show_status();        
+    }
+    if(APIName == 'userinfo'){
+       gapi.client.oauth2.userinfo.get().execute(function(a){
+       dn.userinfo = a;
        dn.menu_status_default = "Logged in as: " + a.name; 
-	   dn.$menu_status.text(dn.menu_status_default);
-        dn.SetDriveLinkToFolder();
-	   });
-	}
-	if(APIName == 'drive-realtime'){
-		dn.GetSettingsFromCloud();
-	}
+       dn.el_menu_status.textContent = dn.menu_status_default;
+        dn.set_drivelinkto_folder();
+       });
+    }
+    if(APIName == 'drive-realtime'){
+        dn.get_settingsfrom_cloud();
+    }
     if(APIName == 'picker'){
         console.log("got picker API");
     }
     if(APIName == 'sharer'){
-        dn.$shareDialog = new gapi.drive.share.ShareClient(dn.CLIENT_ID);
+        dn.el_share_dialog = new gapi.drive.share.ShareClient(dn.client_id);
     }
 }
 
-$(document).ready(dn.DocumentReady)
-		.on("contextmenu",function(e){e.preventDefault();})
-        .on("dragover", dn.DocumentDragOver) 
-        .on("drop", dn.DocumentDropFile);
+if (document.readyState != 'loading')
+    dn.document_ready();
+else
+    document.addEventListener('DOMContentLoaded', dn.document_ready); // IE 9+ compatible
 
-dn.urlUserId = (function(){
+document.addEventListener('contextmenu', function(e){e.preventDefault();});
+document.addEventListener('dragover', dn.document_drag_over);
+document.addEventListener('drop', dn.document_drop_file);
+
+dn.urluser_id = (function(){
     try{
         return JSON.parse($.url().param('state'))['userId']
     }catch(e){return undefined}
 })();
 
 dn.auth_map = function(immeditate){
-    var m = {'client_id': dn.CLIENT_ID, 'scope': dn.SCOPES.join(' '), 'immediate': immeditate}
-    if (dn.urlUserId !== undefined){
-            m['login_hint'] = dn.urlUserId;
+    var m = {'client_id': dn.client_id, 'scope': dn.scopes.join(' '), 'immediate': immeditate}
+    if (dn.urluser_id !== undefined){
+            m['login_hint'] = dn.urluser_id;
             m['authuser'] = -1
     }
     return m
@@ -3139,8 +2884,8 @@ dn.auth_map = function(immeditate){
 //Called when google client library is loaded
 function handleClientLoad() {
     
-	gapi.auth.authorize(dn.auth_map(true),
-		dn.handleAuthResult);
+    gapi.auth.authorize(dn.auth_map(true),
+        dn.handle_auth_result);
 } 
 
 
