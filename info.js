@@ -2,6 +2,22 @@
 
 var dn = dn || {};
 
+dn.menu_id_to_caption = {
+'menu_print': 'print',
+'menu_sharing': 'sharing',
+'menu_save': 'save',
+'menu_history': 'history',
+'menu_file_props': 'properties',
+'menu_new': 'new',
+'menu_open': 'open',
+'menu_find_replace': 'find',
+'menu_goto': 'goto line',
+'menu_general_settings': 'settings',
+'menu_shortcuts': 'shortcuts',
+'menu_drive': 'drive',
+'menu_about': 'about'};
+
+
 dn.shortcuts_list = [
 "cut|Ctrl-X|Cmd-X",    
 "copy|Ctrl-C|Cmd-C",

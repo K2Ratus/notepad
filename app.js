@@ -168,16 +168,16 @@ dn.show_popup_button = function(){
     css_animation(dn.el_the_widget, 'shake', function(){}, dn.error_delay_ms);
 }
 
-dn.create_popup_button = function(){
-    dn.el_widget_menu.insertAdjacentHTML('afterend', [
-        "<div class='widget_popup_button'>",
+dn.create_content_popup = function(){
+    dn.el_widget_popup_button = document.createElement('div');
+    dn.el_widget_popup_button.innerHTML = [
         "<div class='major_button popupbutton'>Login and/or grant app permissions...</div>",
         "This will allow you to login to your Google account if you have not already done so, ",
         "and if this is your first time using the latest version of Drive Notepad you will be asked ",
         "to review and grant the app certain access permisions. <br><br>This will not normally be required ",
         "when you use the app. <br><br>If you do not see a popup window when you click the button you may ",
-        "need to disable your popup blocker and reload the page.</div>"].join());
-    dn.el_widget_popup_button = dn.el_widget_menu.parentNode.getElementsByClassName('widget_popup_button')[0];
+        "need to disable your popup blocker and reload the page."].join();
+    dn.el_widget_content.appendChild(dn.el_widget_popup_button);
     dn.el_widget_popup_button.style.display = 'none';
 
     dn.el_widget_popup_button.getElementsByClassName('popupbutton')[0].addEventListener('click', function(){
@@ -311,7 +311,7 @@ dn.show_firsttimeuser_info = function(){
     "<div class='major_button firsttime_dissmiss'>Dismiss</div>" + 
     "</div>");
     $d.find('.firsttime_dissmiss').addEventListener('click', function(){$d.style.display = 'none';})
-    dn.el_widget_menu.after($d);
+    dn.el_widget_content.after($d);
 }
 
 dn.show2014buser_info = function(){
@@ -327,7 +327,7 @@ dn.show2014buser_info = function(){
     "<div class='major_button firsttime_dissmiss'>Dismiss</div>" + 
     "</div>");
     $d.find('.firsttime_dissmiss').addEventListener('click', function(){$d.style.display = 'none';})
-    dn.el_widget_menu.after($d);
+    dn.el_widget_content.after($d);
 }
 
 // ############################
@@ -351,11 +351,11 @@ dn.do_open = function(){
 
 dn.create_open_tool = function(){
     dn.el_menu_open.addEventListener('click', dn.do_open);
-    dn.el_widget_menu.insertAdjacentHTML('afterend', [
+    dn.el_widget_content.insertAdjacentHTML('afterend', [
         "<div class='widget_box widget_open_tab_choice'>Open file in: <a class='major_button opener_button' ",
         "id='opener_button_a' target='_self'>this tab</a><a class='major_button opener_button' id='opener_button_b'",
         " target='_blank'>a new tab</a></div>"].join(''));
-    dn.el_opener_chooser = dn.el_widget_menu.parentNode.getElementsByClassName('widget_open_tab_choice')[0];
+    dn.el_opener_chooser = dn.el_widget_content.parentNode.getElementsByClassName('widget_open_tab_choice')[0];
     dn.el_opener_chooser.style.display = 'none';
     dn.el_opener_button_a = document.getElementById('opener_button_a');
     dn.el_opener_button_a.addEventListener('click', function(){dn.el_opener_chooser.style.display = 'none';});
@@ -463,19 +463,20 @@ dn.blur_find_and_focus_editor = function(flag){
         dn.editor.session.removeMarker(dn.find_result_markers.pop());               
 }
 
-dn.create_find_replace = function(){
-    dn.el_widget_menu.insertAdjacentHTML('afterend', [
-        "<div class='widget_box widget_find_replace'>",
+dn.create_content_find_replace = function(){
+    dn.el_content_find_replace = document.createElement('div');
+
+    dn.el_content_find_replace.innerHTML = [
         "<input class='find_input' tabindex='1' placeholder='find text'></input>",
         "<div class='replace_form'><input tabindex='2' class='replace_input' placeholder='replace with'></input></div>",
-        "<div class='find_replace_info'></div>",
-        "</div>"].join(''));
-    dn.el_widget_find_replace = dn.el_widget_menu.parentNode.getElementsByClassName('widget_find_replace')[0];
-    dn.el_widget_find_replace.style.display = 'none';
-    dn.el_replace_form = dn.el_widget_find_replace.getElementsByClassName("replace_form")[0];
-    dn.el_find_replace_info = dn.el_widget_find_replace.getElementsByClassName('find_replace_info')[0];
-    dn.el_find_input = dn.el_widget_find_replace.getElementsByClassName("find_input")[0];
-    dn.el_replace_input = dn.el_widget_find_replace.getElementsByClassName("replace_input")[0];
+        "<div class='find_replace_info'></div>"].join('');
+    dn.el_widget_content.appendChild(dn.el_content_find_replace);
+
+    dn.el_content_find_replace.style.display = 'none';
+    dn.el_replace_form = dn.el_content_find_replace.getElementsByClassName("replace_form")[0];
+    dn.el_find_replace_info = dn.el_content_find_replace.getElementsByClassName('find_replace_info')[0];
+    dn.el_find_input = dn.el_content_find_replace.getElementsByClassName("find_input")[0];
+    dn.el_replace_input = dn.el_content_find_replace.getElementsByClassName("replace_input")[0];
     
     dn.el_find_input.addEventListener('focus', function(){
             dn.cancel_blur_find_and_focus_editor();
@@ -573,7 +574,7 @@ dn.show_find = function(){
     dn.showing_replace = false;
     dn.el_replace_form.style.display = 'none';
     var sel = dn.editor.session.getTextRange(dn.editor.getSelectionRange());
-    dn.el_widget_find_replace.style.display = '';
+    dn.el_content_find_replace.style.display = '';
     if(sel)
         dn.el_find_input.value = sel;
     dn.el_find_input.focus();
@@ -587,7 +588,7 @@ dn.show_replace = function(){
     dn.showing_replace = true;
     dn.el_replace_form.style.display = '';
     var sel = dn.editor.session.getTextRange(dn.editor.getSelectionRange());
-    dn.el_widget_find_replace.style.display = '';
+    dn.el_content_find_replace.style.display = '';
     if(sel)
         dn.el_find_input.value = sel;
     dn.el_find_input.focus()
@@ -601,10 +602,10 @@ dn.show_replace = function(){
 // Goto line stuff
 // ############################
 
-dn.create_goto_line = function(){
-    dn.el_widget_menu.insertAdjacentHTML('afterend', 
+dn.create_content_goto_line = function(){
+    dn.el_widget_content.insertAdjacentHTML('afterend', 
         "<div class='widget_box widget_goto'>Go to: <input class='gotoline_input' placeholder='line number'></input><br>Esc: hide the goto line box</div>");
-    dn.el_widget_goto = dn.el_widget_menu.parentNode.getElementsByClassName('widget_goto')[0];
+    dn.el_widget_goto = dn.el_widget_content.parentNode.getElementsByClassName('widget_goto')[0];
     dn.el_widget_goto.style.display = 'none';
 
     dn.el_goto_input = dn.el_widget_goto.getElementsByTagName('input')[0];
@@ -637,134 +638,123 @@ dn.show_go_to = function(){
 // Widget stuff
 // ############################
 
-    
-dn.create_menu = function(){
-    dn.el_widget_menu.innerHTML = [
-    "<div class='widget_toolbar'><div class='widget_toolbar_wheel'>",
-        "<div class='widget_menu_icon' data-info='print' id='menu_print'></div>",
-        "<div class='widget_menu_icon' data-info='sharing' id='menu_sharing'></div>",
-        "<div class='widget_menu_icon' data-info='save' id='menu_save'></div>" ,
-        "<div class='widget_menu_icon' data-info='file history' id='menu_history'></div>" ,
-        "<div class='widget_menu_icon' data-info='file properties' id='menu_file_props'></div>" ,
-        "<div class='widget_menu_icon' data-info='new' id='menu_new'></div>",
-        "<div class='widget_menu_icon' data-info='open' id='menu_open'></div>",    
-        "<div class='widget_menu_icon' data-info='general settings' id='menu_general_settings'></div>" ,
-        "<div class='widget_menu_icon' data-info='shortcuts'id='menu_shortcuts'></div>",
-        "<a class='widget_menu_icon' data-info='drive' id='menu_drive'  href='' target='_blank'></a>",    
-        "<a class='widget_menu_icon' data-info='about' id='menu_about'  href='http://drivenotepad.appspot.com/support' target='_blank'></a>", 
-    "</div></div><div class='widget_content'>",
-    "<div class='widget_spacer'></div>",
-    
-   "<div class='widget_subs'>",
-        
-       "<div class='widget_sub_box' selected=1 id='sub_file_box'>",
-            "<div class='widget_menu_item details_file_title' clickable=1>" ,
-                "<div class='details_file_title_text tooltip' data-info='title'></div>" ,
-                "<input type='text' placeholder='title' class='details_file_title_input' style='display:none;'/>" ,
-            "</div>" ,
-    
-            "<div class='widget_menu_item details_file_description' clickable=1>",
-                "<div class='details_file_description_text tooltip' data-info='description'></div>",
-                "<textarea placeholder='description' class='details_file_description_input' style='display:none;'></textarea>",
-            "</div>",
-           
-            "<div class='widget_spacer'></div>",
-           
-           "<div class='widget_menu_item details_file_ace_mode'>Syntax: ",
-                "<div class='inline_button' id='file_ace_mode_detect'>detect</div>",
-                "<div class='inline_button' id='file_ace_mode_choose'></div>",
-                "<div class='file_info' id='file_ace_mode_info'></div>",  
-            "</div>",
-            "<div class='widget_spacer'></div>",
-            "<div class='widget_menu_item details_file_newline'>Newline: ",
-                "<div class='inline_button' id='file_newline_detect'>detect</div>",
-                "<div class='inline_button' id='file_newline_windows'>windows</div>",
-                "<div class='inline_button' id='file_newline_unix'>unix</div>",
-                "<div class='file_info' id='file_newline_info'></div>",
-            "</div>",
-            "<div class='widget_spacer'></div>",
-            "<div class='widget_menu_item details_file_tab'>Tabs: ",
-                "<div class='inline_button' id='file_tab_detect'>detect</div>",
-                "<div class='inline_button' id='file_tab_hard'>hard</div>",
-                "<div class='inline_button' id='file_tab_soft'>",
-                    "<div class='button_sub' id='file_tab_soft_text'>?? spaces</div>", 
-                    "<div class='button_sub button_sub_unselectable' id='file_tab_soft_dec'>▼</div>",
-                    "<div class='button_sub button_sub_unselectable' id='file_tab_soft_inc'>▲</div>",
-                "</div>", 
-                "<div class='file_info' id='file_tab_info'></div>",
-            "</div>",
+
+dn.create_content_general_settings = function(){
+    dn.el_content_general_settings = document.createElement('div');
+    dn.el_content_general_settings.innerHTML = [            
+        "<div class='widget_menu_item'>Recent changes: ",
+            "<div class='inline_button' id='gutter_history_hide'>hide</div>",
+            "<div class='inline_button' id='gutter_history_show'>show</div>",
         "</div>",
-        
-        "<div class='widget_sub_box' id='sub_general_box'>",
+    
+        "<div class='widget_menu_item'>Word wrap: ",
+            "<div class='inline_button' id='word_wrap_off'>none</div>",
+            "<div class='inline_button' id='word_wrap_at'>",
+                "<div class='button_sub' id='word_wrap_at_text'>at ??</div>",
+                "<div class='button_sub button_sub_unselectable' id='word_wrap_at_dec'>&#9660;</div>",
+                "<div class='button_sub button_sub_unselectable' id='word_wrap_at_inc'>&#9650;</div>",
+            "</div>", 
+            "<div class='inline_button' id='word_wrap_edge'>at edge</div>",
+        "</div>",
                 
-            "<div class='widget_menu_item'>Recent changes: ",
-                "<div class='inline_button' id='gutter_history_hide'>hide</div>",
-                "<div class='inline_button' id='gutter_history_show'>show</div>",
-            "</div>",
-        
-            "<div class='widget_menu_item'>Word wrap: ",
-                "<div class='inline_button' id='word_wrap_off'>none</div>",
-                "<div class='inline_button' id='word_wrap_at'>",
-                    "<div class='button_sub' id='word_wrap_at_text'>at ??</div>",
-                    "<div class='button_sub button_sub_unselectable' id='word_wrap_at_dec'>&#9660;</div>",
-                    "<div class='button_sub button_sub_unselectable' id='word_wrap_at_inc'>&#9650;</div>",
-                "</div>", 
-                "<div class='inline_button' id='word_wrap_edge'>at edge</div>",
-            "</div>",
-                    
-            "<div class='widget_menu_item'>Font size: ",
-                "<div class='inline_button font_size_decrement'>&#9660;abc</div>", //TODO: make this a single button
-                "<div class='inline_button font_size_increment'>abc&#9650;</div>",
-            "</div>",
-                    
-            "<div class='widget_menu_item'>Tab default: ",
-                "<div class='inline_button' id='tab_hard'>hard</div>",
-                "<div class='inline_button' id='tab_soft'>",
-                        "<div class='button_sub' id='tab_soft_text'>?? spaces</div>", 
-                        "<div class='button_sub button_sub_unselectable' id='tab_soft_dec'>&#9660;</div>",
-                        "<div class='button_sub button_sub_unselectable' id='tab_soft_inc'>&#9650;</div>",
-                "</div>",
-            "</div>",
-                    
-            "<div class='widget_menu_item'>Newline default: ",
-                "<div class='inline_button' id='newline_menu_windows'>windows</div>",
-                "<div class='inline_button' id='newline_menu_unix'>unix</div>",
-            "</div>",
-            
-            "<div class='widget_menu_item'>Clear history:&nbsp;",
-                    "<div class='widget_menu_item' id='clipboard_history_clear_button' inline=1 clickable=1>clipboard</div>",
-                    "<div class='widget_menu_item' id='find_history_clear_button' inline=1 clickable=1>find/replace</div>",
-            "</div>",
-            
+        "<div class='widget_menu_item'>Font size: ",
+            "<div class='inline_button font_size_decrement'>&#9660;abc</div>", //TODO: make this a single button
+            "<div class='inline_button font_size_increment'>abc&#9650;</div>",
         "</div>",
-    "</div>",
-    
-    "<div class='widget_spacer'></div></div>",
-    "<div id='menu_status'>...</div>"
+                
+        "<div class='widget_menu_item'>Tab default: ",
+            "<div class='inline_button' id='tab_hard'>hard</div>",
+            "<div class='inline_button' id='tab_soft'>",
+                    "<div class='button_sub' id='tab_soft_text'>?? spaces</div>", 
+                    "<div class='button_sub button_sub_unselectable' id='tab_soft_dec'>&#9660;</div>",
+                    "<div class='button_sub button_sub_unselectable' id='tab_soft_inc'>&#9650;</div>",
+            "</div>",
+        "</div>",
+                
+        "<div class='widget_menu_item'>Newline default: ",
+            "<div class='inline_button' id='newline_menu_windows'>windows</div>",
+            "<div class='inline_button' id='newline_menu_unix'>unix</div>",
+        "</div>",
+        
+        "<div class='widget_menu_item'>Clear history:&nbsp;",
+                "<div class='widget_menu_item' id='clipboard_history_clear_button' inline=1 clickable=1>clipboard</div>",
+                "<div class='widget_menu_item' id='find_history_clear_button' inline=1 clickable=1>find/replace</div>",
+        "</div>"].join('');
 
-    ].join('');
+    dn.el_widget_content.appendChild(dn.el_content_general_settings);
 
-    var els = dn.el_widget_menu.getElementsByClassName('widget_menu_icon');
-    for(var ii=0; ii<els.length; ii++){
-        els[ii].addEventListener("click",function(){dn.reclaim_focus();});
-        rotate(els[ii], ii*15);
-        els[ii].innerHTML = "<div class='menu_caption'>" + els[ii].getAttribute('data-info') + "</div>";
-    }
+    dn.el_widget_sub_general_box = document.getElementById('sub_general_box')
+    dn.el_menu_clear_clipboard = document.getElementById("clipboard_history_clear_button");
+    dn.el_menu_clear_find_history = document.getElementById("find_history_clear_button");
 
-    dn.el_details_title_input  = dn.el_widget_menu.getElementsByClassName('details_file_title_input')[0];
-    dn.el_details_title_text = dn.el_widget_menu.getElementsByClassName('details_file_title_text')[0];
-    
-    dn.el_menu_save = document.getElementById('menu_save');
-    dn.el_menu_print = document.getElementById('menu_print');
-    dn.el_menu_sharing = document.getElementById('menu_sharing');
-    dn.el_menu_history = document.getElementById('menu_history');
-    
-    dn.el_widget_sub_file_box = document.getElementById('sub_file_box')
+    dn.el_gutter_history_show = document.getElementById('gutter_history_show');
+    dn.el_gutter_history_hide = document.getElementById('gutter_history_hide');
+    dn.el_word_wrap_off = document.getElementById('word_wrap_off');
+    dn.el_word_wrap_at = document.getElementById('word_wrap_at');
+    dn.el_word_wrap_edge = document.getElementById('word_wrap_edge');
+    // TODO: fix inconsitency of Ids versus classes
+    dn.el_font_size_decrement = dn.el_content_general_settings.getElementsByClassName('font_size_decrement')[0];
+    dn.el_font_size_increment = dn.el_content_general_settings.getElementsByClassName('font_size_increment')[0];
+    dn.el_tab_hard = document.getElementById('tab_hard');
+    dn.el_tab_soft = document.getElementById('tab_soft');
+    dn.el_newline_menu_windows = document.getElementById('newline_menu_windows');
+    dn.el_newline_menu_unix = document.getElementById('newline_menu_unix');
 
-    dn.el_details_description_input  = dn.el_widget_menu.getElementsByClassName('details_file_description_input')[0];
-    dn.el_details_description_text = dn.el_widget_menu.getElementsByClassName('details_file_description_text')[0];
+    dn.create_newlinemenu_tool(); // TODO: could be inlined here
+    dn.create_tab_tool();
+    dn.create_fontsize_tool();
+    dn.create_wordwrap_tool();
+    dn.create_gutterhistory_tool();
+    dn.create_clipboard_tool();
+}
+
+dn.create_content_file_props = function(){
+    dn.el_content_file_props = document.createElement('div');
+    dn.el_content_file_props.innerHTML = [
+        "<div class='widget_menu_item details_file_title' clickable=1>" ,
+            "<div class='details_file_title_text tooltip' data-info='title'></div>" ,
+            "<input type='text' placeholder='title' class='details_file_title_input' style='display:none;'/>" ,
+        "</div>" ,
+
+        "<div class='widget_menu_item details_file_description' clickable=1>",
+            "<div class='details_file_description_text tooltip' data-info='description'></div>",
+            "<textarea placeholder='description' class='details_file_description_input' style='display:none;'></textarea>",
+        "</div>",
+       
+        "<div class='widget_spacer'></div>",
+       
+       "<div class='widget_menu_item details_file_ace_mode'>Syntax: ",
+            "<div class='inline_button' id='file_ace_mode_detect'>detect</div>",
+            "<div class='inline_button' id='file_ace_mode_choose'></div>",
+            "<div class='file_info' id='file_ace_mode_info'></div>",  
+        "</div>",
+        "<div class='widget_spacer'></div>",
+        "<div class='widget_menu_item details_file_newline'>Newline: ",
+            "<div class='inline_button' id='file_newline_detect'>detect</div>",
+            "<div class='inline_button' id='file_newline_windows'>windows</div>",
+            "<div class='inline_button' id='file_newline_unix'>unix</div>",
+            "<div class='file_info' id='file_newline_info'></div>",
+        "</div>",
+        "<div class='widget_spacer'></div>",
+        "<div class='widget_menu_item details_file_tab'>Tabs: ",
+            "<div class='inline_button' id='file_tab_detect'>detect</div>",
+            "<div class='inline_button' id='file_tab_hard'>hard</div>",
+            "<div class='inline_button' id='file_tab_soft'>",
+                "<div class='button_sub' id='file_tab_soft_text'>?? spaces</div>", 
+                "<div class='button_sub button_sub_unselectable' id='file_tab_soft_dec'>▼</div>",
+                "<div class='button_sub button_sub_unselectable' id='file_tab_soft_inc'>▲</div>",
+            "</div>", 
+            "<div class='file_info' id='file_tab_info'></div>",
+        "</div>"].join("");
+    dn.el_widget_content.appendChild(dn.el_content_file_props);
+
+    dn.el_details_title_input  = dn.el_content_file_props.getElementsByClassName('details_file_title_input')[0];
+    dn.el_details_title_text = dn.el_content_file_props.getElementsByClassName('details_file_title_text')[0];
+    dn.el_details_description_input  = dn.el_content_file_props.getElementsByClassName('details_file_description_input')[0];
+    dn.el_details_description_text = dn.el_content_file_props.getElementsByClassName('details_file_description_text')[0];
     dn.syntax_drop_down = dn.create_syntax_menu()
     
+    // TODO: fix inconsitency of Ids versus classes
     dn.el_file_ace_mode_choose = document.getElementById('file_ace_mode_choose')
     dn.el_file_ace_mode_choose.appendChild(dn.syntax_drop_down.el);
     dn.el_file_ace_mode_detect = document.getElementById('file_ace_mode_detect');
@@ -779,23 +769,47 @@ dn.create_menu = function(){
     dn.el_file_tab_soft_text = document.getElementById('file_tab_soft_text');
     dn.el_file_tab_info = document.getElementById('file_tab_info');
 
-    dn.el_widget_sub_general_box = document.getElementById('sub_general_box')
+    dn.create_filedetails_tool();  // this could really be appended directly to this function.
+}
 
-    dn.el_menu_clear_clipboard = document.getElementById("clipboard_history_clear_button");
-    dn.el_menu_clear_find_history = document.getElementById("find_history_clear_button");
+dn.create_menu_wheel = function(){
+    dn.el_widget_toolbar = document.getElementById('widget_toolbar');
+    dn.el_widget_toolbar.innerHTML =  [
+            "<div class='widget_menu_wrapper' id='menu_print'></div>",
+            "<div class='widget_menu_wrapper' id='menu_sharing'></div>",
+            "<div class='widget_menu_wrapper' id='menu_save'></div>" ,
+            "<div class='widget_menu_wrapper' id='menu_history'></div>" ,
+            "<div class='widget_menu_wrapper' id='menu_file_props'></div>" ,
+            "<div class='widget_menu_wrapper' id='menu_new'></div>",
+            "<div class='widget_menu_wrapper' id='menu_open'></div>",    
+            "<div class='widget_menu_wrapper' id='menu_find_replace'></div>",   
+            "<div class='widget_menu_wrapper' id='menu_goto'></div>",    
+            "<div class='widget_menu_wrapper' id='menu_general_settings'></div>" ,
+            "<div class='widget_menu_wrapper' id='menu_shortcuts'></div>",
+            "<div class='widget_menu_wrapper' id='menu_drive'></div>",    
+            "<div class='widget_menu_wrapper' id='menu_about'></div>"].join('');
 
-    dn.el_gutter_history_show = document.getElementById('gutter_history_show');
-    dn.el_gutter_history_hide = document.getElementById('gutter_history_hide');
-    dn.el_word_wrap_off = document.getElementById('word_wrap_off');
-    dn.el_word_wrap_at = document.getElementById('word_wrap_at');
-    dn.el_word_wrap_edge = document.getElementById('word_wrap_edge');
-    dn.el_font_size_decrement = dn.el_widget_menu.getElementsByClassName('font_size_decrement')[0];
-    dn.el_font_size_increment = dn.el_widget_menu.getElementsByClassName('font_size_increment')[0];
-    dn.el_tab_hard = document.getElementById('tab_hard');
-    dn.el_tab_soft = document.getElementById('tab_soft');
-    dn.el_newline_menu_windows = document.getElementById('newline_menu_windows');
-    dn.el_newline_menu_unix = document.getElementById('newline_menu_unix');
-     
+    var mouse_enter = function(){
+        var id = this.id.substr(5);
+    };
+
+    var mouse_leave = function(){
+    };
+
+    var els = dn.el_widget_toolbar.getElementsByClassName('widget_menu_wrapper');
+    for(var ii=0; ii<els.length; ii++){
+        els[ii].addEventListener("click",function(){dn.reclaim_focus();});
+        els[ii].innerHTML = "<div class='widget_menu_caption'>" + dn.menu_id_to_caption[els[ii].id] + "</div>" +
+                            "<div class='widget_menu_icon' id='icon_" + els[ii].id + "'></div>";
+        var el_icon = els[ii].getElementsByClassName('widget_menu_icon')[0];
+        el_icon.addEventListener('mouseenter', mouse_enter);
+        el_icon.addEventListener('mouseleave', mouse_leave);
+    }
+    
+    dn.el_menu_save = document.getElementById('menu_save');
+    dn.el_menu_print = document.getElementById('menu_print');
+    dn.el_menu_sharing = document.getElementById('menu_sharing');
+    dn.el_menu_history = document.getElementById('menu_history');     
     dn.el_menu_shortcuts = document.getElementById('menu_shortcuts');
     dn.el_menu_new = document.getElementById('menu_new');
     dn.el_menu_open = document.getElementById('menu_open');
@@ -804,51 +818,14 @@ dn.create_menu = function(){
 
 }
 
-dn.create_icon_mouse_over = function(){
-    var els = dn.el_widget_menu.getElementsByClassName('widget_menu_icon'); // TODO: check why .tooltip was previously part of the selction
-
-    var mouse_enter = function(){
-        var data_info = this.getAttribute('data-info');
-        if(!(data_info && data_info in dn.tooltip_info))
-            return;
-        var info_str = dn.tooltip_info[data_info]; 
-        clearTimeout(dn.menu_status_timer || 0);
-        dn.menu_status_timer = setTimeout(function(){
-            dn.el_menu_status.textContent = info_str;
-        },dn.icon_mouse_over_ms);
-    };
-
-    var mouse_leave = function(){
-        clearTimeout(dn.menu_status_timer || 0);
-        dn.menu_status_timer = setTimeout(function(){
-            dn.el_menu_status.textContent = dn.menu_status_default;
-        },dn.icon_mouse_over_ms);        
-    };
-
-    for(var ii=0; ii<els.length; ii++){
-        els[ii].addEventListener('mouseenter', mouse_enter);
-        els[ii].addEventListener('mouseleave', mouse_leave);
-    }
-
-}
-
-dn.create_menu_subs = function(){
-    /*dn.el_widget_sub_general_title.addEventListener('click', function(){
-        dn.g_settings.set("widgetSub","general");
-        dn.reclaim_focus();
-    });
-    dn.el_widget_sub_file_title.addEventListener('click', function(){
-        dn.g_settings.set("widgetSub","file");
-        dn.reclaim_focus();
-    });*/
-}
-dn.widget_move_handle_mouse_down = function(e){
+dn.widget_handle_mouse_down = function(e){
     dn.the_widget_dragging = {
             off_left: -e.clientX ,
             off_top: -e.clientY};
     document.body.setAttribute('dragging','true');
     document.addEventListener('mousemove', dn.document_mouse_move_widget);
     document.addEventListener('mouseup', dn.document_mouse_up_widget);
+    console.dir(dn.the_widget_dragging);
 }
 
 dn.document_mouse_move_widget = function(e){
@@ -859,9 +836,7 @@ dn.document_mouse_move_widget = function(e){
 };
 
 dn.document_mouse_up_widget = function(e){
-    var pos = {
-        left: dn.el_the_widget.offsetLeft,
-        top: dn.el_the_widget.offsetTop};
+    var pos = dn.el_the_widget.getBoundingClientRect();
     translate(dn.el_the_widget, 0, 0);
     document.body.removeAttribute('dragging');
     document.removeEventListener('mousemove',dn.document_mouse_move_widget);
@@ -871,8 +846,8 @@ dn.document_mouse_up_widget = function(e){
         //work out what widget_anchor should be
         var widget_w = dn.el_the_widget.offsetWidth;
         var widget_h = dn.el_the_widget.offsetHeight;
-        var window_w = $(window).width();
-        var window_h = $(window).height();
+        var window_w = window.offsetWidth;
+        var window_h = window.offsetHeight;
         var anchor = []
         if(pos.left < window_w - (pos.left + widget_w)){
             anchor[0] = 'l'; //anchor left side by window width percentage
@@ -897,8 +872,8 @@ dn.widget_apply_anchor = function(anchor){
     anchor = $.isArray(anchor) ? anchor : dn.g_settings.get('widget_anchor');
     var widget_w = dn.el_the_widget.offsetWidth;
     var widget_h = dn.el_the_widget.offsetHeight;
-    var window_w = $(window).width();
-    var window_h = $(window).height();
+    var window_w = window.offsetWidth;
+    var window_h = window.offsetHeight;
 
     if(anchor[0] == 'l'){
         // horizontal position is anchored to a fixed percentage of window width on left of widget
@@ -950,13 +925,13 @@ dn.toggle_widget = function(state){
         return;
     }
     var els = [
-        dn.el_widget_menu,
+        dn.el_widget_content,
         dn.el_widget_shortcuts,
         dn.el_widget_syntax,
         dn.el_widget_clipboard,
         dn.el_opener_chooser,
         dn.el_widget_goto,
-        dn.el_widget_find_replace,
+        dn.el_content_find_replace,
         dn.el_widget_file_history];
     var was_showing = [];
     for(var i=0;i<els.length;i++) if(els[i] && els[i].style.display !== 'none'){
@@ -965,7 +940,7 @@ dn.toggle_widget = function(state){
     }
 
     if(was_showing.length === 0 && !((typeof state === "number" || typeof state === "boolean") && !state)) 
-        dn.el_widget_menu.style.display = '';
+        dn.el_widget_content.style.display = '';
         
     if(dn.is_showing_history)
         dn.close_history();
@@ -1198,7 +1173,7 @@ dn.platform = (function(){
     return null;
 })();
 
-dn.create_shortcuts_info = function(){
+dn.create_content_shortcuts = function(){
 //This is hardly the world's most efficient way of doing this....(but it probably doesn't matter)...
 
     var arry = dn.shortcuts_list;
@@ -1229,24 +1204,17 @@ dn.create_shortcuts_info = function(){
     for(var action in dn.tooltip_info)if(action in dict)
         dn.tooltip_info[action] += dict[action];
 
-    dn.el_widget_menu.insertAdjacentHTML('afterend', 
-        ["<div class='widget_box' id='widget_shortcuts'>",
+    dn.el_content_shortcuts = document.createElement('div');
+    dn.el_content_shortcuts.innerHTML = [
             "<div class='widget_box_title shortcuts_title'>Keyboard Shortcuts ",
-            platform ? "(" + platform + ")" : "" ,
+                 platform ? "(" + platform + ")" : "" ,
             "</div>",
             "<div class='shortcuts_header_action'>action</div><div class='shortcuts_header_key'>key</div>",
             "<div class='shortcuts_list'>",
             html.join(''),
-            "</div>",
-        "</div>"].join(''));
-    dn.el_widget_shortcuts = document.getElementById('widget_shortcuts');
-    dn.el_widget_shortcuts.style.display = 'none';
-
-    dn.el_menu_shortcuts.addEventListener('click', function(){
-        dn.el_widget_shortcuts.style.display = '';
-        dn.el_widget_menu.style.display = 'none';
-    });
-    
+            "</div>"].join('');
+    dn.el_content_shortcuts.style.display = 'none';
+    dn.el_widget_content.appendChild(dn.el_content_shortcuts);    
 };
 
 dn.make_keyboard_shortcuts = function(){
@@ -1817,8 +1785,8 @@ dn.show_description = function(){
 // ############################
 dn.close_history = function(){
     dn.file_history.$revisions_display.remove();
-    $(window).off("resize",dn.revisions_window_resize);
-    $('#the_editor').style.display = '';
+    window.removeEventListener("resize", dn.revisions_window_resize);
+    document.getElementById('the_editor').style.display = '';
     dn.editor.resize();
     dn.is_showing_history = false;
 }
@@ -1838,7 +1806,7 @@ dn.start_revisions_worker = function(){
     dn.is_showing_history = true;
     
     if(!dn.file_history){
-        dn.el_widget_menu.innerHTML('afterend', 
+        dn.el_widget_content.innerHTML('afterend', 
             "<div class='widget_box widget_revisions'>" + 
             "<div class='widget_box_title widget_revisions_title'>File History</div>" +
             "<div class='revision_caption_at'></div>" +
@@ -1851,7 +1819,7 @@ dn.start_revisions_worker = function(){
             "Press Esc to return to editing." +
             "<br><div class='widget_divider'></div>" + 
             "Please note that the history viewing tool is missing some important features and those that have been implemented may include the odd bug.</div>");
-        dn.el_widget_file_history = dn.el_widget_menu.parentNode.getElementsByClassName('widget_revisions')[0];
+        dn.el_widget_file_history = dn.el_widget_content.parentNode.getElementsByClassName('widget_revisions')[0];
         dn.el_widget_file_history.style.display = 'none';
         dn.file_history = {
             $revisions_display: $("<div class='revisions_view'><ol></ol></div>"),
@@ -1889,7 +1857,7 @@ dn.start_revisions_worker = function(){
     dn.file_history.$revisions_display.appendTo($('body'));
     $(window).on("resize",dn.revisions_window_resize);
     dn.el_widget_file_history.style.display = '';
-    dn.el_widget_menu.style.display = 'none';
+    dn.el_widget_content.style.display = 'none';
     dn.file_history.$view.empty();
     $('#the_editor').style.display = 'none';
     return false;
@@ -2310,11 +2278,11 @@ dn.on_copy = function(text){
 }
 
 dn.create_clipboard_tool = function(){
-    dn.el_widget_menu.insertAdjacentHTML('afterend',[
+    dn.el_widget_content.insertAdjacentHTML('afterend',[
         "<div class='widget_box widget_clipboard'>When you paste with 'ctrl-v' (or 'cmd-v') you can cycle through your Drive Notepad clipboard ",
         "by pressing 'left' or 'right' before releaing the 'ctrl' (or 'cmd') key. <br><br> You can clear your clipboard history by clicking the ",
         "relevant button in the widget menu.</div>"].join(''));
-    dn.el_widget_clipboard = dn.el_widget_menu.parentNode.getElementsByClassName('widget_clipboard')[0];
+    dn.el_widget_clipboard = dn.el_widget_content.parentNode.getElementsByClassName('widget_clipboard')[0];
     dn.el_widget_clipboard.style.display = 'none';
 
     dn.el_menu_clear_clipboard.addEventListener('click', function(){
@@ -2741,20 +2709,19 @@ dn.dropped_file_read = function(e){
 
 dn.document_ready = function(e){
     dn.el_the_widget = document.getElementById('the_widget');
-    dn.el_the_widget.addEventListener('mousedown', function(e){e.stopPropagation();});
+    dn.el_the_widget.addEventListener('mousedown', dn.widget_handle_mouse_down);
+
     translate(dn.el_the_widget, 0, 0);
     dn.el_the_widget.style.display = '';
-    dn.el_widget_text = document.getElementById('widget_text');
+dn.el_widget_text = document.getElementById('widget_text');
     dn.el_widget_text.addEventListener('click', dn.toggle_widget);
-    dn.el_widget_move_handle = document.getElementById('widget_move_handle') 
-    dn.el_widget_move_handle.addEventListener('mousedown', dn.widget_move_handle_mouse_down);
 
     dn.el_widget_error_text = document.getElementById('widget_error_text');
     dn.el_widget_error = document.getElementById('widget_error');
     dn.el_widget_error.style.display = 'none';
 
-    dn.el_widget_menu = document.getElementById('widget_menu');
-    dn.el_widget_menu.style.display = 'none';
+    dn.el_widget_content = document.getElementById('widget_content');
+    dn.el_widget_content.addEventListener('mousedown', function(e){e.stopPropagation();});
 
     var editor_el = document.getElementById('the_editor');
     editor_el.innerHTML = '';
@@ -2772,30 +2739,21 @@ dn.document_ready = function(e){
     dn.editor.setAnimatedScroll(true);
     
     
-    dn.create_menu();
-    dn.create_filedetails_tool();
-    dn.create_menu_subs();
-    dn.create_icon_mouse_over();
-    
-    dn.create_shortcuts_info();
-    dn.create_newlinemenu_tool();
-    dn.create_tab_tool();
-
-    dn.create_fontsize_tool();
-    dn.create_wordwrap_tool();
-    dn.create_gutterhistory_tool();
-    dn.create_clipboard_tool();
+    dn.create_menu_wheel();
+    dn.create_content_file_props();
+    dn.create_content_general_settings();
+    dn.create_content_shortcuts();
+    dn.create_content_popup();
 
     dn.create_new_tool();
     dn.create_open_tool();
-
-    dn.load_default_settings();
-    dn.load_default_properties();
+    
+    dn.create_content_goto_line();
+    dn.create_content_find_replace();
     
     dn.make_keyboard_shortcuts();
-    dn.create_popup_button();
-    dn.create_goto_line();
-    dn.create_find_replace();
+    dn.load_default_settings();
+    dn.load_default_properties();
     
     window.addEventListener('resize', dn.widget_apply_anchor);
     window.onbeforeunload = dn.query_unload;
@@ -2829,7 +2787,7 @@ dn.api_loaded = function(APIName){
     if(APIName == "drive"){
         dn.apis.drive_is_loaded = true;
         if(dn.the_file.is_brand_new)
-            dn.el_widget_menu.style.display = '';
+            dn.el_widget_content.style.display = '';
         if(dn.the_file.file_id){ 
             console.log("gapi.client.drive was not loaded in time for document-ready. But did eventually arive.")
             dn.load_file();
