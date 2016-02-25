@@ -109,7 +109,7 @@ dn.tooltip_info = { //keys correspond to icon data-info attr, which will be the 
     "description": "Click to edit the file's description."
 }
 
-dn.client_id = '591525900269';
+dn.client_id = '591525900269-94ok9krafau8qa24666btvccmsfnq5fp.apps.googleusercontent.com';
 dn.scopes = [
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/userinfo.profile',

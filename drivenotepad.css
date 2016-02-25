@@ -11,6 +11,10 @@ width: 100%;
 overflow: hidden;
 margin:0;
 }
+a:hover, a:visited, a:link, a:active{
+color: inherit;
+}
+
 #the_editor{
 position: fixed;
 top: 0;
@@ -277,8 +281,8 @@ margin: 3px;
 padding: 3px;
 }
 .widget_box_title{
-text-decoration: underline;
-margin-bottom: 10px;    
+font-weight: bold;
+margin-bottom: 5px;    
 }
 .widget_firstime ol{
     padding-left: 20px;

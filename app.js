@@ -375,28 +375,27 @@ dn.picker_callback = function(data) {
     dn.el_opener_button_b.setAttribute('href', url);
     dn.toggle_widget(false);
     dn.el_opener_chooser.style.display = '';
-    dn.el_the_widget.cssAnimation('shake',function(){},dn.error_delay_ms);
+    css_animation(dn.el_the_widget, 'shake', function(){}, dn.error_delay_ms);
   }else if(data.action == "cancel"){
       dn.reclaim_focus();
   } 
 }
 
-
 dn.create_content_help = function(){
     dn.el_content_help = document.createElement('div');
     dn.el_content_help.innerHTML = [
-        "<div class='widget_box_title'>Drive Notepad 2016a, by DM.</div><br>",
-        "<a href='' target='_blank'>google+</a> - for bug reports, questions, etc.<br><br>",
-        "<a href='' target='_blank'>youtube</a> - quick demo.<br><br>",
+        "<div class='widget_box_title'>Drive Notepad 2016a, by DM.</div>",
+        "<a href='' target='_blank'>google+</a> - for bug reports, questions, etc.*<br>",
+        "<a href='' target='_blank'>youtube</a> - quick demo.<br>",
         "<a href='' target='_blank'>about</a> - more information.<br><br>",
-        
-        "<a href='' target='_blank'>Google Drive</a> - open your Drive<br><br>",
-        "Positive feedback is always appriciated!"].join('');
+        "<div class='widget_box_title'>Logged in as <span id='user_name'>???</span></div>",
+        "<a href='https://drive.google.com' target='_blank' id='drive_link'>Google Drive</a> - open your Drive<br>",
+        "<br><br>*positive feedback is always appriciated!"].join('');
 
     dn.el_content_help.id = 'content_help';
     dn.el_content_help.style.display = 'none';
     dn.el_widget_content.appendChild(dn.el_content_help);
-    
+    dn.el_user_name = document.getElementById('user_name');
     dn.el_menu_help.addEventListener('click', function(){
         dn.show_widget_content(dn.el_content_help);
     })
@@ -865,12 +864,9 @@ dn.create_menu = function(){
     dn.el_menu_sharing = document.getElementById('menu_sharing');
     dn.el_menu_history = document.getElementById('menu_history');     
     dn.el_menu_shortcuts = document.getElementById('menu_shortcuts');
-    dn.el_menu_new = document.getElementById('menu_new');
-    dn.el_menu_open = document.getElementById('menu_open');
     dn.el_menu_status = document.getElementById('menu_status');
-    dn.el_menu_drive = document.getElementById('menu_drive');
 
-
+    dn.el_menu_open = document.getElementById('menu_open');
     dn.el_menu_find = document.getElementById('menu_find');
     dn.el_menu_help = document.getElementById('menu_help');
     dn.el_menu_file = document.getElementById('menu_file');
@@ -1073,12 +1069,12 @@ dn.show_error = function(message){
     }, dn.error_delay_ms);
 };
 
-dn.set_drivelinkto_folder = function(){
-    var a = dn.el_menu_drive;
-    if(a && dn.the_file.folder_id)
-        a.setAttribute('href','https://drive.google.com/#folders/' + dn.the_file.folder_id);
+dn.set_drive_link_to_folder = function(){
+    var el = document.getElementById('drive_link');
+    if(el && dn.the_file.folder_id)
+        el.setAttribute('href','https://drive.google.com/#folders/' + dn.the_file.folder_id);
     else
-        a.setAttribute('href','https://drive.google.com');
+        el.setAttribute('href','https://drive.google.com');
 }
 
 
@@ -1321,7 +1317,7 @@ dn.make_keyboard_shortcuts = function(){
     key('command+r, ctrl+r,  ctrl+alt+r,  command+alt+r' + 
        ', command+g, ctrl+g,  ctrl+alt+g,  command+alt+g', dn.show_replace);
     key('command+h, ctrl+h,  ctrl+alt+h,  command+alt+h', dn.start_revisions_worker);
-    key('esc',dn.toggle_widget);    
+    key('esc', dn.toggle_widget);    
     key.filter = function(){return 1;}
 
 
@@ -2460,7 +2456,7 @@ dn.saved_new_file = function(resp){
     history.replaceState({},dn.the_file.title,
             window.location.href.match(/^https?:\/\/[\w-.]*\/\w*/)[0] +
                 "?state={\"action\":\"open\",\"ids\":[\"" + dn.the_file.file_id + "\"]}");
-    dn.set_drivelinkto_folder();
+    dn.set_drive_link_to_folder();
     dn.the_file.meta_data_is_loaded = true;
     dn.save_all_file_properties();
 }
@@ -2508,7 +2504,7 @@ dn.load_file_gotmeta_data = function(resp) {
       dn.the_file.loaded_mime_type = resp.mimeType;
       if(resp.parentNodes && resp.parentNodes.length){
           dn.the_file.folder_id = resp.parentNodes[0].id;
-          dn.set_drivelinkto_folder();
+          dn.set_drive_link_to_folder();
       }
       var token = gapi.auth.getToken().access_token;
       dn.the_file.isLoading_meta_data = false;
@@ -2831,7 +2827,6 @@ dn.document_ready = function(e){
     dn.create_content_permissions();
     dn.create_content_help();
 
-    dn.create_new_tool();
     dn.create_open_tool();
     
     dn.create_content_goto_line();
@@ -2883,9 +2878,8 @@ dn.api_loaded = function(APIName){
     if(APIName == 'userinfo'){
        gapi.client.oauth2.userinfo.get().execute(function(a){
        dn.userinfo = a;
-       dn.menu_status_default = "Logged in as: " + a.name; 
-       dn.el_menu_status.textContent = dn.menu_status_default;
-        dn.set_drivelinkto_folder();
+       dn.el_user_name.textContent = a.name; //TODO: escape
+       dn.set_drive_link_to_folder();
        });
     }
     if(APIName == 'drive-realtime'){
