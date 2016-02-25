@@ -47,7 +47,7 @@ var css_animation = (function(){
             els.splice(old_idx, 1);
         }
         els.push(el);
-        timers.push(setTimeout(callback,delay)); //this is better than trying to use the endtransition event
+        timers.push(setTimeout(callback, delay)); //this is better than trying to use the endtransition event
         el.classList.add(cls);
     }
 })();

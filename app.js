@@ -8,6 +8,8 @@ dn.version_str = '2016a';
 // ############################
 // Constants and defaults, see alsp info.js
 // ############################
+dn.drag_delay_ms = 400;
+dn.drag_shift_px = 40;
 
 dn.default_settings = {
 ext: 'txt',
@@ -153,7 +155,7 @@ dn.handle_auth_result = function(auth_result) {
       gapi.load('drive-share', function(){dn.api_loaded('sharer');});
     } else {
       // No access token could be retrieved, force the authorization flow.
-      dn.show_popup_button();
+      dn.show_content_permissions();
     } 
 }
 
@@ -162,27 +164,26 @@ dn.launch_popup = function(){
                     dn.handle_auth_result);
 }
 
-dn.show_popup_button = function(){
-    dn.el_widget_text.textContent = "Please click the button below to launch a Google popup window:";
-    dn.el_widget_popup_button.style.display = '';
+dn.show_content_permissions = function(){
+    dn.el_widget_text.textContent = "Manual authorization required.";
+    dn.show_widget_content(dn.el_content_permissions);
     css_animation(dn.el_the_widget, 'shake', function(){}, dn.error_delay_ms);
 }
 
-dn.create_content_popup = function(){
-    dn.el_widget_popup_button = document.createElement('div');
-    dn.el_widget_popup_button.innerHTML = [
-        "<div class='major_button popupbutton'>Login and/or grant app permissions...</div>",
-        "This will allow you to login to your Google account if you have not already done so, ",
-        "and if this is your first time using the latest version of Drive Notepad you will be asked ",
-        "to review and grant the app certain access permisions. <br><br>This will not normally be required ",
-        "when you use the app. <br><br>If you do not see a popup window when you click the button you may ",
-        "need to disable your popup blocker and reload the page."].join();
-    dn.el_widget_content.appendChild(dn.el_widget_popup_button);
-    dn.el_widget_popup_button.style.display = 'none';
+dn.create_content_permissions = function(){
+    dn.el_content_permissions = document.createElement('div');
+    dn.el_content_permissions.innerHTML = [
+        "<br><div class='major_button_wrapper'><div class='major_button popupbutton'>Autherize...</div></div><br><br>",
+        "Click the button above to launch a popup window and login to your Google account and/or grant permisions to this app.<br><br>",
+        "This step will not normally be required when you use the app.<br><br>If you do not see a popup window when you click the button you may ",
+        "need to disable your popup blocker and reload the page."].join('');
+    dn.el_content_permissions.id = 'content_permissions'
+    dn.el_widget_content.appendChild(dn.el_content_permissions);
+    dn.el_content_permissions.style.display = 'none';
 
-    dn.el_widget_popup_button.getElementsByClassName('popupbutton')[0].addEventListener('click', function(){
-        dn.el_widget_popup_button.style.display = 'none';
-        dn.el_widget_text.textContent = "Popup window...";
+    dn.el_content_permissions.getElementsByClassName('popupbutton')[0].addEventListener('click', function(){
+        dn.show_widget_content(undefined);
+        dn.el_widget_text.textContent = "Authorization in popup...";
         dn.launch_popup();
     });
 
@@ -300,34 +301,22 @@ dn.show_newline_status = function(statusStr){
 // First time usage stuff
 // ############################
 
-dn.show_firsttimeuser_info = function(){
-    var $d = $("<div class='widget_box widget_firstime'>" +
-    "<div class='widget_box_title widget_firsttime_title'>First-time usage tips</div>" +
-    "<ol><li>You can move this thing around by dragging the square in the top left corner.</li>" +
-    "<li>To access the menu click the status text above or use the shortcut key, Esc</li>" +
-    "<li>Changes are not saved as you type, you have to press save in the menu or use the shortcut key, " +
-        (dn.platform == "Mac" ? "Cmd" : "Ctrl" ) + "-S.</li>" +
-    "</ol>" +
-    "<div class='major_button firsttime_dissmiss'>Dismiss</div>" + 
-    "</div>");
-    $d.find('.firsttime_dissmiss').addEventListener('click', function(){$d.style.display = 'none';})
-    dn.el_widget_content.after($d);
-}
-
-dn.show2014buser_info = function(){
-    var $d = $("<div class='widget_box widget_firstime'>" +
-    "<div class='widget_box_title widget_firsttime_title'>App recently updated</div>" +
-    "<ol><li>The menu is now more compact, with a tab for file properties and a tab for general settings.</li>" +
-    "<li>You can now save syntax, newline, and tab modes for individual files.</li>" +
-    "<li>Changes to the filename or description are now saved immediately.</li>" +
-    "</ol><br>" +
-    "Please " +
-    "<a target='_blank' href='https://plus.google.com/communities/107691649945880497995/stream/8eb03018-2300-43b0-85d6-8bf901cb64ac'>" +
-    "report bugs here</a> and hopefully they can be resolved quickly." +
-    "<div class='major_button firsttime_dissmiss'>Dismiss</div>" + 
-    "</div>");
-    $d.find('.firsttime_dissmiss').addEventListener('click', function(){$d.style.display = 'none';})
-    dn.el_widget_content.after($d);
+dn.show_first_time_user_info = function(last_version){
+    // last version could be blank
+    // TODO: update this
+    dn.el_content_first_time_info = document.createElement('div');
+    dn.el_content_first_time_info.innerHTML = [
+        "<div class='widget_box_title widget_firsttime_title'>First-time usage tips</div>",
+        "You can move this thing by dragging the top part.<br><br>",
+        "To access the menu click the status text above or use the shortcut key, Esc<br><br>",
+        "Changes are not saved as you type, you have to press save in the menu or use the shortcut key, ",
+            (dn.platform == "Mac" ? "Cmd" : "Ctrl" ) + "-S." ,
+        "<br><br><div class='major_button_wrapper'><div class='major_button firsttime_dissmiss'>Dismiss</div></div>" ].join('');
+    dn.el_content_first_time_info.id = 'content_first_time_info';
+    dn.el_widget_content.appendChild(dn.el_content_first_time_info);
+    dn.el_content_first_time_info.getElementsByClassName('firsttime_dissmiss')[0]
+                .addEventListener('click', function(){dn.show_widget_content()});
+    dn.show_widget_content(dn.el_content_first_time_info);
 }
 
 // ############################
@@ -350,17 +339,30 @@ dn.do_open = function(){
 }
 
 dn.create_open_tool = function(){
-    dn.el_menu_open.addEventListener('click', dn.do_open);
-    dn.el_widget_content.insertAdjacentHTML('afterend', [
-        "<div class='widget_box widget_open_tab_choice'>Open file in: <a class='major_button opener_button' ",
-        "id='opener_button_a' target='_self'>this tab</a><a class='major_button opener_button' id='opener_button_b'",
-        " target='_blank'>a new tab</a></div>"].join(''));
+    dn.el_content_open = document.createElement('div');
+    dn.el_content_open.id = 'content_open';
+    dn.el_content_open.innerHTML = [
+        "Open an existing file in:<br><br><div class='major_button_wrapper'><div class='major_button'",
+        "id='opener_button_a'>this tab</div> <div class='major_button' id='opener_button_b'",
+        ">a new tab</div></div><br><br>",
+        "Create a new file in:<br><br><div class='major_button_wrapper'><div class='major_button'",
+        "id='opener_button_c'>this tab</div> <div class='major_button' id='opener_button_d'",
+        ">a new tab</div></div><br><br>"].join('');
+    dn.el_content_open.style.display = 'none';
+    dn.el_widget_content.appendChild(dn.el_content_open);
+
+    dn.el_menu_open.addEventListener('click', function(){dn.show_widget_content(dn.el_content_open)});
+
     dn.el_opener_chooser = dn.el_widget_content.parentNode.getElementsByClassName('widget_open_tab_choice')[0];
-    dn.el_opener_chooser.style.display = 'none';
+    
     dn.el_opener_button_a = document.getElementById('opener_button_a');
-    dn.el_opener_button_a.addEventListener('click', function(){dn.el_opener_chooser.style.display = 'none';});
+    dn.el_opener_button_a.addEventListener('click', function(){
+        //TODO:
+    });
     dn.el_opener_button_b = document.getElementById('opener_button_b');
-    dn.el_opener_button_b.addEventListener('click', function(){dn.el_opener_chooser.style.display = 'none';});
+    dn.el_opener_button_b.addEventListener('click', function(){
+        //TODO:
+    });
 }
 
 dn.picker_callback = function(data) {
@@ -378,6 +380,30 @@ dn.picker_callback = function(data) {
       dn.reclaim_focus();
   } 
 }
+
+
+dn.create_content_help = function(){
+    dn.el_content_help = document.createElement('div');
+    dn.el_content_help.innerHTML = [
+        "<div class='widget_box_title'>Drive Notepad 2016a, by DM.</div><br>",
+        "<a href='' target='_blank'>google+</a> - for bug reports, questions, etc.<br><br>",
+        "<a href='' target='_blank'>youtube</a> - quick demo.<br><br>",
+        "<a href='' target='_blank'>about</a> - more information.<br><br>",
+        
+        "<a href='' target='_blank'>Google Drive</a> - open your Drive<br><br>",
+        "Positive feedback is always appriciated!"].join('');
+
+    dn.el_content_help.id = 'content_help';
+    dn.el_content_help.style.display = 'none';
+    dn.el_widget_content.appendChild(dn.el_content_help);
+    
+    dn.el_menu_help.addEventListener('click', function(){
+        dn.show_widget_content(dn.el_content_help);
+    })
+
+}
+
+
 
 // ############################
 // Find replace stuff
@@ -407,7 +433,7 @@ dn.do_find = function(str){
         dn.editor.session.removeMarker(dn.find_result_markers.pop());
                 
     if(str == ""){
-        dn.el_findreplace_info.html("Type to search.<br>Ctrl-Up/Down: cycle though history")
+        dn.el_find_replace_info.innerHTML = "Type to search.<br>Ctrl-Up/Down: cycle though history";
     }else{
         var search = dn.editor.$search;
         search.set({needle: str});
@@ -417,11 +443,11 @@ dn.do_find = function(str){
             for(var i=0;i<r.length;i++)
                 dn.find_result_markers.push(dn.editor.session.addMarker(r[i], "find_result", "find_result",false)); 
             
-                dn.el_findreplace_info.html("Found " + r.length + " occurances<br>" +
+                dn.el_find_replace_info.innerHTML = "Found " + r.length + " occurances<br>" +
                  "Enter: find next<br>Shift+Enter: find previous<br>Esc: hide the find/replace box" +
-                 (dn.showing_replace ?  "<br>Tab: focus on replace field" : "") + "<br>Ctrl-Up/Down: cycle though history");
+                 (dn.showing_replace ?  "<br>Tab: focus on replace field" : "") + "<br>Ctrl-Up/Down: cycle though history";
         }else{
-            dn.el_findreplace_info.html("No occurences found.<br>Ctrl-Up/Down: cycle though history")
+            dn.el_find_replace_info.innerHTML = "No occurences found.<br>Ctrl-Up/Down: cycle though history";
         }
     }
     dn.finding_str = str;
@@ -463,20 +489,23 @@ dn.blur_find_and_focus_editor = function(flag){
         dn.editor.session.removeMarker(dn.find_result_markers.pop());               
 }
 
-dn.create_content_find_replace = function(){
-    dn.el_content_find_replace = document.createElement('div');
+dn.create_content_find = function(){
+    dn.el_content_find = document.createElement('div');
 
-    dn.el_content_find_replace.innerHTML = [
+    dn.el_content_find.innerHTML = [
         "<input class='find_input' tabindex='1' placeholder='find text'></input>",
         "<div class='replace_form'><input tabindex='2' class='replace_input' placeholder='replace with'></input></div>",
         "<div class='find_replace_info'></div>"].join('');
-    dn.el_widget_content.appendChild(dn.el_content_find_replace);
+    dn.el_content_find.id = 'content_find';
+    dn.el_content_find.style.display = 'none';
+    dn.el_widget_content.appendChild(dn.el_content_find);
 
-    dn.el_content_find_replace.style.display = 'none';
-    dn.el_replace_form = dn.el_content_find_replace.getElementsByClassName("replace_form")[0];
-    dn.el_find_replace_info = dn.el_content_find_replace.getElementsByClassName('find_replace_info')[0];
-    dn.el_find_input = dn.el_content_find_replace.getElementsByClassName("find_input")[0];
-    dn.el_replace_input = dn.el_content_find_replace.getElementsByClassName("replace_input")[0];
+    dn.el_menu_find.addEventListener('click', dn.show_find);
+
+    dn.el_replace_form = dn.el_content_find.getElementsByClassName("replace_form")[0];
+    dn.el_find_replace_info = dn.el_content_find.getElementsByClassName('find_replace_info')[0];
+    dn.el_find_input = dn.el_content_find.getElementsByClassName("find_input")[0];
+    dn.el_replace_input = dn.el_content_find.getElementsByClassName("replace_input")[0];
     
     dn.el_find_input.addEventListener('focus', function(){
             dn.cancel_blur_find_and_focus_editor();
@@ -534,10 +563,10 @@ dn.create_content_find_replace = function(){
         //we want to force the find input to always be the next tab index
         dn.el_find_input.setAttribute("tabindex",parseInt(dn.el_replace_input.setAttribute("tabindex"))+1); 
         if(dn.find_result_markers.length)
-            dn.el_findreplace_info.html("Found " + dn.find_result_markers.length + " occurances<br>" +
-             "Enter: replace current selection<br>Ctrl+Enter: replace all<br>Esc: hide the find/replace box<br>Tab: focus on find field");
+            dn.el_find_replace_info.innerHTML = "Found " + dn.find_result_markers.length + " occurances<br>" +
+             "Enter: replace current selection<br>Ctrl+Enter: replace all<br>Esc: hide the find/replace box<br>Tab: focus on find field";
         else
-            dn.el_findreplace_info.html("Nothing to replace.<br>Esc: hide the find/replace box<br>Tab: focus on find field");
+            dn.el_find_replace_info.innerHTML = "Nothing to replace.<br>Esc: hide the find/replace box<br>Tab: focus on find field";
     });
     dn.el_replace_input.addEventListener("keydown",function(e){ //we want keydown here so that we can get repeated firing whith keydown (i think on most browsers)
         if(e.which == WHICH.ENTER){
@@ -553,11 +582,13 @@ dn.create_content_find_replace = function(){
             else
                 dn.editor.findNext();
             dn.do_find(dn.finding_str); 
-            if(dn.find_result_markers.length)
-                dn.el_findreplace_info.html ("Replaced " + n + " occurence" + (n>1? "s" : "") + ". <br>" +  dn.find_result_markers.length + " occurances remain<br>" +
-                 "Enter: replace current selection<br>Ctrl+Enter: replace all<br>Esc: hide the find/replace box<br>Tab: focus on find field");
-            else
-                dn.el_findreplace_info.html("Replaced " + (n>1 ? "all " + n + " occurences" : "the 1 occurance") +". <br> Nothing further to replace.<br>Esc: hide the find/replace box<br>Tab: focus on find field");
+            if(dn.find_result_markers.length){
+                dn.el_find_replace_info.innerHTML = "Replaced " + n + " occurence" + (n>1? "s" : "") + ". <br>" +  dn.find_result_markers.length + " occurances remain<br>" +
+                 "Enter: replace current selection<br>Ctrl+Enter: replace all<br>Esc: hide the find/replace box<br>Tab: focus on find field";
+            } else {
+                dn.el_find_replace_info.innerHTML = "Replaced " + (n>1 ? "all " + n + " occurences" : "the 1 occurance") +
+                ". <br> Nothing further to replace.<br>Esc: hide the find/replace box<br>Tab: focus on find field";
+            }
         }
         if(e.which == WHICH.ESC){
             dn.blur_find_and_focus_editor(); 
@@ -571,10 +602,10 @@ dn.create_content_find_replace = function(){
 }
 
 dn.show_find = function(){
+    dn.show_widget_content(dn.el_content_find);
     dn.showing_replace = false;
     dn.el_replace_form.style.display = 'none';
     var sel = dn.editor.session.getTextRange(dn.editor.getSelectionRange());
-    dn.el_content_find_replace.style.display = '';
     if(sel)
         dn.el_find_input.value = sel;
     dn.el_find_input.focus();
@@ -588,7 +619,7 @@ dn.show_replace = function(){
     dn.showing_replace = true;
     dn.el_replace_form.style.display = '';
     var sel = dn.editor.session.getTextRange(dn.editor.getSelectionRange());
-    dn.el_content_find_replace.style.display = '';
+    dn.el_content_find.style.display = '';
     if(sel)
         dn.el_find_input.value = sel;
     dn.el_find_input.focus()
@@ -638,6 +669,26 @@ dn.show_go_to = function(){
 // Widget stuff
 // ############################
 
+dn.show_widget_content = function(el){
+    // el can be undefined/null to hide everything
+
+    for(var ii=0; ii < dn.el_widget_content.children.length; ii++)if(dn.el_widget_content.children[ii] !== el){
+        dn.el_widget_content.children[ii].style.display = 'none';
+        var el_icon = dn.menu_icon_from_content_id[dn.el_widget_content.children[ii].id];
+        if(el_icon)
+            el_icon.classList.remove('icon_selected');
+    }
+
+    if(el){
+        el.style.display = '';
+        var el_icon = dn.menu_icon_from_content_id[el.id];
+        if(el_icon)
+            el_icon.classList.add('icon_selected');
+        dn.toggle_widget(true);
+    }else{
+        dn.toggle_widget(false);
+    }
+}
 
 dn.create_content_general_settings = function(){
     dn.el_content_general_settings = document.createElement('div');
@@ -680,7 +731,8 @@ dn.create_content_general_settings = function(){
                 "<div class='widget_menu_item' id='clipboard_history_clear_button' inline=1 clickable=1>clipboard</div>",
                 "<div class='widget_menu_item' id='find_history_clear_button' inline=1 clickable=1>find/replace</div>",
         "</div>"].join('');
-
+    dn.el_content_general_settings.id = 'content_general_settings';
+    dn.el_content_general_settings.style.display = 'none';
     dn.el_widget_content.appendChild(dn.el_content_general_settings);
 
     dn.el_widget_sub_general_box = document.getElementById('sub_general_box')
@@ -706,11 +758,15 @@ dn.create_content_general_settings = function(){
     dn.create_wordwrap_tool();
     dn.create_gutterhistory_tool();
     dn.create_clipboard_tool();
+
+    dn.el_menu_general_settings.addEventListener('click', function(){
+        dn.show_widget_content(dn.el_content_general_settings);
+    })
 }
 
-dn.create_content_file_props = function(){
-    dn.el_content_file_props = document.createElement('div');
-    dn.el_content_file_props.innerHTML = [
+dn.create_content_file = function(){
+    dn.el_content_file = document.createElement('div');
+    dn.el_content_file.innerHTML = [
         "<div class='widget_menu_item details_file_title' clickable=1>" ,
             "<div class='details_file_title_text tooltip' data-info='title'></div>" ,
             "<input type='text' placeholder='title' class='details_file_title_input' style='display:none;'/>" ,
@@ -746,12 +802,14 @@ dn.create_content_file_props = function(){
             "</div>", 
             "<div class='file_info' id='file_tab_info'></div>",
         "</div>"].join("");
-    dn.el_widget_content.appendChild(dn.el_content_file_props);
+    dn.el_content_file.id = 'content_file';
+    dn.el_content_file.style.display = 'none';
+    dn.el_widget_content.appendChild(dn.el_content_file);
 
-    dn.el_details_title_input  = dn.el_content_file_props.getElementsByClassName('details_file_title_input')[0];
-    dn.el_details_title_text = dn.el_content_file_props.getElementsByClassName('details_file_title_text')[0];
-    dn.el_details_description_input  = dn.el_content_file_props.getElementsByClassName('details_file_description_input')[0];
-    dn.el_details_description_text = dn.el_content_file_props.getElementsByClassName('details_file_description_text')[0];
+    dn.el_details_title_input  = dn.el_content_file.getElementsByClassName('details_file_title_input')[0];
+    dn.el_details_title_text = dn.el_content_file.getElementsByClassName('details_file_title_text')[0];
+    dn.el_details_description_input  = dn.el_content_file.getElementsByClassName('details_file_description_input')[0];
+    dn.el_details_description_text = dn.el_content_file.getElementsByClassName('details_file_description_text')[0];
     dn.syntax_drop_down = dn.create_syntax_menu()
     
     // TODO: fix inconsitency of Ids versus classes
@@ -769,41 +827,37 @@ dn.create_content_file_props = function(){
     dn.el_file_tab_soft_text = document.getElementById('file_tab_soft_text');
     dn.el_file_tab_info = document.getElementById('file_tab_info');
 
-    dn.create_filedetails_tool();  // this could really be appended directly to this function.
+    dn.create_file_details_tool();  // this could really be appended directly to this function.
+
+    dn.el_menu_file.addEventListener('click', function(){
+        dn.show_widget_content(dn.el_content_file);
+    })
 }
 
-dn.create_menu_wheel = function(){
+dn.create_menu = function(){
     dn.el_widget_toolbar = document.getElementById('widget_toolbar');
     dn.el_widget_toolbar.innerHTML =  [
-            "<div class='widget_menu_wrapper' id='menu_print'></div>",
-            "<div class='widget_menu_wrapper' id='menu_sharing'></div>",
-            "<div class='widget_menu_wrapper' id='menu_save'></div>" ,
-            "<div class='widget_menu_wrapper' id='menu_history'></div>" ,
-            "<div class='widget_menu_wrapper' id='menu_file_props'></div>" ,
-            "<div class='widget_menu_wrapper' id='menu_new'></div>",
+            "<div class='widget_menu_wrapper' id='menu_print' style='display:none;'></div>",
+            "<div class='widget_menu_wrapper' id='menu_sharing' style='display:none;'></div>",
+            "<div class='widget_menu_wrapper' id='menu_save' style='display:none;'></div>" ,
+            "<div class='widget_menu_wrapper' id='menu_history' style='display:none;'></div>" ,
+            "<div class='widget_menu_wrapper' id='menu_file'></div>" ,
+            "<div class='widget_menu_wrapper' id='menu_find'></div>",  
+            "<div class='widget_menu_wrapper' id='menu_new'  style='display:none;'></div>",
             "<div class='widget_menu_wrapper' id='menu_open'></div>",    
-            "<div class='widget_menu_wrapper' id='menu_find_replace'></div>",   
-            "<div class='widget_menu_wrapper' id='menu_goto'></div>",    
             "<div class='widget_menu_wrapper' id='menu_general_settings'></div>" ,
-            "<div class='widget_menu_wrapper' id='menu_shortcuts'></div>",
-            "<div class='widget_menu_wrapper' id='menu_drive'></div>",    
-            "<div class='widget_menu_wrapper' id='menu_about'></div>"].join('');
+            "<div class='widget_menu_wrapper' id='menu_shortcuts' style='display:none;'></div>",
+            "<div class='widget_menu_wrapper' id='menu_help'></div>"].join('');
 
-    var mouse_enter = function(){
-        var id = this.id.substr(5);
-    };
 
-    var mouse_leave = function(){
-    };
-
+    dn.menu_icon_from_content_id = {}
     var els = dn.el_widget_toolbar.getElementsByClassName('widget_menu_wrapper');
     for(var ii=0; ii<els.length; ii++){
         els[ii].addEventListener("click",function(){dn.reclaim_focus();});
         els[ii].innerHTML = "<div class='widget_menu_caption'>" + dn.menu_id_to_caption[els[ii].id] + "</div>" +
                             "<div class='widget_menu_icon' id='icon_" + els[ii].id + "'></div>";
         var el_icon = els[ii].getElementsByClassName('widget_menu_icon')[0];
-        el_icon.addEventListener('mouseenter', mouse_enter);
-        el_icon.addEventListener('mouseleave', mouse_leave);
+        dn.menu_icon_from_content_id['content_' + els[ii].id.substr(5)] = el_icon;
     }
     
     dn.el_menu_save = document.getElementById('menu_save');
@@ -816,38 +870,49 @@ dn.create_menu_wheel = function(){
     dn.el_menu_status = document.getElementById('menu_status');
     dn.el_menu_drive = document.getElementById('menu_drive');
 
+
+    dn.el_menu_find = document.getElementById('menu_find');
+    dn.el_menu_help = document.getElementById('menu_help');
+    dn.el_menu_file = document.getElementById('menu_file');
+    dn.el_menu_general_settings = document.getElementById('menu_general_settings');
 }
 
-dn.widget_handle_mouse_down = function(e){
-    dn.the_widget_dragging = {
-            off_left: -e.clientX ,
-            off_top: -e.clientY};
-    document.body.setAttribute('dragging','true');
+dn.widget_mouse_down = function(e){
+    dn.widget_mouse_down_info = {
+            off_left: -e.clientX,
+            off_top: -e.clientY,
+            start_time: Date.now(),
+            is_dragging: e.button !== 0};
     document.addEventListener('mousemove', dn.document_mouse_move_widget);
     document.addEventListener('mouseup', dn.document_mouse_up_widget);
-    console.dir(dn.the_widget_dragging);
 }
 
 dn.document_mouse_move_widget = function(e){
-   var x = e.clientX+dn.the_widget_dragging.off_left;
-   var y = e.clientY+dn.the_widget_dragging.off_top;
-   translate(dn.el_the_widget, x, y);
-   e.stopPropagation();
+    var x = e.clientX+dn.widget_mouse_down_info.off_left;
+    var y = e.clientY+dn.widget_mouse_down_info.off_top;
+    if(!dn.widget_mouse_down_info.is_dragging){
+        dn.widget_mouse_down_info.is_dragging = (Date.now() - dn.widget_mouse_down_info.start_time > dn.drag_delay_ms)
+                                              || (x*x + y*y > dn.drag_shift_px * dn.drag_shift_px);
+    }
+    if(dn.widget_mouse_down_info.is_dragging)
+        translate(dn.el_the_widget, x, y);
+    e.stopPropagation();
+
 };
 
 dn.document_mouse_up_widget = function(e){
-    var pos = dn.el_the_widget.getBoundingClientRect();
-    translate(dn.el_the_widget, 0, 0);
-    document.body.removeAttribute('dragging');
-    document.removeEventListener('mousemove',dn.document_mouse_move_widget);
-    document.removeEventListener('mouseup',dn.document_mouse_up_widget);
+    document.removeEventListener('mousemove', dn.document_mouse_move_widget);
+    document.removeEventListener('mouseup', dn.document_mouse_up_widget);
 
-    if(dn.g_settings){
+    if(dn.widget_mouse_down_info.is_dragging){
+        var pos = dn.el_the_widget.getBoundingClientRect();
+        translate(dn.el_the_widget, 0, 0);
+    
         //work out what widget_anchor should be
         var widget_w = dn.el_the_widget.offsetWidth;
         var widget_h = dn.el_the_widget.offsetHeight;
-        var window_w = window.offsetWidth;
-        var window_h = window.offsetHeight;
+        var window_w = window.innerWidth;
+        var window_h = window.innerHeight;
         var anchor = []
         if(pos.left < window_w - (pos.left + widget_w)){
             anchor[0] = 'l'; //anchor left side by window width percentage
@@ -864,16 +929,23 @@ dn.document_mouse_up_widget = function(e){
             anchor[3] = Math.max(0,(window_h - (pos.top + widget_h))/window_h * 100);
         }
 
-        dn.g_settings.set("widget_anchor",anchor); 
+        if(dn.g_settings)
+            dn.g_settings.set("widget_anchor",anchor); 
+
+    }else{
+        dn.toggle_widget(); // TODO: toggle open/closed properly
     }
+    dn.widget_mouse_down_info = undefined;
 };
 
 dn.widget_apply_anchor = function(anchor){
     anchor = $.isArray(anchor) ? anchor : dn.g_settings.get('widget_anchor');
     var widget_w = dn.el_the_widget.offsetWidth;
     var widget_h = dn.el_the_widget.offsetHeight;
-    var window_w = window.offsetWidth;
-    var window_h = window.offsetHeight;
+    var window_w = window.innerWidth;
+    var window_h = window.innerHeight;
+
+    // TODO: should test whether toolbar tooltips are too close to the edge, in which case you can flip them.
 
     if(anchor[0] == 'l'){
         // horizontal position is anchored to a fixed percentage of window width on left of widget
@@ -884,6 +956,17 @@ dn.widget_apply_anchor = function(anchor){
             dn.el_the_widget.style.left = anchor[1] + '%';
             dn.el_the_widget.style.right = ''; //use the anchor exactly
         }
+
+        // set toolbar position
+        dn.el_widget_toolbar.classList.add('flipped');
+        dn.el_widget_content.classList.add('flipped');
+        var els = document.getElementsByClassName('widget_menu_icon');
+        for(var ii=0; ii<els.length; ii++)
+            els[ii].classList.add('flipped');
+        els = document.getElementsByClassName('widget_menu_caption');
+        for(var ii=0; ii<els.length; ii++)
+            els[ii].classList.add('flipped');
+
     }else{
         // horizontal position is anchored to a fixed percentage of window width on right of widget
         if( window_w * anchor[1]/100 + widget_w > window_w){
@@ -893,6 +976,16 @@ dn.widget_apply_anchor = function(anchor){
             dn.el_the_widget.style.left = 'inherit';
             dn.el_the_widget.style.right = anchor[1] + '%'; //use the anchor exactly
         }
+
+        // set toolbar position
+        dn.el_widget_toolbar.classList.remove('flipped');
+        dn.el_widget_content.classList.remove('flipped');
+        var els = document.getElementsByClassName('widget_menu_icon');
+        for(var ii=0; ii<els.length; ii++)
+            els[ii].classList.remove('flipped');
+        els = document.getElementsByClassName('widget_menu_caption');
+        for(var ii=0; ii<els.length; ii++)
+            els[ii].classList.remove('flipped');
     }
 
     if(anchor[2] == 't'){
@@ -920,31 +1013,25 @@ dn.widget_apply_anchor = function(anchor){
 }
 
 dn.toggle_widget = function(state){
+    // provide argument "true" to open widget, "false" to close, and no arg to toggle.
+
     if(dn.ignore_escape){
         dn.ignore_escape = false;
         return;
     }
-    var els = [
-        dn.el_widget_content,
-        dn.el_widget_shortcuts,
-        dn.el_widget_syntax,
-        dn.el_widget_clipboard,
-        dn.el_opener_chooser,
-        dn.el_widget_goto,
-        dn.el_content_find_replace,
-        dn.el_widget_file_history];
-    var was_showing = [];
-    for(var i=0;i<els.length;i++) if(els[i] && els[i].style.display !== 'none'){
-            was_showing.push(els[i]);
-            els[i].style.display = state ? '' : 'none'; //if state is true then leav $elshowing, othewise hide it
-    }
-
-    if(was_showing.length === 0 && !((typeof state === "number" || typeof state === "boolean") && !state)) 
-        dn.el_widget_content.style.display = '';
-        
     if(dn.is_showing_history)
         dn.close_history();
-    
+
+    if(state === undefined)
+        state = dn.el_widget_toolbar.style.display === 'none';
+
+    if(state){
+        dn.el_widget_toolbar.style.display = '';
+        dn.el_widget_content.style.display = '';
+    }else{
+        dn.el_widget_toolbar.style.display = 'none';
+        dn.el_widget_content.style.display = 'none';
+    }
     dn.reclaim_focus();
     return false;
 }
@@ -981,7 +1068,9 @@ dn.show_error = function(message){
     console.log(message); //it's just useful to do this too
     text_multi(dn.el_widget_error_text, message,true);
     dn.el_widget_error.style.display = '';
-    dn.el_the_widget.cssAnimation('shake',function(){dn.el_widget_error.style.display = 'none';},dn.error_delay_ms);
+    css_animation(dn.el_the_widget, 'shake', function(){
+        dn.el_widget_error.style.display = 'none';
+    }, dn.error_delay_ms);
 };
 
 dn.set_drivelinkto_folder = function(){
@@ -1024,11 +1113,10 @@ dn.get_settingsfrom_cloud = function() {
             dn.settings_changed({property:s, new_value:dn.g_settings.get(s)});// the gapi doesn't automatically trigger this on load
     
     //Check lastDNVersionUsed at this point - by default it's blank, but could also have an out-of-date value
-    if(dn.g_settings.get('lastDNVersionUsed') == "2014a")
-        dn.show2014buser_info();
-    else if(dn.g_settings.get('lastDNVersionUsed') != dn.version_str)
-        dn.show_firsttimeuser_info();
-    dn.g_settings.set('lastDNVersionUsed',dn.version_str);
+    if(dn.g_settings.get('lastDNVersionUsed') != dn.version_str){
+        dn.show_first_time_user_info(dn.g_settings.get('lastDNVersionUsed'));
+        dn.g_settings.set('lastDNVersionUsed', dn.version_str);
+    }
   },
   null,
   function(resp){
@@ -1076,10 +1164,8 @@ dn.settings_changed = function(e){
     try{
         switch(e.property){
             case "widget_anchor":
-                if(!dn.el_the_widget.getAttribute('dragging')){
-                    dn.widget_apply_anchor(e.new_value);
-                }
-                break;
+                dn.widget_apply_anchor(e.new_value);
+                    break;
             case "fontSize":
                 var scrollLine = dn.get_scroll_line();
                 dn.editor.setFontSize(e.new_value + 'em')    
@@ -1214,7 +1300,8 @@ dn.create_content_shortcuts = function(){
             html.join(''),
             "</div>"].join('');
     dn.el_content_shortcuts.style.display = 'none';
-    dn.el_widget_content.appendChild(dn.el_content_shortcuts);    
+    dn.el_content_shortcuts.id = 'content_shortcuts';
+    dn.el_widget_content.appendChild(dn.el_content_shortcuts);
 };
 
 dn.make_keyboard_shortcuts = function(){
@@ -1629,7 +1716,7 @@ dn.read_only_bail = function(e){
         dn.reclaim_focus();
     }
 }
-dn.create_filedetails_tool = function(){
+dn.create_file_details_tool = function(){
     var els = [dn.el_details_title_text,
                dn.el_details_description_text,
                dn.el_file_newline_detect,
@@ -1857,7 +1944,6 @@ dn.start_revisions_worker = function(){
     dn.file_history.$revisions_display.appendTo($('body'));
     $(window).on("resize",dn.revisions_window_resize);
     dn.el_widget_file_history.style.display = '';
-    dn.el_widget_content.style.display = 'none';
     dn.file_history.$view.empty();
     $('#the_editor').style.display = 'none';
     return false;
@@ -2709,12 +2795,11 @@ dn.dropped_file_read = function(e){
 
 dn.document_ready = function(e){
     dn.el_the_widget = document.getElementById('the_widget');
-    dn.el_the_widget.addEventListener('mousedown', dn.widget_handle_mouse_down);
+    dn.el_the_widget.addEventListener('mousedown', dn.widget_mouse_down);
 
     translate(dn.el_the_widget, 0, 0);
     dn.el_the_widget.style.display = '';
-dn.el_widget_text = document.getElementById('widget_text');
-    dn.el_widget_text.addEventListener('click', dn.toggle_widget);
+    dn.el_widget_text = document.getElementById('widget_text');
 
     dn.el_widget_error_text = document.getElementById('widget_error_text');
     dn.el_widget_error = document.getElementById('widget_error');
@@ -2739,17 +2824,18 @@ dn.el_widget_text = document.getElementById('widget_text');
     dn.editor.setAnimatedScroll(true);
     
     
-    dn.create_menu_wheel();
-    dn.create_content_file_props();
+    dn.create_menu();
+    dn.create_content_file();
     dn.create_content_general_settings();
     dn.create_content_shortcuts();
-    dn.create_content_popup();
+    dn.create_content_permissions();
+    dn.create_content_help();
 
     dn.create_new_tool();
     dn.create_open_tool();
     
     dn.create_content_goto_line();
-    dn.create_content_find_replace();
+    dn.create_content_find();
     
     dn.make_keyboard_shortcuts();
     dn.load_default_settings();
@@ -2786,8 +2872,6 @@ dn.el_widget_text = document.getElementById('widget_text');
 dn.api_loaded = function(APIName){
     if(APIName == "drive"){
         dn.apis.drive_is_loaded = true;
-        if(dn.the_file.is_brand_new)
-            dn.el_widget_content.style.display = '';
         if(dn.the_file.file_id){ 
             console.log("gapi.client.drive was not loaded in time for document-ready. But did eventually arive.")
             dn.load_file();

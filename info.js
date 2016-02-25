@@ -7,15 +7,15 @@ dn.menu_id_to_caption = {
 'menu_sharing': 'sharing',
 'menu_save': 'save',
 'menu_history': 'history',
-'menu_file_props': 'properties',
+'menu_file': 'current file',
 'menu_new': 'new',
-'menu_open': 'open',
-'menu_find_replace': 'find',
+'menu_open': 'new/open',
+'menu_find': 'find/replace',
 'menu_goto': 'goto line',
-'menu_general_settings': 'settings',
+'menu_general_settings': 'general settings',
 'menu_shortcuts': 'shortcuts',
 'menu_drive': 'drive',
-'menu_about': 'about'};
+'menu_help': 'about/help'};
 
 
 dn.shortcuts_list = [
