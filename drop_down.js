@@ -31,7 +31,7 @@ var DropDown = function(val_array){
     this.el_collapsed.addEventListener('mousedown',function(){
         if(!dd.trigger("click"))
             return;
-        dd.el_collapsed.setAttribute("selected",true);
+        dd.el.parentNode.classList.add("selected");
         dd.el_list.style.display = '';
         this.open = true;
         setTimeout(function(){
@@ -92,17 +92,17 @@ DropDown.prototype.SetInd = function(ind,no_trigger){
     ind = parseInt(ind)
     if(ind === this.ind)
         return;
-    this.el_list.children[this.ind].removeAttribute("selected");
+    this.el_list.children[this.ind].classList.remove("selected");
     this.el_collapsed.textContent = this.val_array[ind];
     this.ind = ind;
-    this.el_list.children[ind].setAttribute("selected",true);
+    this.el_list.children[ind].classList.add("selected");
     if(!no_trigger)
         this.trigger("change",{ind:ind,str:this.val_array[ind],isOpen: this.open});
 }
 
 DropDown.prototype.SetSelected = function(v){
     if(v)
-        this.el_collapsed.setAttribute("selected",true);
+        this.el.parentNode.classList.add("selected");
     else
-        this.el_collapsed.removeAttribute("selected");
+        this.el.parentNode.classList.remove("selected");
 }
