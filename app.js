@@ -1025,19 +1025,19 @@ dn.show_status = function(){
     
     var f = dn.the_file;
     var s = '';
-    if(f.isReadingFileObject)
+    if(f.is_reading_file_object)
         s = "Reading file from disk:\n" + f.title;
-    else if(f.isLoadingMetaData)
+    else if(f.is_loading_meta_data)
         s = "Loading info for file:\n" + f.fileId;
-    else if(f.isLoadingContent)
+    else if(f.is_loading_content)
         s = "Downloading file:\n" + f.title
-    else if(f.contentIsLoaded && f.is_pristine && !f.is_saving)
-        s = "Displaying " + (f.isShared ? "shared " : "") + (f.isReadOnly ? "read-only " : "") + "file:\n" + f.title;
-    else if((f.contentIsLoaded || f.isBrandNew) && !f.is_pristine && !f.is_saving)
-        s = "Unsaved " + (f.isBrandNew ? "new " : "changes for ") + (f.isShared ? "shared " : "") + (f.isReadOnly ? "read-only " : "") + "file:\n" + f.title;
-    else if((f.contentIsLoaded || f.isBrandNew) && f.is_pristine && f.is_saving)
-        s = "Saving " + (f.isShared ? "shared " : "") + (f.isReadOnly ? "read-only " : "") + "file:\n" + f.title + (!f.isBrandNew && (f.data_to_save.title || f.data_to_save.description) ? "\n(updating file details)" : "");
-    else if(f.isBrandNew && f.is_pristine)
+    else if(f.content_is_loaded && f.is_pristine && !f.is_saving)
+        s = "Displaying " + (f.is_shared ? "shared " : "") + (f.is_read_only ? "read-only " : "") + "file:\n" + f.title;
+    else if((f.content_is_loaded || f.is_brand_new) && !f.is_pristine && !f.is_saving)
+        s = "Unsaved " + (f.is_brand_new ? "new " : "changes for ") + (f.isShared ? "shared " : "") + (f.isReadOnly ? "read-only " : "") + "file:\n" + f.title;
+    else if((f.content_is_loaded || f.is_brand_new) && f.is_pristine && f.is_saving)
+        s = "Saving " + (f.is_shared ? "shared " : "") + (f.is_read_only ? "read-only " : "") + "file:\n" + f.title + (!f.is_brand_new && (f.data_to_save.title || f.data_to_save.description) ? "\n(updating file details)" : "");
+    else if(f.is_brand_new && f.is_pristine)
         s = "ex nihilo omnia.";
     else
         s = f.title ? "Failed to load file:\n" + f.title : "ex nihilo omnia";
@@ -2819,13 +2819,13 @@ dn.document_ready = function(e){
     window.onbeforeunload = dn.query_unload;
 
     //work out what caused the page to load
-    var url = $.url(); 
-    if(url.param('state')){
+    var params = window_location_to_params_object(); 
+    if(params['state']){
         var state = {};
         try{
-            state = JSON.parse(url.param('state'));
+            state = JSON.parse(params['state']);
         }catch(e){
-            dn.show_error("Unable to parse state:\n" + url.param('state'));
+            dn.show_error("Unable to parse state:\n" + params['state']);
         }
         if(state.action && state.action == "open" &&state.ids && state.ids.length > 0){
             dn.the_file.file_id = state.ids[0];
@@ -2883,7 +2883,8 @@ document.addEventListener('drop', dn.document_drop_file);
 
 dn.urluser_id = (function(){
     try{
-        return JSON.parse($.url().param('state'))['userId']
+        params = window_location_to_params_object();
+        return JSON.parse(params['userId']);
     }catch(e){return undefined}
 })();
 
