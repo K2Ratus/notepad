@@ -3,6 +3,79 @@
 <head>
     <meta charset="utf-8">
     <link rel="stylesheet" href="drivenotepad.css">
+    <script type="text/javascript">
+    "use strict";
+    // Auth stuff gets top priority as it can take a while....
+    var window_location_to_params_object = function(){
+        // http://stackoverflow.com/a/2880929/2399799
+        var match;
+        var pl = /\+/g;  // Regex for replacing addition symbol with a space
+        var search = /([^&=]+)=?([^&]*)/g;
+        var decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); };
+        var query  = window.location.search.substring(1);
+        var url_params = {};
+        while((match = search.exec(query)) !== null)
+           url_params[decode(match[1])] = decode(match[2]);
+        return url_params;
+    }
+    var dn = dn || {};
+    dn.client_id = '591525900269-94ok9krafau8qa24666btvccmsfnq5fp.apps.googleusercontent.com';
+    dn.scopes = [
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/userinfo.profile',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/drive.appdata'
+    ];
+    dn.url_user_id = (function(){
+        try{
+            params = window_location_to_params_object();
+            return JSON.parse(params['userId']);
+        }catch(e){return undefined}
+    })();
+    dn.auth_map = function(immeditate){
+        var m = {
+        'client_id': dn.client_id, 
+        'scope': dn.scopes.join(' '),
+        'immediate': immeditate};
+        if (dn.url_user_id !== undefined){
+            m['login_hint'] = dn.url_user_id;
+            m['authuser'] = -1
+        }
+        return m;
+    }
+
+    // this is a promise-like object which can be resolved by calling
+    // .resolve at any point after construction, with the 'then' callback
+    // called as soon as both resolution and callback registration have
+    // both occured.
+    dn.pr_auth = (function(){
+        var success_callback = null;
+        var has_resolved = false;
+        var value;
+        return {
+        then: function(succ){
+                if(has_resolved)
+                    succ(value);
+                else
+                    success_callback = succ;
+              },
+        resolve: function(val){
+                if(success_callback){
+                    success_callback(val);
+                }else{
+                    has_resolved = true;
+                    value = val;
+                }
+              }
+        }
+    })();
+
+    function gapi_loaded() {
+        Promise.resolve(gapi.auth.authorize(dn.auth_map(true)))
+            .then(dn.pr_auth.resolve);
+    } 
+    </script>
+    <script type="text/javascript" src="https://apis.google.com/js/client.js?onload=gapi_loaded"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/keymaster/1.6.1/keymaster.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.3/ace.js"></script>
@@ -12,7 +85,6 @@
     <script type="text/javascript" src="drop_down.js"></script>    
     <script type="text/javascript" src="info.js"></script>
     <script type="text/javascript" src="app.js"></script>
-    <script type="text/javascript" src="https://apis.google.com/js/client.js?onload=gapi_loaded"></script>
     <title>Drive Notepad</title>
     <link rel="shortcut icon" type="image/x-icon" href="favicon.ico?">
 </head>

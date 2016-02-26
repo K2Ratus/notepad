@@ -32,19 +32,6 @@ var text_multi = function(el, text, truncate_long_words){
     el.innerHTML = el.innerHTML.replace(/\n/g,'<br/>').replace(/\t/g,'&nbsp;&nbsp;&nbsp; ');
 }
 
-var window_location_to_params_object = function(){
-    // http://stackoverflow.com/a/2880929/2399799
-    var match;
-    var pl = /\+/g;  // Regex for replacing addition symbol with a space
-    var search = /([^&=]+)=?([^&]*)/g;
-    var decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); };
-    var query  = window.location.search.substring(1);
-    var url_params = {};
-    while((match = search.exec(query)) !== null)
-       url_params[decode(match[1])] = decode(match[2]);
-    return url_params;
-}
-
 var css_animation = (function(){
     var timers = []; // we store timers and matching els so we can cancel if needed
     var els = [];

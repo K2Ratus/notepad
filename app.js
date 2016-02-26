@@ -141,38 +141,34 @@ dn.change_line_classes_rm =(function(rootStr,trueN,factor){
 
 dn.authentication_done = function(auth_result){
     dn.status.popup_active = 0;
-    if (auth_result && !auth_result.error) {
-        dn.status.authentication = 1;
-        dn.show_status();
+    if (!auth_result)
+        return dn.authentication_failed(null);
+    if(auth_result.error)
+        return dn.authentication_failed(auth_result.error);
 
-        if(!dn.user_info)
-            dn.get_user_info();
+    dn.status.authentication = 1;
+    dn.show_status();
+    if(!dn.user_info)
+        dn.get_user_info();
+    if(dn.the_file.file_id)
+        dn.load_file();
+    dn.get_properties_from_cloud();
 
-        if(dn.the_file.file_id)
-            dn.load_file();
-        dn.get_properties_from_cloud();
-
-        // TODO: make these redundant
-        // Access token has been successfully retrieved, requests can be sent to the API
-        gapi.load('drive-realtime', function(){dn.api_loaded('drive-realtime')});
-        gapi.load('picker', function(){dn.api_loaded('picker');});
-        gapi.load('drive-share', function(){dn.api_loaded('sharer');});
-    } else {
-        dn.status.authentication = -1;
-        dn.show_status();
-        dn.show_content_permissions(); // No access token could be retrieved, force the authorization flow.
-    } 
+    // TODO: make these redundant
+    // Access token has been successfully retrieved, requests can be sent to the API
+    gapi.load('drive-realtime', function(){dn.api_loaded('drive-realtime')});
+    gapi.load('picker', function(){dn.api_loaded('picker');});
+    gapi.load('drive-share', function(){dn.api_loaded('sharer');});
 }
 
 dn.authentication_failed = function(err){
     dn.status.authorization = -1;
     dn.status.popup_active = 0;
     dn.show_status();
-    if(err === null){
-        dn.show_content_permissions(); // No access token could be retrieved, force the authorization flow.
-    }else{
+    if(err)
         dn.show_error(err.result.error.message);
-    }
+    else
+        dn.show_content_permissions(); // No access token could be retrieved, force the authorization flow.
 }
 
 dn.reauth = function(callback){ 
@@ -2877,6 +2873,9 @@ dn.document_ready = function(e){
         dn.create_file();
     }
 
+    // authentication Promise defined inline at top of html head
+    dn.pr_auth.then(dn.authentication_done);
+    dn.show_status(); 
 }
 
 dn.get_user_info = function(){
@@ -2906,24 +2905,7 @@ dn.api_loaded = function(APIName){
     }
 }
 
-dn.url_user_id = (function(){
-    try{
-        params = window_location_to_params_object();
-        return JSON.parse(params['userId']);
-    }catch(e){return undefined}
-})();
 
-dn.auth_map = function(immeditate){
-    var m = {
-    'client_id': dn.client_id, 
-    'scope': dn.scopes.join(' '),
-    'immediate': immeditate};
-    if (dn.url_user_id !== undefined){
-        m['login_hint'] = dn.url_user_id;
-        m['authuser'] = -1
-    }
-    return m
-}
 
 if (document.readyState != 'loading')
     dn.document_ready();
@@ -2935,15 +2917,4 @@ document.addEventListener('dragover', dn.document_drag_over);
 document.addEventListener('drop', dn.document_drop_file);
 
 
-
-
-//Called when google client library is loaded
-function gapi_loaded() {
-    // TODO: promise that document is ready before continuing
-    dn.show_status();    
-    Promise.resolve(
-        gapi.auth.authorize(dn.auth_map(true)))
-        .then(dn.authentication_done,
-              dn.authentication_failed);
-} 
-
+// See https://developers.google.com/apis-explorer 
