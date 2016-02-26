@@ -110,6 +110,8 @@ dn.tooltip_info = { //keys correspond to icon data-info attr, which will be the 
 }
 
 dn.client_id = '591525900269-94ok9krafau8qa24666btvccmsfnq5fp.apps.googleusercontent.com';
+
+// See https://developers.google.com/apis-explorer 
 dn.scopes = [
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/userinfo.profile',

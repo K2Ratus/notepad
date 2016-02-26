@@ -51,9 +51,19 @@ dn.error_delay_ms = 5000;//5 seconds
 dn.find_history_add_delay = 2000; //ms
 dn.clipboard_info_delay = 500; //ms
 dn.clipboard_max_length = 20; //TODO: decide whether a large clipboard slows page loads and whether we can do anything about it.
-dn.is_getting_token = true;
 dn.is_showing_history = false;
 dn.apis = {drive_is_loaded: false};
+
+dn.status = {
+    // 0: get action in progress
+    // -1: failed
+    //  1: success
+    file_body: 0, 
+    file_meta: 0, 
+    authentication: 0,
+    popup_active: 0, // 0 or 1, i.e. true or false
+}
+
 dn.the_file = {
     file_id: null,
     folder_id: null,
@@ -65,11 +75,7 @@ dn.the_file = {
     tab_detected: {val: 'none'},
     is_pristine: true, //true while the document has no unsaved changes (set to true when we request the save not when we get confirmation, but if there is a save error it will be reverted to false).
     mime_type: '',
-    meta_data_is_loaded: false,
-    content_is_loaded: false,
     is_saving: false,
-    is_loading_meta_data: false,
-    is_loading_content: false,
     data_to_save: {body: null, title: null, description: null}, //holds the values until confirmation of success for each
     generation_to_save: {body: 0, title: 0, description: 0},//when saves return they check their this.description etc. against here and clear data_to_save if they match
     is_read_only: false,
@@ -133,39 +139,67 @@ dn.change_line_classes_rm =(function(rootStr,trueN,factor){
 // Auth stuff
 // ############################
 
-dn.reauth = function(callback){ 
-    dn.is_getting_token = false;
-    dn.show_status();
-    
-    gapi.auth.authorize(dn.auth_map(true),
-                            function(){
-                                dn.is_getting_token = false;
-                                dn.show_status();
-                                callback();
-                            });
-}
-dn.handle_auth_result = function(auth_result) { 
+dn.authentication_done = function(auth_result){
+    dn.status.popup_active = 0;
     if (auth_result && !auth_result.error) {
-      dn.is_getting_token = false;
-      // Access token has been successfully retrieved, requests can be sent to the API
-      gapi.client.load('drive', 'v2', function(){dn.api_loaded('drive')});
-      gapi.client.load('oauth2','v2', function(){dn.api_loaded('userinfo')});
-      gapi.load('drive-realtime', function(){dn.api_loaded('drive-realtime')});
-      gapi.load('picker', function(){dn.api_loaded('picker');});
-      gapi.load('drive-share', function(){dn.api_loaded('sharer');});
+        dn.status.authentication = 1;
+        dn.show_status();
+
+        if(!dn.user_info)
+            dn.get_user_info();
+
+        if(dn.the_file.file_id)
+            dn.load_file();
+        dn.get_properties_from_cloud();
+
+        // TODO: make these redundant
+        // Access token has been successfully retrieved, requests can be sent to the API
+        gapi.load('drive-realtime', function(){dn.api_loaded('drive-realtime')});
+        gapi.load('picker', function(){dn.api_loaded('picker');});
+        gapi.load('drive-share', function(){dn.api_loaded('sharer');});
     } else {
-      // No access token could be retrieved, force the authorization flow.
-      dn.show_content_permissions();
+        dn.status.authentication = -1;
+        dn.show_status();
+        dn.show_content_permissions(); // No access token could be retrieved, force the authorization flow.
     } 
 }
 
+dn.authentication_failed = function(err){
+    dn.status.authorization = -1;
+    dn.status.popup_active = 0;
+    dn.show_status();
+    if(err === null){
+        dn.show_content_permissions(); // No access token could be retrieved, force the authorization flow.
+    }else{
+        dn.show_error(err.result.error.message);
+    }
+}
+
+dn.reauth = function(callback){ 
+    // TODO: as promise
+    dn.status.authentication = 0;
+    dn.show_status();
+    gapi.auth.authorize(dn.auth_map(true), function(){
+        dn.status.authentication = 1;
+        dn.show_status();
+        callback();
+    });
+}
+
+
 dn.launch_popup = function(){
-  gapi.auth.authorize(dn.auth_map(false), 
-                    dn.handle_auth_result);
+    dn.status.popup_active = 1;
+    dn.status.authorization = 0;
+    dn.show_status();    
+    Promise.resolve(
+        gapi.auth.authorize(dn.auth_map(false)))
+        .then(dn.authentication_done,
+              dn.authentication_failed);
 }
 
 dn.show_content_permissions = function(){
-    dn.el_widget_text.textContent = "Manual authorization required.";
+    //dn.el_widget_text.textContent = "Manual authorization required.";
+
     dn.show_widget_content(dn.el_content_permissions);
     css_animation(dn.el_the_widget, 'shake', function(){}, dn.error_delay_ms);
 }
@@ -180,12 +214,7 @@ dn.create_content_permissions = function(){
     dn.el_content_permissions.id = 'content_permissions'
     dn.el_widget_content.appendChild(dn.el_content_permissions);
     dn.el_content_permissions.style.display = 'none';
-
-    dn.el_content_permissions.getElementsByClassName('popupbutton')[0].addEventListener('click', function(){
-        dn.show_widget_content(undefined);
-        dn.el_widget_text.textContent = "Authorization in popup...";
-        dn.launch_popup();
-    });
+    dn.el_content_permissions.getElementsByClassName('popupbutton')[0].addEventListener('click', dn.launch_popup);
 
 }
 
@@ -1021,31 +1050,40 @@ dn.toggle_widget = function(state){
 }
 
 dn.show_status = function(){
-    //TODO: show "updating file details" for custom properties
-    
-    var f = dn.the_file;
-    var s = '';
-    if(f.is_reading_file_object)
-        s = "Reading file from disk:\n" + f.title;
-    else if(f.is_loading_meta_data)
-        s = "Loading info for file:\n" + f.fileId;
-    else if(f.is_loading_content)
-        s = "Downloading file:\n" + f.title
-    else if(f.content_is_loaded && f.is_pristine && !f.is_saving)
-        s = "Displaying " + (f.is_shared ? "shared " : "") + (f.is_read_only ? "read-only " : "") + "file:\n" + f.title;
-    else if((f.content_is_loaded || f.is_brand_new) && !f.is_pristine && !f.is_saving)
-        s = "Unsaved " + (f.is_brand_new ? "new " : "changes for ") + (f.isShared ? "shared " : "") + (f.isReadOnly ? "read-only " : "") + "file:\n" + f.title;
-    else if((f.content_is_loaded || f.is_brand_new) && f.is_pristine && f.is_saving)
-        s = "Saving " + (f.is_shared ? "shared " : "") + (f.is_read_only ? "read-only " : "") + "file:\n" + f.title + (!f.is_brand_new && (f.data_to_save.title || f.data_to_save.description) ? "\n(updating file details)" : "");
-    else if(f.is_brand_new && f.is_pristine)
-        s = "ex nihilo omnia.";
-    else
-        s = f.title ? "Failed to load file:\n" + f.title : "ex nihilo omnia";
+    // TODO: new file, drag-drop from disk, pristing/saving, modify props, readonly/sharing info
+    var s = ''
+    if(dn.status.authentication != 1){
+        // auth in progress or failed
+        if(dn.status.authorization == -1)
+            s = "Authorization required...";
+        else if(dn.status.popup_active)
+            s = "Login/authenticate with popup...";
+        else
+            s = "Authenticating...";
+    } else if (dn.the_file.file_id){
+        // a file is/will be loaded...
+        if (dn.status.file_meta === 1 && dn.status.file_body === 1){
+            s = dn.the_file.title;
+            if(!dn.the_file.is_pristine)
+                s += "\n(unsaved changes)";
+        }else if(dn.status.file_meta === 0 && dn.status.file_body === 0)
+            s = "Loading file:\n" + dn.the_file.file_id;
+        else if(dn.status.file_meta === 1 && dn.status.file_body === 0)
+            s = "Loading file:\n" + dn.the_file.title;
+        else if(dn.status.file_meta === 0 && dn.status.file_body === 1)
+            s = "Loading metadata for file:\n" + dn.the_file.file_id;
+        else if(dn.status.file_meta === 1) // and -1
+            s = "Failed to download file:\n" + dn.the_file.title;
+        else if(dn.status.file_body === 1) // and -1
+            s = "Failed to download metadata for file:\n" + dn.the_file.file_id;
+        else // both -1
+            s = "Failed to load file:\n" + dn.the_file.file_id;
+    } else {
+        // no file to load
+        s = "ex nihilo omnia...";
+    }
 
-     if(dn.is_getting_token || !(gapi && gapi.client && gapi.client.drive))
-        s += "\nAuthenticating...";
-
-    text_multi(dn.el_widget_text, s,true);
+    text_multi(dn.el_widget_text, s, true);
 }
 
 dn.show_error = function(message){
@@ -1070,7 +1108,7 @@ dn.set_drive_link_to_folder = function(){
 // Settings stuff
 // ############################
 
-dn.get_settingsfrom_cloud = function() {
+dn.get_settings_from_cloud = function() {
   gapi.drive.realtime.loadAppDataDocument(
   function(doc) {
     var oldTempG_settings = dn.g_settings;
@@ -1624,7 +1662,7 @@ dn.apply_syntax_choice = function(){
     }
 }
 
-dn.get_currentsyntax_name = function(){
+dn.get_current_syntax_name = function(){
     try{
         var modesArray = require("ace/ext/modelist").modesByName;
         return modesArray[dn.editor.session.getMode().$id.split('/').pop()].caption
@@ -2381,7 +2419,6 @@ dn.create_file = function(){
     dn.show_description();
     dn.apply_newline_choice();
     dn.apply_tab_choice();
-    dn.the_file.content_is_loaded = true;
     dn.toggle_widget(false);
     dn.g_settings.set("widgetSub","file");  
     if(dn.g_settings.keep)
@@ -2437,7 +2474,6 @@ dn.saved_new_file = function(resp){
             window.location.href.match(/^https?:\/\/[\w-.]*\/\w*/)[0] +
                 "?state={\"action\":\"open\",\"ids\":[\"" + dn.the_file.file_id + "\"]}");
     dn.set_drive_link_to_folder();
-    dn.the_file.meta_data_is_loaded = true;
     dn.save_all_file_properties();
 }
 
@@ -2460,80 +2496,78 @@ dn.get_scroll_line = function(){
 // Load stuff
 // ############################
 
+
 dn.load_file = function(flag){
     //we assume that we only ever load one fileid per page load
+    var file_id = dn.the_file.file_id; 
 
-    var fileId = dn.the_file.file_id; 
-    dn.the_file.isLoading_meta_data = true;
     dn.show_status();
-    if(dn.apis.drive_is_loaded){
-        if(flag === "document-ready")
-            console.log("gapi.client.drive was loaded in time for document-ready.")
-        gapi.client.drive.files.get({'fileId': fileId}).execute(dn.load_file_gotmeta_data);
-    }
+
+    /*TODO dn.reauth */
+    
+    dn.status.file_meta = 0;
+    var promise_get_meta = Promise.resolve(
+        gapi.client.request({
+            'path': '/drive/v3/files/' + file_id,
+            'params':{'fields': 'name,mimeType,description,parents,capabilities,fileExtension'}}))
+        .then(dn.load_file_got_meta_data, function(err){
+            dn.show_error(err.result.error.message);
+            dn.status.file_meta = -1;
+            dn.show_status();
+        })
+
+    dn.status.file_body = 0;
+    var promise_get_body = Promise.resolve(
+        gapi.client.request({
+            'path': '/drive/v3/files/' + file_id,
+            'params':{'alt': 'media'}
+        }))            
+        .then(dn.load_file_got_file_body, function(err){
+            dn.show_error(err.result.error.message);
+            dn.status.file_body = -1;
+            dn.show_status();
+        });
+
+    
+    dn.pr_the_file = Promise.all([promise_get_meta, promise_get_body])
+    .then(function(){ 
+        //success
+    }, function(){
+        // failure
+        document.title = "Drive Notepad";
+    })
+    
 }
 
-dn.load_file_gotmeta_data = function(resp) {
-    if (!resp.error) {
-      dn.the_file.title = resp.title;
-      dn.the_file.description = resp.description || '';
-      dn.show_description();
-      dn.the_file.ext = resp.fileExtension
-      dn.the_file.is_read_only = !resp.editable;
-      dn.the_file.is_shared = resp.shared;
-      dn.the_file.loaded_mime_type = resp.mimeType;
-      if(resp.parentNodes && resp.parentNodes.length){
-          dn.the_file.folder_id = resp.parentNodes[0].id;
-          dn.set_drive_link_to_folder();
-      }
-      var token = gapi.auth.getToken().access_token;
-      dn.the_file.isLoading_meta_data = false;
-      dn.the_file.meta_data_is_loaded = true;
-      dn.the_file.is_loading_content = true;
-      dn.show_file_title(); //includes a showStatus call
-      if(resp.downloadUrl){
-          $.ajax(resp.downloadUrl, {
-                headers: {Authorization: 'Bearer ' + token},
-                complete:dn.load_file_gotfile_body,
-                dataType: 'text'
-                });    
-      }else{
-        dn.the_file.is_loading_content = false;
-        document.title = "Drive Notepad";
-        dn.show_status();
-        dn.show_error("Download Error: " + "no download link for the file")
-      }
-
-    } else if (resp.error.code == 401) {
-      // Access token might have expired.
-        dn.the_file.isLoading_meta_data = false;
-        dn.reauth(dn.load_file);
-    } else {
-        dn.the_file.isLoading_meta_data = false;
-        document.title = "Drive Notepad";
-        dn.show_status();
-        dn.show_error(resp.error.message); 
+dn.load_file_got_meta_data = function(resp) {
+    if (resp.error)
+        throw Error(resp.error);
+    dn.the_file.title = resp.result.name;
+    dn.the_file.description = resp.result.description || '';
+    dn.show_description();
+    dn.the_file.ext = resp.result.fileExtension
+    dn.the_file.is_read_only = !resp.result.canEdit;
+    //dn.the_file.is_shared = resp.shared; // TODO: 
+    dn.the_file.loaded_mime_type = resp.result.mimeType;
+    if(resp.result.parentNodes && resp.result.parentNodes.length){
+        dn.the_file.folder_id = resp.result.parentNodes[0].id;
+        dn.set_drive_link_to_folder();
     }
+    dn.show_file_title(); //includes a showStatus call
+    dn.status.file_meta = 1;
+    dn.show_status();
 } 
 
-dn.load_file_gotfile_body = function(resp,status){
-    if(status == "success"){
-        dn.the_file.is_loading_content = false;
-        dn.the_file.content_is_loaded = true;
-        dn.show_status();
-                        
-        dn.settingsession_value = true;
-        dn.editor.session.setValue(resp.responseText);
-        dn.settingsession_value = false;
-        dn.apply_newline_choice(resp.responseText);
-        dn.apply_syntax_choice();
-        dn.apply_tab_choice(); 
-    }else{
-        dn.the_file.is_loading_content = false;
-        document.title = "Drive Notepad";
-        dn.show_status();
-        dn.show_error("Download Error: " + resp.statusText)
-    }
+dn.load_file_got_file_body = function(resp){
+    dn.show_status();
+    dn.setting_session_value = true;
+    dn.editor.session.setValue(resp.body);
+    dn.setting_session_value = false;
+    dn.apply_newline_choice(resp.body);
+    dn.apply_syntax_choice();
+    dn.apply_tab_choice(); 
+    dn.status.file_body = 1;
+    dn.show_status();
 }
 
 
@@ -2544,12 +2578,13 @@ dn.load_file_gotfile_body = function(resp,status){
 dn.on_change = function(e){
     //console.dir(e);
 
-    if(!e.data || !e.data.range || dn.settingsession_value)
+    if(!e.start || !e.end || dn.setting_session_value)
         return;
         
     if(dn.the_file.is_pristine){
         dn.the_file.is_pristine = false;
         dn.show_file_title();
+        dn.show_status();
     }
 
     if(!dn.g_settings.get('showGutterHistory'))
@@ -2559,32 +2594,32 @@ dn.on_change = function(e){
     var h = dn.change_line_history;
     var s = dn.editor.getSession(); 
 
-    var startRow = e.data.range.start.row;
-    var endRow = e.data.range.end.row;
+    var start_row = e.start.row;
+    var end_row = e.end.row;
 
-    if(dn.last_change && dn.last_change.startRow == startRow && dn.last_change.endRow == endRow && startRow == endRow
-        && dn.last_change.action.indexOf("Text") != -1 && e.data.action.indexOf("Text") != -1){
+    if(dn.last_change && dn.last_change.start_row == start_row && dn.last_change.end_row == end_row && start_row == end_row
+        && dn.last_change.action.indexOf("Text") != -1 && e.action.indexOf("Text") != -1){
             //if this change and the last change were both on the same single lines with action (insert|remove)Text...
 
-            if(dn.last_change.action == e.data.action){
+            if(dn.last_change.action == e.action){
                 return; //same action as last time
-            }else if(e.data.action == "removeText"){ // new action is removeText, old action was insertText
-                s.removeGutterDecoration(startRow,dn.change_line_classes[nClasses]);
-                s.addGutterDecoration(startRow,dn.change_line_classes_rm[nClasses]);
-                h[startRow] = -nClasses;
+            }else if(e.action == "removeText"){ // new action is removeText, old action was insertText
+                s.removeGutterDecoration(start_row,dn.change_line_classes[nClasses]);
+                s.addGutterDecoration(start_row,dn.change_line_classes_rm[nClasses]);
+                h[start_row] = -nClasses;
                 dn.last_change.action = "removeText";
                 return;
             }else{// new action is isnertText, old action was removeText
-                s.removeGutterDecoration(startRow,dn.change_line_classes_rm[nClasses]);
-                s.addGutterDecoration(startRow,dn.change_line_classes[nClasses]);
-                h[startRow] = nClasses;
+                s.removeGutterDecoration(start_row,dn.change_line_classes_rm[nClasses]);
+                s.addGutterDecoration(start_row,dn.change_line_classes[nClasses]);
+                h[start_row] = nClasses;
                 dn.last_change.action = "insertText";
                 return;
             }
 
     }else{
         //otherwise we have an acutal new change
-        dn.last_change = {startRow: startRow, endRow: endRow, action: e.data.action};
+        dn.last_change = {start_row: start_row, end_row: end_row, action: e.action};
     }
 
     //remove all visible decorations and update the changeLineHistory values (we'll add in the new classes at the end)
@@ -2594,20 +2629,20 @@ dn.on_change = function(e){
                     dn.change_line_classes[h[i]--]);
 
     //Update the changeLineHistory relating to the current changed lines
-    if(e.data.action == "removeLines"){
-        h.splice(startRow, endRow - startRow + 1);        
-        h[startRow] = h[startRow+1] = -nClasses;
-    }else if(e.data.action === "removeText"){
-        h[startRow] = -nClasses;
+    if(e.action == "removeLines"){
+        h.splice(start_row, end_row - start_row + 1);        
+        h[start_row] = h[start_row+1] = -nClasses;
+    }else if(e.action === "removeText"){
+        h[start_row] = -nClasses;
     }else{
         var newLineCount = 0;
-        if(e.data.action == "insertText")
-            newLineCount = (e.data.text.match(/\n/g) || []).length;
-        if(e.data.action == "insertLines")
-            newLineCount = e.data.lines.length;
-        h.splice.apply(h,[startRow,0].concat(Array(newLineCount)));
+        if(e.action == "insertText")
+            newLineCount = (e.text.match(/\n/g) || []).length;
+        if(e.action == "insertLines")
+            newLineCount = e.lines.length;
+        h.splice.apply(h,[start_row,0].concat(Array(newLineCount)));
 
-        for(var i=startRow;i<=endRow;i++)
+        for(var i=start_row;i<=end_row;i++)
             h[i] = nClasses;
 
     }
@@ -2657,13 +2692,15 @@ dn.load_default_properties = function(){
         dn.set_property(k,dn.default_custom_props[k]);
 }
 
-dn.get_propertiesfrom_cloud = function() {    
+dn.get_properties_from_cloud = function() {    
+    // TODO:
+    /*
     gapi.client.drive.properties.list({
     'fileId': dn.the_file.file_id
-    }).execute(dn.got_allfile_properties);
+    }).execute(dn.got_all_file_properties);*/
 }
 
-dn.got_allfile_properties = function(resp){
+dn.got_all_file_properties = function(resp){
     if(resp.items){
         dn.the_file.custom_prop_exists = {};
         for(var i=0;i<resp.items.length;i++){
@@ -2761,7 +2798,7 @@ dn.document_drop_file = function(evt){
 dn.dropped_file_read = function(e){
     dn.the_file.isReading_file_object = false;
     dn.editor.getSession().setValue(e.target.result);
-    // Note we don't encolse the above in a dn.settingsession_value = true block so the change event will fire and set pristine to false and ShowStatus etc.
+    // Note we don't encolse the above in a dn.setting_session_value = true block so the change event will fire and set pristine to false and ShowStatus etc.
 }
 
 // ############################
@@ -2794,7 +2831,7 @@ dn.document_ready = function(e){
     dn.editor.on('focus', dn.blur_find_and_focus_editor)
     dn.editor.focus();
     dn.editor.setTheme(dn.theme);
-    dn.editor.getSession().on("change",dn.on_change);
+    dn.editor.getSession().addEventListener("change", dn.on_change);
     dn.editor.on("paste", dn.on_paste);
     dn.editor.on("copy", dn.on_copy);
     dn.editor.setAnimatedScroll(true);
@@ -2823,13 +2860,12 @@ dn.document_ready = function(e){
     if(params['state']){
         var state = {};
         try{
-            state = JSON.parse(params['state']);
+            state = JSON.parse(params['state']);    
         }catch(e){
-            dn.show_error("Unable to parse state:\n" + params['state']);
+            dn.show_error("Bad URL params:\n" + params['state']);
         }
-        if(state.action && state.action == "open" &&state.ids && state.ids.length > 0){
+        if(state.action && state.action == "open" && state.ids && state.ids.length > 0){
             dn.the_file.file_id = state.ids[0];
-            dn.load_file("document-ready") //will use the specified fileId
         }else if(state.action && state.action == "create"){
             dn.the_file.title = "untitled." + (state.ext ? state.ext : dn.g_settings.get('ext'));
             if(state.folderId)
@@ -2843,26 +2879,24 @@ dn.document_ready = function(e){
 
 }
 
+dn.get_user_info = function(){
+   Promise.resolve(
+        gapi.client.request({
+            'path' : 'userinfo/v2/me?fields=name'
+        })).then(function(a){
+            dn.user_info = a.result;
+            dn.el_user_name.textContent = a.result.name;
+        }, function(err){
+            // TODO: could be auth problem
+            dn.show_error('Failed to get user info');
+            console.dir(err);
+        });
+}
+
 dn.api_loaded = function(APIName){
-    if(APIName == "drive"){
-        dn.apis.drive_is_loaded = true;
-        if(dn.the_file.file_id){ 
-            console.log("gapi.client.drive was not loaded in time for document-ready. But did eventually arive.")
-            dn.load_file();
-            dn.get_propertiesfrom_cloud();
-        }
-        else if(dn.the_file.title)
-            dn.show_status();        
-    }
-    if(APIName == 'userinfo'){
-       gapi.client.oauth2.userinfo.get().execute(function(a){
-       dn.userinfo = a;
-       dn.el_user_name.textContent = a.name; //TODO: escape
-       dn.set_drive_link_to_folder();
-       });
-    }
+    // TODO: make this redundant
     if(APIName == 'drive-realtime'){
-        dn.get_settingsfrom_cloud();
+        dn.get_settings_from_cloud();
     }
     if(APIName == 'picker'){
         console.log("got picker API");
@@ -2870,6 +2904,25 @@ dn.api_loaded = function(APIName){
     if(APIName == 'sharer'){
         dn.el_share_dialog = new gapi.drive.share.ShareClient(dn.client_id);
     }
+}
+
+dn.url_user_id = (function(){
+    try{
+        params = window_location_to_params_object();
+        return JSON.parse(params['userId']);
+    }catch(e){return undefined}
+})();
+
+dn.auth_map = function(immeditate){
+    var m = {
+    'client_id': dn.client_id, 
+    'scope': dn.scopes.join(' '),
+    'immediate': immeditate};
+    if (dn.url_user_id !== undefined){
+        m['login_hint'] = dn.url_user_id;
+        m['authuser'] = -1
+    }
+    return m
 }
 
 if (document.readyState != 'loading')
@@ -2881,27 +2934,16 @@ document.addEventListener('contextmenu', function(e){e.preventDefault();});
 document.addEventListener('dragover', dn.document_drag_over);
 document.addEventListener('drop', dn.document_drop_file);
 
-dn.urluser_id = (function(){
-    try{
-        params = window_location_to_params_object();
-        return JSON.parse(params['userId']);
-    }catch(e){return undefined}
-})();
 
-dn.auth_map = function(immeditate){
-    var m = {'client_id': dn.client_id, 'scope': dn.scopes.join(' '), 'immediate': immeditate}
-    if (dn.urluser_id !== undefined){
-            m['login_hint'] = dn.urluser_id;
-            m['authuser'] = -1
-    }
-    return m
-}
+
 
 //Called when google client library is loaded
-function handleClientLoad() {
-    
-    gapi.auth.authorize(dn.auth_map(true),
-        dn.handle_auth_result);
+function gapi_loaded() {
+    // TODO: promise that document is ready before continuing
+    dn.show_status();    
+    Promise.resolve(
+        gapi.auth.authorize(dn.auth_map(true)))
+        .then(dn.authentication_done,
+              dn.authentication_failed);
 } 
-
 
