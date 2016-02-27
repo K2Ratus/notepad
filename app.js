@@ -60,6 +60,7 @@ dn.status = {
     //  1: success
     file_body: 0, 
     file_meta: 0, 
+    file_sharing: 0, // after launching the sharing dialog this is set to -1
     authentication: 0,
     popup_active: 0, // 0 or 1, i.e. true or false
 }
@@ -208,6 +209,7 @@ dn.create_content_permissions = function(){
         "This step will not normally be required when you use the app.<br><br>If you do not see a popup window when you click the button you may ",
         "need to disable your popup blocker and reload the page."].join('');
     dn.el_content_permissions.id = 'content_permissions'
+    dn.el_content_permissions.classList.add('widget_content_pane');
     dn.el_widget_content.appendChild(dn.el_content_permissions);
     dn.el_content_permissions.style.display = 'none';
     dn.el_content_permissions.getElementsByClassName('popupbutton')[0].addEventListener('click', dn.launch_popup);
@@ -224,16 +226,12 @@ dn.do_share = function(){
         dn.show_error("You cannot view/modify the sharing settings until you have saved the file.")
         return false;
     }
-
-    alert("In a moment you will see the Google Sharing dialog.  Please note that whatever information you see there will be correct - and you can make changes to it in the dialog. \nHowever, until you refresh the page, Drive Notepad will " + 
-        (dn.the_file.is_shared ? "continue to show the file as being 'shared' even if that is no longer true." :
-        "not show any indication that the file is now shared (if that is what you choose).") +
-        "\nHopefully this will be fixed at some point soon!")
-        
+    dn.status.file_sharing = -1; //TODO: see SO question about no callback for share dialog...how are we supposed to know when it's closed and what happened?
+    dn.the_file.is_shared = 0;
+    dn.show_status();
     dn.el_share_dialog.setItemIds([dn.the_file.file_id]);
     dn.el_share_dialog.showSettingsDialog();
     
-    //TODO: see SO question about no callback for share dialog...how are we supposed to know when it's closed and what happened?
     return false;
 }
 
@@ -338,6 +336,7 @@ dn.show_first_time_user_info = function(last_version){
             (dn.platform == "Mac" ? "Cmd" : "Ctrl" ) + "-S." ,
         "<br><br><div class='button_wrapper'><div class='button firsttime_dissmiss'>Dismiss</div></div>" ].join('');
     dn.el_content_first_time_info.id = 'content_first_time_info';
+    dn.el_content_first_time_info.classList.add('widget_content_pane');
     dn.el_widget_content.appendChild(dn.el_content_first_time_info);
     dn.el_content_first_time_info.getElementsByClassName('firsttime_dissmiss')[0]
                 .addEventListener('click', function(){dn.show_widget_content()});
@@ -366,6 +365,7 @@ dn.do_open = function(){
 dn.create_open_tool = function(){
     dn.el_content_open = document.createElement('div');
     dn.el_content_open.id = 'content_open';
+    dn.el_content_open.classList.add('widget_content_pane');
     dn.el_content_open.innerHTML = [
         "<div class='widget_menu_item'>Open an existing file in:<br><br><div class='button_wrapper'><div class='button'",
         "id='opener_button_a'>this tab</div> <div class='button' id='opener_button_b'",
@@ -410,14 +410,16 @@ dn.create_content_help = function(){
     dn.el_content_help = document.createElement('div');
     dn.el_content_help.innerHTML = [
         "<div class='widget_box_title'>Drive Notepad 2016a, by DM.</div>",
-        "<a href='' target='_blank'>google+</a> - for bug reports, questions, etc.*<br>",
-        "<a href='' target='_blank'>youtube</a> - quick demo.<br>",
-        "<a href='' target='_blank'>about</a> - more information.<br><br>",
+        "<div class='widget_menu_item'><a href='' target='_blank'>google+</a> - for bug reports, questions, etc.*</div>",
+        "<div class='widget_menu_item'><a href='' target='_blank'>youtube</a> - quick demo.</div>",
+        "<div class='widget_menu_item'><a href='' target='_blank'>about</a> - more information.</div><br><br>",
         "<div class='widget_box_title'>Logged in as <span id='user_name'>???</span></div>",
-        "<a href='https://drive.google.com' target='_blank' id='drive_link'>Google Drive</a> - open your Drive<br>",
-        "<br><br>*positive feedback is always appriciated!"].join('');
+        "<div class='widget_menu_item'><a href='https://drive.google.com' target='_blank' id='drive_link'>Google Drive</a> - open your Drive</div>",
+        "<div class='widget_content_bottom_before'></div>",
+        "<div class='widget_content_bottom'>*positive feedback is always appriciated!</div>"].join('');
 
     dn.el_content_help.id = 'content_help';
+    dn.el_content_help.classList.add('widget_content_pane');
     dn.el_content_help.style.display = 'none';
     dn.el_widget_content.appendChild(dn.el_content_help);
     dn.el_user_name = document.getElementById('user_name');
@@ -523,6 +525,7 @@ dn.create_content_find = function(){
         "<div class='find_replace_info'></div></div></div><br><br>",
         "<div class='widget_menu_item'>Go to: <input class='gotoline_input' id='goto_input' placeholder='line number'></input></div>"].join('');
     dn.el_content_find.id = 'content_find';
+    dn.el_content_find.classList.add('widget_content_pane');
     dn.el_content_find.style.display = 'none';
     dn.el_widget_content.appendChild(dn.el_content_find);
 
@@ -739,30 +742,35 @@ dn.create_content_general_settings = function(){
         "</div>",
 
         "<div class='widget_menu_item'>Font size: ",
-            "<div class='button inline_button  font_size_decrement'>&#9660;abc</div>", //TODO: make this a single button
-            "<div class='button inline_button  font_size_increment'>abc&#9650;</div>",
+            "<div class='button_like'><span id='font_size_text'>??</span> em",
+                "<div class='button_up_down_wrapper'>",
+                    "<div class='button_up' id='font_size_increment'></div>",
+                    "<div class='button_down' id='font_size_decrement'></div>",
+                "</div>",
+            "</div>",
         "</div>",
         
-        "<div class='widget_menu_item'>Clear history:<br><br><div class='button_wrapper'>",
-            "<div class='button' id='clipboard_history_clear_button'>clipboard</div> ",
-            "<div class='button' id='find_history_clear_button'>find/replace</div>",
-        "</div></div>"].join('');
+        "<div class='widget_content_bottom_before'></div>",    
+        "<div class='widget_content_bottom'>",
+            "<div class='button icon' id='button_clear_clipboard'><div class='tooltip button_tooltip'>clear clipboard history</div></div> ",
+            "<div class='button icon' id='button_clear_find_replace'><div class='tooltip button_tooltip'>clear find/replace history</div></div> ",
+        "</div>"].join('');
     dn.el_content_general_settings.id = 'content_general_settings';
+    dn.el_content_general_settings.classList.add('widget_content_pane');
     dn.el_content_general_settings.style.display = 'none';
     dn.el_widget_content.appendChild(dn.el_content_general_settings);
 
     dn.el_widget_sub_general_box = document.getElementById('sub_general_box')
-    dn.el_menu_clear_clipboard = document.getElementById("clipboard_history_clear_button");
-    dn.el_menu_clear_find_history = document.getElementById("find_history_clear_button");
-
+    dn.el_button_clear_clipboard = document.getElementById("button_clear_clipboard");
+    dn.el_button_clear_find_replace = document.getElementById("button_clear_find_replace");
     dn.el_gutter_history_show = document.getElementById('gutter_history_show');
     dn.el_gutter_history_hide = document.getElementById('gutter_history_hide');
     dn.el_word_wrap_off = document.getElementById('word_wrap_off');
     dn.el_word_wrap_at = document.getElementById('word_wrap_at');
     dn.el_word_wrap_edge = document.getElementById('word_wrap_edge');
-    // TODO: fix inconsitency of Ids versus classes
-    dn.el_font_size_decrement = dn.el_content_general_settings.getElementsByClassName('font_size_decrement')[0];
-    dn.el_font_size_increment = dn.el_content_general_settings.getElementsByClassName('font_size_increment')[0];
+    dn.el_font_size_decrement = document.getElementById('font_size_decrement');
+    dn.el_font_size_increment = document.getElementById('font_size_increment');
+    dn.el_font_size_text = document.getElementById('font_size_text');
     dn.el_tab_hard = document.getElementById('tab_hard');
     dn.el_tab_soft = document.getElementById('tab_soft');
     dn.el_newline_menu_windows = document.getElementById('newline_menu_windows');
@@ -770,7 +778,7 @@ dn.create_content_general_settings = function(){
 
     dn.create_newlinemenu_tool(); // TODO: could be inlined here
     dn.create_tab_tool();
-    dn.create_fontsize_tool();
+    dn.create_font_size_tool();
     dn.create_wordwrap_tool();
     dn.create_gutterhistory_tool();
     dn.create_clipboard_tool();
@@ -819,8 +827,18 @@ dn.create_content_file = function(){
                 "</div>",
             "</div>", 
             "<div class='file_info' id='file_tab_info'></div>",
-        "</div>"].join("");
+        "</div>",
+    
+        "<div class='widget_content_bottom_before'></div>",
+        "<div class='widget_content_bottom'>",
+            "<div class='button icon' id='button_save'><div class='tooltip button_tooltip'>save file</div></div> ",
+            "<div class='button icon' id='button_print'><div class='tooltip button_tooltip'>print...</div></div> ",
+            "<div class='button icon' id='button_share'><div class='tooltip button_tooltip'>file share settings...</div></div> ",
+            "<div class='button icon' id='button_history'><div class='tooltip button_tooltip'>history of changes...</div></div> ",            
+        "</div>"
+        ].join("");
     dn.el_content_file.id = 'content_file';
+    dn.el_content_file.classList.add('widget_content_pane');
     dn.el_content_file.style.display = 'none';
     dn.el_widget_content.appendChild(dn.el_content_file);
 
@@ -844,6 +862,12 @@ dn.create_content_file = function(){
     dn.el_file_tab_soft = document.getElementById('file_tab_soft');
     dn.el_file_tab_soft_text = document.getElementById('file_tab_soft_text');
     dn.el_file_tab_info = document.getElementById('file_tab_info');
+
+ 
+    dn.el_button_save = document.getElementById('button_save');
+    dn.el_button_print = document.getElementById('button_print');
+    dn.el_button_share = document.getElementById('button_share');
+    dn.el_button_history = document.getElementById('button_history');     
 
     dn.create_file_details_tool();  // this could really be appended directly to this function.
 
@@ -877,11 +901,7 @@ dn.create_menu = function(){
         var el_icon = els[ii].getElementsByClassName('widget_menu_icon')[0];
         dn.menu_icon_from_content_id['content_' + els[ii].id.substr(5)] = el_icon;
     }
-    
-    dn.el_menu_save = document.getElementById('menu_save');
-    dn.el_menu_print = document.getElementById('menu_print');
-    dn.el_menu_sharing = document.getElementById('menu_sharing');
-    dn.el_menu_history = document.getElementById('menu_history');     
+   
     dn.el_menu_shortcuts = document.getElementById('menu_shortcuts');
     dn.el_menu_status = document.getElementById('menu_status');
 
@@ -1071,6 +1091,8 @@ dn.show_status = function(){
                 extra.push("read-only");
             if(dn.the_file.is_shared)
                 extra.push("shared");
+            if(dn.status.file_sharing == -1)
+                extra.push("sharing status unknown");
             if(!dn.the_file.is_pristine)
                 extra.push("unsaved changes");
             if(extra.length)
@@ -1190,50 +1212,52 @@ dn.load_default_settings = function(){
 }
 
 dn.settings_changed = function(e){
-    console.log("[user settings] " + e.property +": " + e.new_value);
+    var new_value = e.newValue;
+    console.log("[user settings] " + e.property +": " + new_value);
     if(dn.impersonal_settings_keys.indexOf(e.property)>-1 && localStorage){
-        localStorage["g_settings_" + e.property] = JSON.stringify(e.new_value);
+        localStorage["g_settings_" + e.property] = JSON.stringify(new_value);
     }
     try{
         switch(e.property){
             case "widget_anchor":
-                dn.widget_apply_anchor(e.new_value);
+                dn.widget_apply_anchor(new_value);
                     break;
             case "fontSize":
                 var scrollLine = dn.get_scroll_line();
-                dn.editor.setFontSize(e.new_value + 'em')    
+                dn.el_font_size_text.textContent = new_value.toFixed(1);
+                dn.editor.setFontSize(new_value + 'em')    
                 dn.editor.scrollToLine(scrollLine);
                 break;
             case "wordWrap":
                 var s = dn.editor.getSession();
                 var scrollLine = dn.get_scroll_line();
-                s.setUseWrapMode(e.new_value[0]);
-                s.setWrapLimitRange(e.new_value[1],e.new_value[2]);
+                s.setUseWrapMode(new_value[0]);
+                s.setWrapLimitRange(new_value[1],new_value[2]);
                  dn.editor.scrollToLine(scrollLine);
-                if(!e.new_value[0])
+                if(!new_value[0])
                     dn.el_word_wrap_off.classList.add('selected');
                 else
                     dn.el_word_wrap_off.classList.remove('selected');
-                if(e.new_value[0] && !e.new_value[1])
+                if(new_value[0] && !new_value[1])
                     dn.el_word_wrap_edge.classList.add('selected');
                 else
                     dn.el_word_wrap_edge.classList.remove('selected');
-                if(e.new_value[0] && e.new_value[1])
+                if(new_value[0] && new_value[1])
                     dn.el_word_wrap_at.classList.add('selected');
                 else
                     dn.el_word_wrap_at.classList.remove('selected');
 
                 break;
             case "wordWrapAt":
-                dn.el_word_wrap_at_text.textContent = e.new_value;
+                dn.el_word_wrap_at_text.textContent = new_value;
                 var curWrap = dn.g_settings.get('wordWrap');
-                if(curWrap[1] && curWrap[1] != e.new_value)
-                    dn.g_settings.set('wordWrap',[1,e.new_value,e.new_value]);
-                dn.editor.setPrintMarginColumn(e.new_value);
+                if(curWrap[1] && curWrap[1] != new_value)
+                    dn.g_settings.set('wordWrap',[1,new_value,new_value]);
+                dn.editor.setPrintMarginColumn(new_value);
                 break;
             case "showGutterHistory":
                 var s = dn.editor.getSession(); 
-                if(e.new_value){
+                if(new_value){
                     dn.el_gutter_history_show.classList.add('selected')
                     dn.el_gutter_history_hide.classList.remove('selected');
                 }else{
@@ -1249,7 +1273,7 @@ dn.settings_changed = function(e){
                 dn.apply_newline_choice();
                 break;
             case "historyRemovedIsExpanded":
-                dn.revision_setis_expaned(e.new_value);
+                dn.revision_setis_expaned(new_value);
                 break;
             case "softTabN":
             case "tabIsHard":          
@@ -1325,6 +1349,7 @@ dn.create_content_shortcuts = function(){
             "</div>"].join('');
     dn.el_content_shortcuts.style.display = 'none';
     dn.el_content_shortcuts.id = 'content_shortcuts';
+    dn.el_content_shortcuts.classList.add('widget_content_pane');
     dn.el_widget_content.appendChild(dn.el_content_shortcuts);
 };
 
@@ -1369,7 +1394,7 @@ dn.reclaim_focus = function(){
 // Font size stuff
 // ############################
 
-dn.create_fontsize_tool = function(){
+dn.create_font_size_tool = function(){
     dn.el_font_size_decrement.addEventListener('click', function(){
         var fontSize = dn.g_settings.get('fontSize');
         fontSize -= dn.font_size_increment;
@@ -1538,7 +1563,7 @@ dn.show_tab_status = function(d){
                     str = "detected soft-tabs of " + d.n + " spaces";
                     break;
                 case 'weak':
-                    str = "detected soft-tabs roughly matching default " + d.n + " spaces";
+                    str = "detected close match to default of " + d.n + " spaces";
                     break;
                 case 'failed':
                     str = "detected soft-tabs, assuming default " + d.n + " spaces";
@@ -1653,7 +1678,7 @@ dn.detect_syntax = function(){
     dn.the_file.syntax_detected = (function(){ //no need to use self-ex-func here, just laziness...
         //TODO: improve upon this
         var title = dn.the_file.title || "untitled.txt";
-        var mode  = require("ace/ext/modelist").getModeForPath(title)
+        var mode  = require("ace/ext/modelist").getModeForPath(title);
         dn.the_file.syntax_detected = mode.caption;
         dn.show_syntax_status({syntax: dn.the_file.syntax_detected});
         return mode;
@@ -1785,10 +1810,10 @@ dn.create_file_details_tool = function(){
     });
 
     // File action buttons stuff
-    dn.el_menu_save.addEventListener('click', dn.save_content);
-    dn.el_menu_print.addEventListener('click', dn.do_print);
-    dn.el_menu_sharing.addEventListener('click', dn.do_share);
-    dn.el_menu_history.addEventListener('click', dn.start_revisions_worker);
+    dn.el_button_save.addEventListener('click', dn.save_content);
+    dn.el_button_print.addEventListener('click', dn.do_print);
+    dn.el_button_share.addEventListener('click', dn.do_share);
+    dn.el_button_history.addEventListener('click', dn.start_revisions_worker);
 
     // Description stuff
     dn.el_details_description_text.addEventListener('click', function(){            
@@ -2396,10 +2421,10 @@ dn.create_clipboard_tool = function(){
     dn.el_content_clipboard.style.display = 'none';
     dn.el_widget_content.appendChild(dn.el_content_clipboard);
 
-    dn.el_menu_clear_clipboard.addEventListener('click', function(){
+    dn.el_button_clear_clipboard.addEventListener('click', function(){
             dn.g_clipboard.clear();
     });
-    dn.el_menu_clear_find_history.addEventListener('click', function(){
+    dn.el_button_clear_find_replace.addEventListener('click', function(){
             dn.g_find_history.clear();
     });
 }
@@ -2480,6 +2505,7 @@ dn.saved_new_file = function(resp){
     dn.the_file.is_brand_new = false;
     dn.the_file.file_id = resp.id;
     dn.the_file.is_shared = resp.shared;
+    dn.status.file_sharing = 1;
     dn.the_file.ext = resp.fileExtension;
     history.replaceState({},dn.the_file.title,
             window.location.href.match(/^https?:\/\/[\w-.]*\/\w*/)[0] +
