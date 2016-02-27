@@ -415,8 +415,55 @@ padding: 2px 6px 1px 6px;
 padding-bottom: 2px;
 padding-top: 3px;
 }
-.button_sub{
+.button_up_down_wrapper{
 display: inline-block;
+margin: -3px -6px -3px 4px;
+line-height: 0px;
+font-size: 9px;
+position: relative;
+}
+.button_up_down_wrapper:after{
+position: absolute;
+top: -2px;
+border-left: 1px solid #3262B1;
+height: 21px;
+content: ' ';
+}
+.button_up,
+.button_down{
+height: 9px;
+width: 19px;
+display: block;
+position: relative;
+}
+.button_up{
+border-bottom: 1px solid #3262B1;
+}
+.button.selected .button_up_down_wrapper:after{
+border-color: #2B5192;
+}
+.button.selected .button_up_down_wrapper .button_up{
+border-color: #2B5192;   
+}
+.button_up:after{
+content:'\25B2';
+position: absolute;
+top: 4px;
+left: 5px;
+}
+.button_up:hover:after{
+top: 3px;
+color: #fff;
+}
+.button_down:after{
+content:'\25BC';
+position: absolute;
+top: 5px;
+left: 5px;
+}
+.button_down:hover:after{
+top: 6px;
+color: #fff;
 }
 .file_details_save{
 margin-top: 20px;

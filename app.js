@@ -713,9 +713,11 @@ dn.create_content_general_settings = function(){
         "<div class='widget_menu_item'>Word wrap: ",
             "<div class='button inline_button ' id='word_wrap_off'>none</div>",
             "<div class='button inline_button ' id='word_wrap_at'>",
-                "<div class='button_sub' id='word_wrap_at_text'>??</div>",
-                "<div class='button_sub button_sub_unselectable' id='word_wrap_at_dec'>&#9660;</div>",
-                "<div class='button_sub button_sub_unselectable' id='word_wrap_at_inc'>&#9650;</div>",
+                "at <span id='word_wrap_at_text'>??</span>",
+                "<div class='button_up_down_wrapper'>",
+                    "<div class='button_up' id='word_wrap_at_inc'>&nbsp;</div>",
+                    "<div class='button_down' id='word_wrap_at_dec'>&nbsp;</div>",
+                "</div>",
             "</div>", 
             "<div class='button inline_button ' id='word_wrap_edge'>edge</div>",
         "</div>",
@@ -728,10 +730,12 @@ dn.create_content_general_settings = function(){
         "<div class='widget_menu_item'>Tab default: ",
             "<div class='button inline_button ' id='tab_hard'>hard</div>",
             "<div class='button inline_button ' id='tab_soft'>",
-                    "<div class='button_sub' id='tab_soft_text'>?? spaces</div>", 
-                    "<div class='button_sub button_sub_unselectable' id='tab_soft_dec'>&#9660;</div>",
-                    "<div class='button_sub button_sub_unselectable' id='tab_soft_inc'>&#9650;</div>",
-            "</div>",
+                "<span id='tab_soft_text'>??</span> spaces",
+                "<div class='button_up_down_wrapper'>",
+                    "<div class='button_up' id='tab_soft_inc'>&nbsp;</div>",
+                    "<div class='button_down' id='tab_soft_dec'>&nbsp;</div>",
+                "</div>",
+            "</div>", 
         "</div>",
                 
         "<div class='widget_menu_item'>Newline default: ",
@@ -808,9 +812,11 @@ dn.create_content_file = function(){
             "<div class='button inline_button ' id='file_tab_detect'>detect</div>",
             "<div class='button inline_button ' id='file_tab_hard'>hard</div>",
             "<div class='button inline_button ' id='file_tab_soft'>",
-                "<div class='button_sub' id='file_tab_soft_text'>?? spaces</div>", 
-                "<div class='button_sub button_sub_unselectable' id='file_tab_soft_dec'>▼</div>",
-                "<div class='button_sub button_sub_unselectable' id='file_tab_soft_inc'>▲</div>",
+                "<span id='file_tab_soft_text'>??</span> spaces",
+                "<div class='button_up_down_wrapper'>",
+                    "<div class='button_up' id='file_tab_soft_inc'>&nbsp;</div>",
+                    "<div class='button_down' id='file_tab_soft_dec'>&nbsp;</div>",
+                "</div>",
             "</div>", 
             "<div class='file_info' id='file_tab_info'></div>",
         "</div>"].join("");
@@ -1060,16 +1066,25 @@ dn.show_status = function(){
         // a file is/will be loaded...
         if (dn.status.file_meta === 1 && dn.status.file_body === 1){
             s = dn.the_file.title;
+            var extra = [];
+            if(dn.the_file.is_read_only)
+                extra.push("read-only");
+            if(dn.the_file.is_shared)
+                extra.push("shared");
             if(!dn.the_file.is_pristine)
-                s += "\n(unsaved changes)";
+                extra.push("unsaved changes");
+            if(extra.length)
+                s += "\n[" + extra.join(', ') + "]"; 
         }else if(dn.status.file_meta === 0 && dn.status.file_body === 0)
             s = "Loading file:\n" + dn.the_file.file_id;
         else if(dn.status.file_meta === 1 && dn.status.file_body === 0)
-            s = "Loading file:\n" + dn.the_file.title;
+            s = "Loading " + (dn.the_file.is_read_only? 'read-only ' : '' ) + 
+                    "file:\n" + dn.the_file.title;
         else if(dn.status.file_meta === 0 && dn.status.file_body === 1)
             s = "Loading metadata for file:\n" + dn.the_file.file_id;
         else if(dn.status.file_meta === 1) // and -1
-            s = "Failed to download file:\n" + dn.the_file.title;
+            s = "Failed to download " + (dn.the_file.is_read_only? 'read-only ' : '' )
+                    +  "file:\n" + dn.the_file.title;
         else if(dn.status.file_body === 1) // and -1
             s = "Failed to download metadata for file:\n" + dn.the_file.file_id;
         else // both -1
@@ -1578,7 +1593,7 @@ dn.apply_tab_choice = function(){
         dn.editor.session.setTabSize(nSpaces);
     }
     
-    dn.el_tab_soft_text.textContent = defaultSoftTabN + " spaces";
+    dn.el_tab_soft_text.textContent = defaultSoftTabN;
     if(defaultTabIsHard){
         dn.el_tab_hard.classList.add('selected');
         dn.el_tab_soft.classList.remove('selected');
@@ -1593,13 +1608,13 @@ dn.apply_tab_choice = function(){
     dn.el_file_tab_soft.classList.remove('selected');
     if(isDetected){
         dn.el_file_tab_detect.classList.add('selected');
-        dn.el_file_tab_soft_text.textContent = nSpaces+ " spaces";
+        dn.el_file_tab_soft_text.textContent = nSpaces;
     }else{
         if(d.val == "tab")
             dn.el_file_tab_hard.classList.add('selected');
         else
             dn.el_file_tab_soft.classList.add('selected');
-        dn.el_file_tab_soft_text.textContent = nSpaces + " spaces";
+        dn.el_file_tab_soft_text.textContent = nSpaces;
     }     
 
 
@@ -2505,11 +2520,12 @@ dn.load_file = function(flag){
     var promise_get_meta = Promise.resolve(
         gapi.client.request({
             'path': '/drive/v3/files/' + file_id,
-            'params':{'fields': 'name,mimeType,description,parents,capabilities,fileExtension'}}))
+            'params':{'fields': 'name,mimeType,description,parents,capabilities,fileExtension,shared'}}))
         .then(dn.load_file_got_meta_data, function(err){
             dn.show_error(err.result.error.message);
             dn.status.file_meta = -1;
             dn.show_status();
+            throw err;
         })
 
     dn.status.file_body = 0;
@@ -2522,6 +2538,7 @@ dn.load_file = function(flag){
             dn.show_error(err.result.error.message);
             dn.status.file_body = -1;
             dn.show_status();
+            throw err;
         });
 
     
@@ -2531,6 +2548,7 @@ dn.load_file = function(flag){
     }, function(){
         // failure
         document.title = "Drive Notepad";
+        dn.show_widget_content(dn.el_content_help);
     })
     
 }
@@ -2542,11 +2560,11 @@ dn.load_file_got_meta_data = function(resp) {
     dn.the_file.description = resp.result.description || '';
     dn.show_description();
     dn.the_file.ext = resp.result.fileExtension
-    dn.the_file.is_read_only = !resp.result.canEdit;
-    //dn.the_file.is_shared = resp.shared; // TODO: 
+    dn.the_file.is_read_only = !resp.result.capabilities.canEdit;
+    dn.the_file.is_shared = resp.result.shared; 
     dn.the_file.loaded_mime_type = resp.result.mimeType;
-    if(resp.result.parentNodes && resp.result.parentNodes.length){
-        dn.the_file.folder_id = resp.result.parentNodes[0].id;
+    if(resp.result.parents && resp.result.parents.length){
+        dn.the_file.folder_id = resp.result.parents[0];
         dn.set_drive_link_to_folder();
     }
     dn.show_file_title(); //includes a showStatus call
