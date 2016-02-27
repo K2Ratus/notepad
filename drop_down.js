@@ -9,7 +9,7 @@ var DropDown = function(val_array){
     
     this.val_array = val_array.slice(0); 
     this.el_list = document.createElement('div');
-    this.el_list.className ='dropdown_itemlist';
+    this.el_list.className ='dropdown_item_list';
     this.el_list.tabindex =-1
     this.el_list.style.display = 'none';
     this.el_list.innerHTML = str;

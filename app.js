@@ -23,15 +23,15 @@ newLineDefault: 'windows',
 historyRemovedIsExpanded: true,
 softTabN: 4,
 tabIsHard: 0,
-widgetSub: 'general'
+widgetSub: 'general',
+theme: "chrome" 
 }
 dn.default_custom_props = {
     newline: "detect",
     tabs: "detect",
     aceMode: "detect"
 };
-dn.impersonal_settings_keys = ["wordWrap","wordWrapAt","fontSize","widget_anchor","showGutterHistory","historyRemovedIsExpanded","tabIsHard","softTabN","widgetSub"];
-dn.theme = "ace/theme/chrome"; 
+dn.impersonal_settings_keys = ["wordWrap","wordWrapAt","fontSize","widget_anchor","showGutterHistory","historyRemovedIsExpanded","tabIsHard","softTabN","widgetSub","theme"];
 dn.can_show_drag_drop_error = true;
 dn.min_font_size = 0.3;
 dn.max_font_size = 5; 
@@ -750,6 +750,10 @@ dn.create_content_general_settings = function(){
             "</div>",
         "</div>",
         
+        "<div class='widget_menu_item'>Theme: ",
+            "<div class='button inline_button dropdown_button no_select' id='theme_chooser'></div>",
+        "</div>",
+
         "<div class='widget_content_bottom_before'></div>",    
         "<div class='widget_content_bottom'>",
             "<div class='button icon' id='button_clear_clipboard'><div class='tooltip button_tooltip'>clear clipboard history</div></div> ",
@@ -759,6 +763,11 @@ dn.create_content_general_settings = function(){
     dn.el_content_general_settings.classList.add('widget_content_pane');
     dn.el_content_general_settings.style.display = 'none';
     dn.el_widget_content.appendChild(dn.el_content_general_settings);
+
+    dn.theme_drop_down = dn.create_theme_menu()
+    
+    dn.el_theme_chooser = document.getElementById('theme_chooser')
+    dn.el_theme_chooser.appendChild(dn.theme_drop_down.el);
 
     dn.el_widget_sub_general_box = document.getElementById('sub_general_box')
     dn.el_button_clear_clipboard = document.getElementById("button_clear_clipboard");
@@ -1144,7 +1153,7 @@ dn.set_drive_link_to_folder = function(){
 dn.get_settings_from_cloud = function() {
   gapi.drive.realtime.loadAppDataDocument(
   function(doc) {
-    var oldTempG_settings = dn.g_settings;
+    var old_temp_g_settings = dn.g_settings;
     dn.g_settings = doc.getModel().getRoot();
     dn.g_clipboard = dn.g_settings.get('clipboard');
     if(!dn.g_clipboard){
@@ -1160,12 +1169,12 @@ dn.get_settings_from_cloud = function() {
     var existingKeys = dn.g_settings.keys();
     dn.g_settings.addEventListener(gapi.drive.realtime.EventType.VALUE_CHANGED, dn.settings_changed);
     for(var s in dn.default_settings)
-        if(s in oldTempG_settings.getKeeps())
-            dn.g_settings.set(s,oldTempG_settings.get(s));
+        if(s in old_temp_g_settings.getKeeps())
+            dn.g_settings.set(s,old_temp_g_settings.get(s));
         else if(existingKeys.indexOf(s) == -1)
             dn.g_settings.set(s,dn.default_settings[s]);
-        else if(JSON.stringify(oldTempG_settings.get(s)) !== JSON.stringify(dn.g_settings.get(s)))
-            dn.settings_changed({property:s, new_value:dn.g_settings.get(s)});// the gapi doesn't automatically trigger this on load
+        else if(JSON.stringify(old_temp_g_settings.get(s)) !== JSON.stringify(dn.g_settings.get(s)))
+            dn.settings_changed({property:s, newValue:dn.g_settings.get(s)});// the gapi doesn't automatically trigger this on load
     
     //Check lastDNVersionUsed at this point - by default it's blank, but could also have an out-of-date value
     if(dn.g_settings.get('lastDNVersionUsed') != dn.version_str){
@@ -1192,7 +1201,7 @@ dn.load_default_settings = function(){
       var keeps = {}
       return {get: function(k){return ob[k]}, 
               set: function(k,v){ob[k] = v;
-                                 dn.settings_changed({property: k, new_value: v});
+                                 dn.settings_changed({property: k, newValue: v});
                                  },
               keep: function(k){keeps[k] = true},
               getKeeps: function(){return keeps;}};
@@ -1222,6 +1231,10 @@ dn.settings_changed = function(e){
             case "widget_anchor":
                 dn.widget_apply_anchor(new_value);
                     break;
+            case "theme":
+                dn.editor.setTheme('ace/theme/' + new_value);
+                dn.theme_drop_down.SetInd(dn.theme_drop_down.IndexOf(new_value));
+                break;
             case "fontSize":
                 var scrollLine = dn.get_scroll_line();
                 dn.el_font_size_text.textContent = new_value.toFixed(1);
@@ -1734,6 +1747,18 @@ dn.set_syntax = function(val){
     if(dn.syntax_drop_down)
         dn.syntax_drop_down.SetInd(ind,true);
     dn.editor.getSession().setMode(mode);
+}
+
+dn.create_theme_menu = function(){
+    var themes = require('ace/ext/themelist');
+    var theme_drop_down = new DropDown(Object.keys(themes.themesByName));
+    theme_drop_down.addEventListener("change",function(){
+        dn.g_settings.set("theme",theme_drop_down.GetVal());
+    })
+    theme_drop_down.addEventListener("blur",function(){
+        dn.reclaim_focus();
+    })
+    return theme_drop_down;
 }
 
 dn.create_syntax_menu = function(){
@@ -2314,11 +2339,11 @@ dn.do_print = function(){
     printWindow.document.writeln(
             "<html><head><title>" + dn.the_file.title 
             + "</title></head><style>"
-            + ace.require(dn.theme).cssText + "\nbody{font-size:"
+            + ace.require('ace/theme/' + dn.g_settings.get('theme')).cssText + "\nbody{font-size:"
             + dn.g_settings.get('fontSize') *14 +"px; white-space:pre-wrap;" + 
             "font-family:'Monaco','Menlo','Ubuntu Mono','Droid Sans Mono','Consolas',monospace;}"
             + "\nli{color:gray;}\n.printline{color:black;}</style>" + 
-            "<body class='"+ dn.theme.replace("/theme/","-") +"'><ol id='content'>" + 
+            "<body class='ace-"+ dn.g_settings.get('theme') +"'><ol id='content'>" + 
             html.join("") +
             "</ol></body></html>");
     printWindow.print();
@@ -2870,7 +2895,6 @@ dn.document_ready = function(e){
     dn.el_ace_content = document.getElementsByClassName('ace_content')[0];
     dn.editor.on('focus', dn.blur_find_and_focus_editor)
     dn.editor.focus();
-    dn.editor.setTheme(dn.theme);
     dn.editor.getSession().addEventListener("change", dn.on_change);
     dn.editor.on("paste", dn.on_paste);
     dn.editor.on("copy", dn.on_copy);
