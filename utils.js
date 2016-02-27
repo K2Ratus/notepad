@@ -52,7 +52,7 @@ var css_animation = (function(){
 })();
 
 
-// TODO: ...............................................................
+/* TODO: ...............................................................
 
 $.fn.fixHeightFromAuto = function(){
     var heights = [];
@@ -87,3 +87,5 @@ $.fn.insertClonedChildren = function(index,$src,textArray,attrObjArrays){
     
     return new_$els;
 }
+
+*/

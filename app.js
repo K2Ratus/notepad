@@ -382,7 +382,7 @@ dn.create_open_tool = function(){
     
     dn.el_opener_button_a = document.getElementById('opener_button_a');
     dn.el_opener_button_a.addEventListener('click', function(){
-        //TODO:
+        dn.do_open();
     });
     dn.el_opener_button_b = document.getElementById('opener_button_b');
     dn.el_opener_button_b.addEventListener('click', function(){
@@ -721,12 +721,7 @@ dn.create_content_general_settings = function(){
             "</div>", 
             "<div class='button inline_button ' id='word_wrap_edge'>edge</div>",
         "</div>",
-                
-        "<div class='widget_menu_item'>Font size: ",
-            "<div class='button inline_button  font_size_decrement'>&#9660;abc</div>", //TODO: make this a single button
-            "<div class='button inline_button  font_size_increment'>abc&#9650;</div>",
-        "</div>",
-                
+
         "<div class='widget_menu_item'>Tab default: ",
             "<div class='button inline_button ' id='tab_hard'>hard</div>",
             "<div class='button inline_button ' id='tab_soft'>",
@@ -741,6 +736,11 @@ dn.create_content_general_settings = function(){
         "<div class='widget_menu_item'>Newline default: ",
             "<div class='button inline_button ' id='newline_menu_windows'>windows</div>",
             "<div class='button inline_button ' id='newline_menu_unix'>unix</div>",
+        "</div>",
+
+        "<div class='widget_menu_item'>Font size: ",
+            "<div class='button inline_button  font_size_decrement'>&#9660;abc</div>", //TODO: make this a single button
+            "<div class='button inline_button  font_size_increment'>abc&#9650;</div>",
         "</div>",
         
         "<div class='widget_menu_item'>Clear history:<br><br><div class='button_wrapper'>",
@@ -954,7 +954,7 @@ dn.document_mouse_up_widget = function(e){
 };
 
 dn.widget_apply_anchor = function(anchor){
-    anchor = $.isArray(anchor) ? anchor : dn.g_settings.get('widget_anchor');
+    anchor = Array.isArray(anchor) ? anchor : dn.g_settings.get('widget_anchor');
     var widget_w = dn.el_the_widget.offsetWidth;
     var widget_h = dn.el_the_widget.offsetHeight;
     var window_w = window.innerWidth;
@@ -1335,7 +1335,7 @@ dn.make_keyboard_shortcuts = function(){
     //we have to delete the default ace commands linked to the keys we care about
     dn.editor.commands.removeCommands(["find","findprevious","findnext","replace", "jumptomatching","sortlines","selecttomatching","gotoline"]);
 
-    //then add new commands on to the $(document) using keymaster.js...
+    //then add new commands on to the document using keymaster.js...
     key('command+s, ctrl+s,  ctrl+alt+s,  command+alt+s', dn.save_content);
     key('command+p, ctrl+p,  ctrl+alt+p,  command+alt+p', dn.do_print);
     key('command+o, ctrl+o,  ctrl+alt+o,  command+alt+o', dn.do_open);
