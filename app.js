@@ -24,14 +24,17 @@ historyRemovedIsExpanded: true,
 softTabN: 4,
 tabIsHard: 0,
 widgetSub: 'general',
-theme: "chrome" 
+theme: "chrome",
+pane: '',
+pane_open: true
 }
 dn.default_custom_props = {
     newline: "detect",
     tabs: "detect",
     aceMode: "detect"
 };
-dn.impersonal_settings_keys = ["wordWrap","wordWrapAt","fontSize","widget_anchor","showGutterHistory","historyRemovedIsExpanded","tabIsHard","softTabN","widgetSub","theme"];
+dn.impersonal_settings_keys = ["wordWrap","wordWrapAt","fontSize","widget_anchor","showGutterHistory","historyRemovedIsExpanded",
+                                "tabIsHard","softTabN","widgetSub","theme", "pane", "pane_open"];
 dn.can_show_drag_drop_error = true;
 dn.min_font_size = 0.3;
 dn.max_font_size = 5; 
@@ -63,6 +66,7 @@ dn.status = {
     file_sharing: 0, // after launching the sharing dialog this is set to -1
     authentication: 0,
     popup_active: 0, // 0 or 1, i.e. true or false
+    local_settings: 0,
 }
 
 dn.the_file = {
@@ -169,7 +173,7 @@ dn.authentication_failed = function(err){
     if(err)
         dn.show_error(err.result.error.message);
     else
-        dn.show_content_permissions(); // No access token could be retrieved, force the authorization flow.
+        dn.show_pane_permissions(); // No access token could be retrieved, force the authorization flow.
 }
 
 dn.reauth = function(callback){ 
@@ -194,25 +198,25 @@ dn.launch_popup = function(){
               dn.authentication_failed);
 }
 
-dn.show_content_permissions = function(){
+dn.show_pane_permissions = function(){
     //dn.el_widget_text.textContent = "Manual authorization required.";
 
-    dn.show_widget_content(dn.el_content_permissions);
+    dn.g_settings.set('pane', 'pane_permissions');
     css_animation(dn.el_the_widget, 'shake', function(){}, dn.error_delay_ms);
 }
 
-dn.create_content_permissions = function(){
-    dn.el_content_permissions = document.createElement('div');
-    dn.el_content_permissions.innerHTML = [
+dn.create_pane_permissions = function(){
+    dn.el_pane_permissions = document.createElement('div');
+    dn.el_pane_permissions.innerHTML = [
         "<br><div class='button_wrapper'><div class='button popupbutton'>Autherize...</div></div><br><br>",
         "Click the button above to launch a popup window and login to your Google account and/or grant permisions to this app.<br><br>",
         "This step will not normally be required when you use the app.<br><br>If you do not see a popup window when you click the button you may ",
         "need to disable your popup blocker and reload the page."].join('');
-    dn.el_content_permissions.id = 'content_permissions'
-    dn.el_content_permissions.classList.add('widget_content_pane');
-    dn.el_widget_content.appendChild(dn.el_content_permissions);
-    dn.el_content_permissions.style.display = 'none';
-    dn.el_content_permissions.getElementsByClassName('popupbutton')[0].addEventListener('click', dn.launch_popup);
+    dn.el_pane_permissions.id = 'pane_permissions'
+    dn.el_pane_permissions.classList.add('widget_pane');
+    dn.el_widget_content.appendChild(dn.el_pane_permissions);
+    dn.el_pane_permissions.style.display = 'none';
+    dn.el_pane_permissions.getElementsByClassName('popupbutton')[0].addEventListener('click', dn.launch_popup);
 
 }
 
@@ -327,20 +331,20 @@ dn.show_newline_status = function(statusStr){
 dn.show_first_time_user_info = function(last_version){
     // last version could be blank
     // TODO: update this
-    dn.el_content_first_time_info = document.createElement('div');
-    dn.el_content_first_time_info.innerHTML = [
+    dn.el_pane_first_time_info = document.createElement('div');
+    dn.el_pane_first_time_info.innerHTML = [
         "<div class='widget_box_title widget_firsttime_title'>First-time usage tips</div>",
         "You can move this thing by dragging the top part.<br><br>",
         "To access the menu click the status text above or use the shortcut key, Esc<br><br>",
         "Changes are not saved as you type, you have to press save in the menu or use the shortcut key, ",
             (dn.platform == "Mac" ? "Cmd" : "Ctrl" ) + "-S." ,
         "<br><br><div class='button_wrapper'><div class='button firsttime_dissmiss'>Dismiss</div></div>" ].join('');
-    dn.el_content_first_time_info.id = 'content_first_time_info';
-    dn.el_content_first_time_info.classList.add('widget_content_pane');
-    dn.el_widget_content.appendChild(dn.el_content_first_time_info);
-    dn.el_content_first_time_info.getElementsByClassName('firsttime_dissmiss')[0]
-                .addEventListener('click', function(){dn.show_widget_content()});
-    dn.show_widget_content(dn.el_content_first_time_info);
+    dn.el_pane_first_time_info.id = 'pane_first_time_info';
+    dn.el_pane_first_time_info.classList.add('widget_pane');
+    dn.el_widget_content.appendChild(dn.el_pane_first_time_info);
+    dn.el_pane_first_time_info.getElementsByClassName('firsttime_dissmiss')[0]
+                .addEventListener('click', function(){dn.g_settings.set('pane','');});
+    dn.g_settings.set('pane', 'pane_first_time_info');
 }
 
 // ############################
@@ -363,20 +367,20 @@ dn.do_open = function(){
 }
 
 dn.create_open_tool = function(){
-    dn.el_content_open = document.createElement('div');
-    dn.el_content_open.id = 'content_open';
-    dn.el_content_open.classList.add('widget_content_pane');
-    dn.el_content_open.innerHTML = [
-        "<div class='widget_menu_item'>Open an existing file in:<br><br><div class='button_wrapper'><div class='button'",
+    dn.el_pane_open = document.createElement('div');
+    dn.el_pane_open.id = 'pane_open';
+    dn.el_pane_open.classList.add('widget_pane');
+    dn.el_pane_open.innerHTML = [
+        "<div class='pane_item'>Open an existing file in:<br><br><div class='button_wrapper'><div class='button'",
         "id='opener_button_a'>this tab</div> <div class='button' id='opener_button_b'",
         ">a new tab</div></div><br></div><br>",
-        "<div class='widget_menu_item'>Create a new file in:<br><br><div class='button_wrapper'><div class='button'",
+        "<div class='pane_item'>Create a new file in:<br><br><div class='button_wrapper'><div class='button'",
         "id='opener_button_c'>this tab</div> <div class='button' id='opener_button_d'",
         ">a new tab</div></div><br></div>"].join('');
-    dn.el_content_open.style.display = 'none';
-    dn.el_widget_content.appendChild(dn.el_content_open);
+    dn.el_pane_open.style.display = 'none';
+    dn.el_widget_content.appendChild(dn.el_pane_open);
 
-    dn.el_menu_open.addEventListener('click', function(){dn.show_widget_content(dn.el_content_open)});
+    dn.el_menu_open.addEventListener('click', function(){dn.g_settings.set('pane', 'pane_open')});
 
     dn.el_opener_chooser = dn.el_widget_content.parentNode.getElementsByClassName('widget_open_tab_choice')[0];
     
@@ -398,7 +402,7 @@ dn.picker_callback = function(data) {
               "?state={\"action\":\"open\",\"ids\":[\"" + fileId +"\"]}";
     dn.el_opener_button_a.setAttribute('href', url);
     dn.el_opener_button_b.setAttribute('href', url);
-    dn.toggle_widget(false);
+    dn.g_settings.set('pane_open', false);
     dn.el_opener_chooser.style.display = '';
     css_animation(dn.el_the_widget, 'shake', function(){}, dn.error_delay_ms);
   }else if(data.action == "cancel"){
@@ -406,25 +410,25 @@ dn.picker_callback = function(data) {
   } 
 }
 
-dn.create_content_help = function(){
-    dn.el_content_help = document.createElement('div');
-    dn.el_content_help.innerHTML = [
+dn.create_pane_help = function(){
+    dn.el_pane_help = document.createElement('div');
+    dn.el_pane_help.innerHTML = [
         "<div class='widget_box_title'>Drive Notepad 2016a, by DM.</div>",
-        "<div class='widget_menu_item'><a href='' target='_blank'>google+</a> - for bug reports, questions, etc.*</div>",
-        "<div class='widget_menu_item'><a href='' target='_blank'>youtube</a> - quick demo.</div>",
-        "<div class='widget_menu_item'><a href='' target='_blank'>about</a> - more information.</div><br><br>",
+        "<div class='pane_item'><a href='' target='_blank'>google+</a> - for bug reports, questions, etc.*</div>",
+        "<div class='pane_item'><a href='' target='_blank'>youtube</a> - quick demo.</div>",
+        "<div class='pane_item'><a href='' target='_blank'>about</a> - more information.</div><br><br>",
         "<div class='widget_box_title'>Logged in as <span id='user_name'>???</span></div>",
-        "<div class='widget_menu_item'><a href='https://drive.google.com' target='_blank' id='drive_link'>Google Drive</a> - open your Drive</div>",
-        "<div class='widget_content_bottom_before'></div>",
-        "<div class='widget_content_bottom'>*positive feedback is always appriciated!</div>"].join('');
+        "<div class='pane_item'><a href='https://drive.google.com' target='_blank' id='drive_link'>Google Drive</a> - open your Drive</div>",
+        "<div class='widget_pane_bottom_before'></div>",
+        "<div class='widget_pane_bottom'>*positive feedback is always appriciated!</div>"].join('');
 
-    dn.el_content_help.id = 'content_help';
-    dn.el_content_help.classList.add('widget_content_pane');
-    dn.el_content_help.style.display = 'none';
-    dn.el_widget_content.appendChild(dn.el_content_help);
+    dn.el_pane_help.id = 'pane_help';
+    dn.el_pane_help.classList.add('widget_pane');
+    dn.el_pane_help.style.display = 'none';
+    dn.el_widget_content.appendChild(dn.el_pane_help);
     dn.el_user_name = document.getElementById('user_name');
     dn.el_menu_help.addEventListener('click', function(){
-        dn.show_widget_content(dn.el_content_help);
+        dn.g_settings.set('pane', 'pane_help');
     })
 
 }
@@ -516,25 +520,25 @@ dn.blur_find_and_focus_editor = function(flag){
 }
     
 
-dn.create_content_find = function(){
-    dn.el_content_find = document.createElement('div');
+dn.create_pane_find = function(){
+    dn.el_pane_find = document.createElement('div');
 
-    dn.el_content_find.innerHTML = [
-        "<div class='widget_menu_item'><input class='find_input' tabindex='1' placeholder='find text'></input>",
+    dn.el_pane_find.innerHTML = [
+        "<div class='pane_item'><input class='find_input' tabindex='1' placeholder='find text'></input>",
         "<div class='replace_form'><input tabindex='2' class='replace_input' placeholder='replace with'></input>",
         "<div class='find_replace_info'></div></div></div><br><br>",
-        "<div class='widget_menu_item'>Go to: <input class='gotoline_input' id='goto_input' placeholder='line number'></input></div>"].join('');
-    dn.el_content_find.id = 'content_find';
-    dn.el_content_find.classList.add('widget_content_pane');
-    dn.el_content_find.style.display = 'none';
-    dn.el_widget_content.appendChild(dn.el_content_find);
+        "<div class='pane_item'>Go to: <input class='gotoline_input' id='goto_input' placeholder='line number'></input></div>"].join('');
+    dn.el_pane_find.id = 'pane_find';
+    dn.el_pane_find.classList.add('widget_pane');
+    dn.el_pane_find.style.display = 'none';
+    dn.el_widget_content.appendChild(dn.el_pane_find);
 
     dn.el_menu_find.addEventListener('click', dn.show_find);
 
-    dn.el_replace_form = dn.el_content_find.getElementsByClassName("replace_form")[0];
-    dn.el_find_replace_info = dn.el_content_find.getElementsByClassName('find_replace_info')[0];
-    dn.el_find_input = dn.el_content_find.getElementsByClassName("find_input")[0];
-    dn.el_replace_input = dn.el_content_find.getElementsByClassName("replace_input")[0];
+    dn.el_replace_form = dn.el_pane_find.getElementsByClassName("replace_form")[0];
+    dn.el_find_replace_info = dn.el_pane_find.getElementsByClassName('find_replace_info')[0];
+    dn.el_find_input = dn.el_pane_find.getElementsByClassName("find_input")[0];
+    dn.el_replace_input = dn.el_pane_find.getElementsByClassName("replace_input")[0];
     
     dn.el_find_input.addEventListener('focus', function(){
             dn.cancel_blur_find_and_focus_editor();
@@ -652,7 +656,7 @@ dn.create_content_find = function(){
 }
 
 dn.show_find = function(){
-    dn.show_widget_content(dn.el_content_find);
+    dn.g_settings.set('pane', 'pane_find');
     dn.showing_replace = false;
     dn.el_replace_form.style.display = 'none';
     var sel = dn.editor.session.getTextRange(dn.editor.getSelectionRange());
@@ -669,7 +673,7 @@ dn.show_replace = function(){
     dn.showing_replace = true;
     dn.el_replace_form.style.display = '';
     var sel = dn.editor.session.getTextRange(dn.editor.getSelectionRange());
-    dn.el_content_find.style.display = '';
+    dn.el_pane_find.style.display = '';
     if(sel)
         dn.el_find_input.value = sel;
     dn.el_find_input.focus()
@@ -684,36 +688,38 @@ dn.show_replace = function(){
 // Widget stuff
 // ############################
 
-dn.show_widget_content = function(el){
+dn.show_pane = function(el){
     // el can be undefined/null to hide everything
 
     for(var ii=0; ii < dn.el_widget_content.children.length; ii++)if(dn.el_widget_content.children[ii] !== el){
         dn.el_widget_content.children[ii].style.display = 'none';
-        var el_icon = dn.menu_icon_from_content_id[dn.el_widget_content.children[ii].id];
+        var el_icon = dn.menu_icon_from_pane_id[dn.el_widget_content.children[ii].id];
         if(el_icon)
             el_icon.classList.remove('icon_selected');
     }
 
     if(el){
         el.style.display = '';
-        var el_icon = dn.menu_icon_from_content_id[el.id];
+        var el_icon = dn.menu_icon_from_pane_id[el.id];
         if(el_icon)
-            el_icon.classList.add('icon_selected');
-        dn.toggle_widget(true);
+            el_icon.classList.add('icon_selected')
+        if(dn.status.local_settings == 1)
+            dn.g_settings.set('pane_open', true);
     }else{
-        dn.toggle_widget(false);
+       if(dn.status.local_settings == 1)   
+            dn.g_settings.set('pane_open', false);
     }
 }
 
-dn.create_content_general_settings = function(){
-    dn.el_content_general_settings = document.createElement('div');
-    dn.el_content_general_settings.innerHTML = [            
-        "<div class='widget_menu_item'>Recent changes: ",
+dn.create_pane_general_settings = function(){
+    dn.el_pane_general_settings = document.createElement('div');
+    dn.el_pane_general_settings.innerHTML = [            
+        "<div class='pane_item'>Recent changes: ",
             "<div class='button inline_button ' id='gutter_history_hide'>hide</div>",
             "<div class='button inline_button ' id='gutter_history_show'>show</div>",
         "</div>",
     
-        "<div class='widget_menu_item'>Word wrap: ",
+        "<div class='pane_item'>Word wrap: ",
             "<div class='button inline_button ' id='word_wrap_off'>none</div>",
             "<div class='button inline_button ' id='word_wrap_at'>",
                 "at <span id='word_wrap_at_text'>??</span>",
@@ -725,7 +731,7 @@ dn.create_content_general_settings = function(){
             "<div class='button inline_button ' id='word_wrap_edge'>edge</div>",
         "</div>",
 
-        "<div class='widget_menu_item'>Tab default: ",
+        "<div class='pane_item'>Tab default: ",
             "<div class='button inline_button ' id='tab_hard'>hard</div>",
             "<div class='button inline_button ' id='tab_soft'>",
                 "<span id='tab_soft_text'>??</span> spaces",
@@ -736,12 +742,12 @@ dn.create_content_general_settings = function(){
             "</div>", 
         "</div>",
                 
-        "<div class='widget_menu_item'>Newline default: ",
+        "<div class='pane_item'>Newline default: ",
             "<div class='button inline_button ' id='newline_menu_windows'>windows</div>",
             "<div class='button inline_button ' id='newline_menu_unix'>unix</div>",
         "</div>",
 
-        "<div class='widget_menu_item'>Font size: ",
+        "<div class='pane_item'>Font size: ",
             "<div class='button_like'><span id='font_size_text'>??</span> em",
                 "<div class='button_up_down_wrapper'>",
                     "<div class='button_up' id='font_size_increment'></div>",
@@ -750,19 +756,19 @@ dn.create_content_general_settings = function(){
             "</div>",
         "</div>",
         
-        "<div class='widget_menu_item'>Theme: ",
+        "<div class='pane_item'>Theme: ",
             "<div class='button inline_button dropdown_button no_select' id='theme_chooser'></div>",
         "</div>",
 
-        "<div class='widget_content_bottom_before'></div>",    
-        "<div class='widget_content_bottom'>",
+        "<div class='widget_pane_bottom_before'></div>",    
+        "<div class='widget_pane_bottom'>",
             "<div class='button icon' id='button_clear_clipboard'><div class='tooltip button_tooltip'>clear clipboard history</div></div> ",
             "<div class='button icon' id='button_clear_find_replace'><div class='tooltip button_tooltip'>clear find/replace history</div></div> ",
         "</div>"].join('');
-    dn.el_content_general_settings.id = 'content_general_settings';
-    dn.el_content_general_settings.classList.add('widget_content_pane');
-    dn.el_content_general_settings.style.display = 'none';
-    dn.el_widget_content.appendChild(dn.el_content_general_settings);
+    dn.el_pane_general_settings.id = 'pane_general_settings';
+    dn.el_pane_general_settings.classList.add('widget_pane');
+    dn.el_pane_general_settings.style.display = 'none';
+    dn.el_widget_content.appendChild(dn.el_pane_general_settings);
 
     dn.theme_drop_down = dn.create_theme_menu()
     
@@ -793,39 +799,39 @@ dn.create_content_general_settings = function(){
     dn.create_clipboard_tool();
 
     dn.el_menu_general_settings.addEventListener('click', function(){
-        dn.show_widget_content(dn.el_content_general_settings);
+        dn.g_settings.set('pane', 'pane_general_settings');
     })
 }
 
-dn.create_content_file = function(){
-    dn.el_content_file = document.createElement('div');
-    dn.el_content_file.innerHTML = [
-        "<div class='widget_menu_item details_file_title' clickable=1>" ,
+dn.create_pane_file = function(){
+    dn.el_pane_file = document.createElement('div');
+    dn.el_pane_file.innerHTML = [
+        "<div class='pane_item details_file_title clickable'>" ,
             "<div class='details_file_title_text' data-info='title'></div>" ,
             "<input type='text' placeholder='title' class='details_file_title_input' style='display:none;'/>" ,
         "</div>" ,
 
-        "<div class='widget_menu_item details_file_description' clickable=1>",
+        "<div class='pane_item details_file_description clickable'>",
             "<div class='details_file_description_text' data-info='description'></div>",
             "<textarea placeholder='description' class='details_file_description_input' style='display:none;'></textarea>",
         "</div>",
        
-        "<div class='widget_spacer'></div>",
+        "<div class='pane_spacer'></div>",
        
-       "<div class='widget_menu_item details_file_ace_mode'>Syntax: ",
+       "<div class='pane_item details_file_ace_mode'>Syntax: ",
             "<div class='button inline_button ' id='file_ace_mode_detect'>detect</div>",
             "<div class='button inline_button dropdown_button' id='file_ace_mode_choose'></div>",
             "<div class='file_info' id='file_ace_mode_info'></div>",  
         "</div>",
-        "<div class='widget_spacer'></div>",
-        "<div class='widget_menu_item details_file_newline'>Newline: ",
+        "<div class='pane_spacer'></div>",
+        "<div class='pane_item details_file_newline'>Newline: ",
             "<div class='button inline_button ' id='file_newline_detect'>detect</div>",
             "<div class='button inline_button ' id='file_newline_windows'>windows</div>",
             "<div class='button inline_button ' id='file_newline_unix'>unix</div>",
             "<div class='file_info' id='file_newline_info'></div>",
         "</div>",
-        "<div class='widget_spacer'></div>",
-        "<div class='widget_menu_item details_file_tab'>Tabs: ",
+        "<div class='pane_spacer'></div>",
+        "<div class='pane_item details_file_tab'>Tabs: ",
             "<div class='button inline_button ' id='file_tab_detect'>detect</div>",
             "<div class='button inline_button ' id='file_tab_hard'>hard</div>",
             "<div class='button inline_button ' id='file_tab_soft'>",
@@ -838,23 +844,23 @@ dn.create_content_file = function(){
             "<div class='file_info' id='file_tab_info'></div>",
         "</div>",
     
-        "<div class='widget_content_bottom_before'></div>",
-        "<div class='widget_content_bottom'>",
+        "<div class='widget_pane_bottom_before'></div>",
+        "<div class='widget_pane_bottom'>",
             "<div class='button icon' id='button_save'><div class='tooltip button_tooltip'>save file</div></div> ",
             "<div class='button icon' id='button_print'><div class='tooltip button_tooltip'>print...</div></div> ",
             "<div class='button icon' id='button_share'><div class='tooltip button_tooltip'>file share settings...</div></div> ",
             "<div class='button icon' id='button_history'><div class='tooltip button_tooltip'>history of changes...</div></div> ",            
         "</div>"
         ].join("");
-    dn.el_content_file.id = 'content_file';
-    dn.el_content_file.classList.add('widget_content_pane');
-    dn.el_content_file.style.display = 'none';
-    dn.el_widget_content.appendChild(dn.el_content_file);
+    dn.el_pane_file.id = 'pane_file';
+    dn.el_pane_file.classList.add('widget_pane');
+    dn.el_pane_file.style.display = 'none';
+    dn.el_widget_content.appendChild(dn.el_pane_file);
 
-    dn.el_details_title_input  = dn.el_content_file.getElementsByClassName('details_file_title_input')[0];
-    dn.el_details_title_text = dn.el_content_file.getElementsByClassName('details_file_title_text')[0];
-    dn.el_details_description_input  = dn.el_content_file.getElementsByClassName('details_file_description_input')[0];
-    dn.el_details_description_text = dn.el_content_file.getElementsByClassName('details_file_description_text')[0];
+    dn.el_details_title_input  = dn.el_pane_file.getElementsByClassName('details_file_title_input')[0];
+    dn.el_details_title_text = dn.el_pane_file.getElementsByClassName('details_file_title_text')[0];
+    dn.el_details_description_input  = dn.el_pane_file.getElementsByClassName('details_file_description_input')[0];
+    dn.el_details_description_text = dn.el_pane_file.getElementsByClassName('details_file_description_text')[0];
     dn.syntax_drop_down = dn.create_syntax_menu()
     
     // TODO: fix inconsitency of Ids versus classes
@@ -881,7 +887,7 @@ dn.create_content_file = function(){
     dn.create_file_details_tool();  // this could really be appended directly to this function.
 
     dn.el_menu_file.addEventListener('click', function(){
-        dn.show_widget_content(dn.el_content_file);
+        dn.g_settings.set('pane', 'pane_file');
     })
 }
 
@@ -900,15 +906,15 @@ dn.create_menu = function(){
             "<div class='widget_menu_wrapper' id='menu_shortcuts' style='display:none;'></div>",
             "<div class='widget_menu_wrapper' id='menu_help'></div>"].join('');
 
-
-    dn.menu_icon_from_content_id = {}
+    dn.el_widget_toolbar.addEventListener('mousedown', function(e){e.stopPropagation();});
+    dn.menu_icon_from_pane_id = {}
     var els = dn.el_widget_toolbar.getElementsByClassName('widget_menu_wrapper');
     for(var ii=0; ii<els.length; ii++){
         els[ii].addEventListener("click",function(){dn.reclaim_focus();});
         els[ii].innerHTML = "<div class='tooltip widget_menu_tooltip'>" + dn.menu_id_to_caption[els[ii].id] + "</div>" +
                             "<div class='widget_menu_icon' id='icon_" + els[ii].id + "'></div>";
         var el_icon = els[ii].getElementsByClassName('widget_menu_icon')[0];
-        dn.menu_icon_from_content_id['content_' + els[ii].id.substr(5)] = el_icon;
+        dn.menu_icon_from_pane_id['pane_' + els[ii].id.substr(5)] = el_icon;
     }
    
     dn.el_menu_shortcuts = document.getElementById('menu_shortcuts');
@@ -977,7 +983,7 @@ dn.document_mouse_up_widget = function(e){
             dn.g_settings.set("widget_anchor",anchor); 
 
     }else{
-        dn.toggle_widget(); // TODO: toggle open/closed properly
+        dn.g_settings.set('pane_open', !dn.g_settings.get('pane_open'));
     }
     dn.widget_mouse_down_info = undefined;
 };
@@ -1056,18 +1062,8 @@ dn.widget_apply_anchor = function(anchor){
 
 }
 
-dn.toggle_widget = function(state){
-    // provide argument "true" to open widget, "false" to close, and no arg to toggle.
-
-    if(dn.ignore_escape){
-        dn.ignore_escape = false;
-        return;
-    }
-    if(dn.is_showing_history)
-        dn.close_history();
-
-    if(state === undefined)
-        state = dn.el_widget_toolbar.style.display === 'none';
+dn.open_close_widget = function(state){
+    // provide argument "true" to open widget, "false" to close
 
     if(state){
         dn.el_widget_toolbar.style.display = '';
@@ -1168,6 +1164,7 @@ dn.get_settings_from_cloud = function() {
     
     var existingKeys = dn.g_settings.keys();
     dn.g_settings.addEventListener(gapi.drive.realtime.EventType.VALUE_CHANGED, dn.settings_changed);
+    console.log('Applying settings from cloud...')
     for(var s in dn.default_settings)
         if(s in old_temp_g_settings.getKeeps())
             dn.g_settings.set(s,old_temp_g_settings.get(s));
@@ -1207,7 +1204,10 @@ dn.load_default_settings = function(){
               getKeeps: function(){return keeps;}};
                                  
   })();
+
+  dn.status.local_settings = 0;
   try{
+    console.log('Loading default/localStorage settings...');
     for(var s in dn.default_settings)
     if(dn.impersonal_settings_keys.indexOf(s) == -1 || !localStorage || !localStorage["g_settings_" +s])
         dn.g_settings.set(s,dn.default_settings[s]);
@@ -1218,6 +1218,7 @@ dn.load_default_settings = function(){
         localStorage.clear();
       console.log("Failed to load defaults/localStorage settings.  Have cleared localStorage cache.")
   }
+  dn.status.local_settings = 1;
 }
 
 dn.settings_changed = function(e){
@@ -1233,7 +1234,7 @@ dn.settings_changed = function(e){
                     break;
             case "theme":
                 dn.editor.setTheme('ace/theme/' + new_value);
-                dn.theme_drop_down.SetInd(dn.theme_drop_down.IndexOf(new_value));
+                dn.theme_drop_down.SetInd(dn.theme_drop_down.IndexOf(new_value), true);
                 break;
             case "fontSize":
                 var scrollLine = dn.get_scroll_line();
@@ -1292,10 +1293,16 @@ dn.settings_changed = function(e){
             case "tabIsHard":          
                 dn.apply_tab_choice(); 
                 break;
-            case "widgetSub":
+            case 'pane_open':
+                dn.open_close_widget(new_value)
+                if(dn.g_settings.keep)
+                    dn.g_settings.keep('pane_open');
                 break;
-            case 'widgetCurrent':
-                break; // TODO: recall widget tab
+            case 'pane':
+                dn.show_pane(document.getElementById(new_value));
+                if(dn.g_settings.keep)
+                    dn.g_settings.keep('pane');
+                break; 
         }
     }catch(err){
         console.log("Error while uptating new settings value.")
@@ -1320,7 +1327,7 @@ dn.platform = (function(){
     return null;
 })();
 
-dn.create_content_shortcuts = function(){
+dn.create_pane_shortcuts = function(){
 //This is hardly the world's most efficient way of doing this....(but it probably doesn't matter)...
 
     var arry = dn.shortcuts_list;
@@ -1351,8 +1358,8 @@ dn.create_content_shortcuts = function(){
     for(var action in dn.tooltip_info)if(action in dict)
         dn.tooltip_info[action] += dict[action];
 
-    dn.el_content_shortcuts = document.createElement('div');
-    dn.el_content_shortcuts.innerHTML = [
+    dn.el_pane_shortcuts = document.createElement('div');
+    dn.el_pane_shortcuts.innerHTML = [
             "<div class='widget_box_title shortcuts_title'>Keyboard Shortcuts ",
                  platform ? "(" + platform + ")" : "" ,
             "</div>",
@@ -1360,11 +1367,16 @@ dn.create_content_shortcuts = function(){
             "<div class='shortcuts_list'>",
             html.join(''),
             "</div>"].join('');
-    dn.el_content_shortcuts.style.display = 'none';
-    dn.el_content_shortcuts.id = 'content_shortcuts';
-    dn.el_content_shortcuts.classList.add('widget_content_pane');
-    dn.el_widget_content.appendChild(dn.el_content_shortcuts);
+    dn.el_pane_shortcuts.style.display = 'none';
+    dn.el_pane_shortcuts.id = 'pane_shortcuts';
+    dn.el_pane_shortcuts.classList.add('widget_pane');
+    dn.el_widget_content.appendChild(dn.el_pane_shortcuts);
 };
+
+dn.esc_pressed = function(){
+    // TODO: it's a bit more complicated
+    dn.g_settings.set('pane_open', !dn.g_settings.get('pane_open'));
+}
 
 dn.make_keyboard_shortcuts = function(){
     //perviously was using ace for handling these shorcuts because it neater (and efficient?) but it was
@@ -1383,7 +1395,7 @@ dn.make_keyboard_shortcuts = function(){
     key('command+r, ctrl+r,  ctrl+alt+r,  command+alt+r' + 
        ', command+g, ctrl+g,  ctrl+alt+g,  command+alt+g', dn.show_replace);
     key('command+h, ctrl+h,  ctrl+alt+h,  command+alt+h', dn.start_revisions_worker);
-    key('esc', dn.toggle_widget);    
+    key('esc', dn.esc_pressed);
     key.filter = function(){return 1;}
 
 
@@ -2398,7 +2410,7 @@ dn.document_clipboard_keyup = function(e){
     if(e.which == 17 || e.which == 91 || !e.ctrlKey){
         $(document).off('keyup',dn.document_clipboard_keyup);
         dn.clipboard_active = false;
-        dn.el_content_clipboard.style.display = 'none';
+        dn.el_pane_clipboard.style.display = 'none';
         if(dn.clipboard_info_timer){
             clearTimeout(dn.clipboard_info_timer);
             dn.clipboard_info_timer = null;
@@ -2424,7 +2436,7 @@ dn.on_paste = function(text){
 
     dn.clipboard_info_timer = setTimeout(function(){
         dn.clipboard_info_timer = null;
-        dn.el_content_clipboard.style.display = '';
+        dn.el_pane_clipboard.style.display = '';
     },dn.clipboard_info_delay);
 }
 
@@ -2438,13 +2450,13 @@ dn.on_copy = function(text){
 }
 
 dn.create_clipboard_tool = function(){
-    dn.el_content_clipboard = document.createElement('div');
-    dn.el_content_clipboard.innerHTML = [
+    dn.el_pane_clipboard = document.createElement('div');
+    dn.el_pane_clipboard.innerHTML = [
         "When you paste with 'ctrl-v' (or 'cmd-v') you can cycle through your Drive Notepad clipboard ",
         "by pressing 'left' or 'right' before releaing the 'ctrl' (or 'cmd') key. <br><br> You can clear your clipboard history by clicking the ",
         "relevant button in the settings menu."].join('');
-    dn.el_content_clipboard.style.display = 'none';
-    dn.el_widget_content.appendChild(dn.el_content_clipboard);
+    dn.el_pane_clipboard.style.display = 'none';
+    dn.el_widget_content.appendChild(dn.el_pane_clipboard);
 
     dn.el_button_clear_clipboard.addEventListener('click', function(){
             dn.g_clipboard.clear();
@@ -2480,10 +2492,7 @@ dn.create_file = function(){
     dn.show_description();
     dn.apply_newline_choice();
     dn.apply_tab_choice();
-    dn.toggle_widget(false);
-    dn.g_settings.set("widgetSub","file");  
-    if(dn.g_settings.keep)
-        dn.g_settings.keep("widgetSub");
+    dn.g_settings.set("pane","pane_file");  
 }
 
 dn.guess_mime_type = function(){
@@ -2599,7 +2608,7 @@ dn.load_file = function(flag){
     }, function(){
         // failure
         document.title = "Drive Notepad";
-        dn.show_widget_content(dn.el_content_help);
+        dn.g_settings.set('pane', 'pane_help');
     })
     
 }
@@ -2902,15 +2911,15 @@ dn.document_ready = function(e){
     
     
     dn.create_menu();
-    dn.create_content_file();
-    dn.create_content_general_settings();
-    dn.create_content_shortcuts();
-    dn.create_content_permissions();
-    dn.create_content_help();
+    dn.create_pane_file();
+    dn.create_pane_general_settings();
+    dn.create_pane_shortcuts();
+    dn.create_pane_permissions();
+    dn.create_pane_help();
 
     dn.create_open_tool();
     
-    dn.create_content_find();
+    dn.create_pane_find();
     
     dn.make_keyboard_shortcuts();
     dn.load_default_settings();
