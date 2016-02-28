@@ -87,7 +87,7 @@ padding: 5px;
 top: 0px;
 bottom: 0px;
 }
-#widget_toolbar{
+#widget_menu{
 cursor: default;
 width: 34px;
 position: absolute;\
@@ -170,7 +170,7 @@ text-align: left;
 margin-left: 3px;
 margin-right: 34px;
 }
-#widget_toolbar.flipped{
+#widget_menu.flipped{
 right: 0px;
 text-align: right;
 }
@@ -417,7 +417,7 @@ cursor: pointer;
 .inline_button,
 .button_like{
 padding: 3px 6px 3px 6px;
-margin: 0px 2px 0px 2px;
+margin: 0px 0px 0px 2px;
 }
 .button_like{
 box-shadow: none;

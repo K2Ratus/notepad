@@ -107,6 +107,7 @@ dn.change_line_classes_rm =(function(rootStr,trueN,factor){
         x.push(rootStr + i);
     return x;
 })('recent_line_rm',8,5)
+dn.el = {};
 
 /* ################################################################################################################
 
@@ -144,6 +145,8 @@ dn.change_line_classes_rm =(function(rootStr,trueN,factor){
 // Auth stuff
 // ############################
 
+// See https://developers.google.com/apis-explorer 
+
 dn.authentication_done = function(auth_result){
     dn.status.popup_active = 0;
     if (!auth_result)
@@ -153,17 +156,33 @@ dn.authentication_done = function(auth_result){
 
     dn.status.authentication = 1;
     dn.show_status();
+
     if(!dn.user_info)
         dn.get_user_info();
-    if(dn.the_file.file_id)
+    if(dn.the_file.file_id &&  dn.status.file_meta != 1 || dn.status.file_body != 1)
         dn.load_file();
     dn.get_properties_from_cloud();
 
-    // TODO: make these redundant
     // Access token has been successfully retrieved, requests can be sent to the API
-    gapi.load('drive-realtime', function(){dn.api_loaded('drive-realtime')});
-    gapi.load('picker', function(){dn.api_loaded('picker');});
-    gapi.load('drive-share', function(){dn.api_loaded('sharer');});
+    //TODO: make these redundant
+    gapi.load('drive-realtime', dn.get_settings_from_cloud());
+    gapi.load('drive-share', function(){
+        dn.el.share_dialog = new gapi.drive.share.ShareClient(dn.client_id);
+    });
+}
+
+dn.get_user_info = function(){
+   Promise.resolve(
+        gapi.client.request({
+            'path' : 'userinfo/v2/me?fields=name'
+        })).then(function(a){
+            dn.user_info = a.result;
+            dn.el.user_name.textContent = a.result.name;
+        }, function(err){
+            // TODO: could be auth problem
+            dn.show_error('Failed to get user info');
+            console.dir(err);
+        });
 }
 
 dn.authentication_failed = function(err){
@@ -187,7 +206,6 @@ dn.reauth = function(callback){
     });
 }
 
-
 dn.launch_popup = function(){
     dn.status.popup_active = 1;
     dn.status.authorization = 0;
@@ -199,25 +217,8 @@ dn.launch_popup = function(){
 }
 
 dn.show_pane_permissions = function(){
-    //dn.el_widget_text.textContent = "Manual authorization required.";
-
     dn.g_settings.set('pane', 'pane_permissions');
-    css_animation(dn.el_the_widget, 'shake', function(){}, dn.error_delay_ms);
-}
-
-dn.create_pane_permissions = function(){
-    dn.el_pane_permissions = document.createElement('div');
-    dn.el_pane_permissions.innerHTML = [
-        "<br><div class='button_wrapper'><div class='button popupbutton'>Autherize...</div></div><br><br>",
-        "Click the button above to launch a popup window and login to your Google account and/or grant permisions to this app.<br><br>",
-        "This step will not normally be required when you use the app.<br><br>If you do not see a popup window when you click the button you may ",
-        "need to disable your popup blocker and reload the page."].join('');
-    dn.el_pane_permissions.id = 'pane_permissions'
-    dn.el_pane_permissions.classList.add('widget_pane');
-    dn.el_widget_content.appendChild(dn.el_pane_permissions);
-    dn.el_pane_permissions.style.display = 'none';
-    dn.el_pane_permissions.getElementsByClassName('popupbutton')[0].addEventListener('click', dn.launch_popup);
-
+    css_animation(dn.el.the_widget, 'shake', function(){}, dn.error_delay_ms);
 }
 
 
@@ -233,9 +234,8 @@ dn.do_share = function(){
     dn.status.file_sharing = -1; //TODO: see SO question about no callback for share dialog...how are we supposed to know when it's closed and what happened?
     dn.the_file.is_shared = 0;
     dn.show_status();
-    dn.el_share_dialog.setItemIds([dn.the_file.file_id]);
-    dn.el_share_dialog.showSettingsDialog();
-    
+    dn.el.share_dialog.setItemIds([dn.the_file.file_id]);
+    dn.el.share_dialog.showSettingsDialog();
     return false;
 }
 
@@ -243,14 +243,6 @@ dn.do_share = function(){
 // ############################
 // Newline stuff
 // ############################
-dn.create_newlinemenu_tool = function(){
-    dn.el_newline_menu_windows.addEventListener('click', function(){
-        dn.g_settings.set('newLineDefault','windows');
-    });
-    dn.el_newline_menu_unix.addEventListener('click', function(){
-        dn.g_settings.set('newLineDefault','unix');
-    });
-}
 
 dn.detect_new_line = function(str){
     dn.the_file.new_line_detected = (function(){
@@ -276,11 +268,11 @@ dn.apply_newline_choice = function(str){
     var newlineDefault = dn.g_settings.get('newLineDefault');
     
     if(newlineDefault == "windows"){
-        dn.el_newline_menu_windows.classList.add('selected')
-        dn.el_newline_menu_unix.classList.remove('selected');
+        dn.el.newline_menu_windows.classList.add('selected')
+        dn.el.newline_menu_unix.classList.remove('selected');
     }else{//newlineDefault should be unix
-        dn.el_newline_menu_unix.classList.add('selected')
-        dn.el_newline_menu_windows.classList.remove('selected');
+        dn.el.newline_menu_unix.classList.add('selected')
+        dn.el.newline_menu_windows.classList.remove('selected');
     }             
                 
    if(typeof str == "string")
@@ -288,21 +280,21 @@ dn.apply_newline_choice = function(str){
    
    dn.show_newline_status(dn.the_file.new_line_detected); //if default changes after load or we have a new file we need this.
    
-    dn.el_file_newline_detect.classList.remove('selected');
-    dn.el_file_newline_windows.classList.remove('selected');
-    dn.el_file_newline_unix.classList.remove('selected');
+    dn.el.file_newline_detect.classList.remove('selected');
+    dn.el.file_newline_windows.classList.remove('selected');
+    dn.el.file_newline_unix.classList.remove('selected');
    if(dn.the_file.custom_props.newline == "detect"){
         if(dn.the_file.new_line_detected == "windows" || dn.the_file.new_line_detected == "unix")
             dn.editor.session.setNewLineMode(dn.the_file.new_line_detected);
         else
             dn.editor.session.setNewLineMode(newlineDefault);    
-        dn.el_file_newline_detect.classList.add('selected');
+        dn.el.file_newline_detect.classList.add('selected');
     }else{
         dn.editor.session.setNewLineMode(dn.the_file.custom_props.newline);
             if(dn.the_file.custom_props.newline == "windows")
-                dn.el_file_newline_windows.classList.add('selected');
+                dn.el.file_newline_windows.classList.add('selected');
             else
-                dn.el_file_newline_unix.classList.add('selected');            
+                dn.el.file_newline_unix.classList.add('selected');            
     }    
 }
 
@@ -319,33 +311,11 @@ dn.show_newline_status = function(statusStr){
             str = "detected " + statusStr + "-like newlines";
     }
     
-    dn.el_file_newline_info.textContent = "(" + str +")";
+    dn.el.file_newline_info.textContent = "(" + str +")";
     
     return statusStr;
 }
 
-// ############################
-// First time usage stuff
-// ############################
-
-dn.show_first_time_user_info = function(last_version){
-    // last version could be blank
-    // TODO: update this
-    dn.el_pane_first_time_info = document.createElement('div');
-    dn.el_pane_first_time_info.innerHTML = [
-        "<div class='widget_box_title widget_firsttime_title'>First-time usage tips</div>",
-        "You can move this thing by dragging the top part.<br><br>",
-        "To access the menu click the status text above or use the shortcut key, Esc<br><br>",
-        "Changes are not saved as you type, you have to press save in the menu or use the shortcut key, ",
-            (dn.platform == "Mac" ? "Cmd" : "Ctrl" ) + "-S." ,
-        "<br><br><div class='button_wrapper'><div class='button firsttime_dissmiss'>Dismiss</div></div>" ].join('');
-    dn.el_pane_first_time_info.id = 'pane_first_time_info';
-    dn.el_pane_first_time_info.classList.add('widget_pane');
-    dn.el_widget_content.appendChild(dn.el_pane_first_time_info);
-    dn.el_pane_first_time_info.getElementsByClassName('firsttime_dissmiss')[0]
-                .addEventListener('click', function(){dn.g_settings.set('pane','');});
-    dn.g_settings.set('pane', 'pane_first_time_info');
-}
 
 // ############################
 // Open stuff
@@ -366,71 +336,20 @@ dn.do_open = function(){
     return false;
 }
 
-dn.create_open_tool = function(){
-    dn.el_pane_open = document.createElement('div');
-    dn.el_pane_open.id = 'pane_open';
-    dn.el_pane_open.classList.add('widget_pane');
-    dn.el_pane_open.innerHTML = [
-        "<div class='pane_item'>Open an existing file in:<br><br><div class='button_wrapper'><div class='button'",
-        "id='opener_button_a'>this tab</div> <div class='button' id='opener_button_b'",
-        ">a new tab</div></div><br></div><br>",
-        "<div class='pane_item'>Create a new file in:<br><br><div class='button_wrapper'><div class='button'",
-        "id='opener_button_c'>this tab</div> <div class='button' id='opener_button_d'",
-        ">a new tab</div></div><br></div>"].join('');
-    dn.el_pane_open.style.display = 'none';
-    dn.el_widget_content.appendChild(dn.el_pane_open);
-
-    dn.el_menu_open.addEventListener('click', function(){dn.g_settings.set('pane', 'pane_open')});
-
-    dn.el_opener_chooser = dn.el_widget_content.parentNode.getElementsByClassName('widget_open_tab_choice')[0];
-    
-    dn.el_opener_button_a = document.getElementById('opener_button_a');
-    dn.el_opener_button_a.addEventListener('click', function(){
-        dn.do_open();
-    });
-    dn.el_opener_button_b = document.getElementById('opener_button_b');
-    dn.el_opener_button_b.addEventListener('click', function(){
-        //TODO:
-    });
-}
-
 dn.picker_callback = function(data) {
   if (data.action == google.picker.Action.PICKED) {
     var fileId = data.docs[0].id;
-    dn.reclaim_focus();
+   dn.focus_editor();
     var url = window.location.href.match(/^https?:\/\/[\w-.]*\/\w*/)[0] +
               "?state={\"action\":\"open\",\"ids\":[\"" + fileId +"\"]}";
-    dn.el_opener_button_a.setAttribute('href', url);
-    dn.el_opener_button_b.setAttribute('href', url);
+    dn.el.opener_button_a.setAttribute('href', url);
+    dn.el.opener_button_b.setAttribute('href', url);
     dn.g_settings.set('pane_open', false);
-    dn.el_opener_chooser.style.display = '';
-    css_animation(dn.el_the_widget, 'shake', function(){}, dn.error_delay_ms);
+    dn.el.opener_chooser.style.display = '';
+    css_animation(dn.el.the_widget, 'shake', function(){}, dn.error_delay_ms);
   }else if(data.action == "cancel"){
-      dn.reclaim_focus();
+     dn.focus_editor();
   } 
-}
-
-dn.create_pane_help = function(){
-    dn.el_pane_help = document.createElement('div');
-    dn.el_pane_help.innerHTML = [
-        "<div class='widget_box_title'>Drive Notepad 2016a, by DM.</div>",
-        "<div class='pane_item'><a href='' target='_blank'>google+</a> - for bug reports, questions, etc.*</div>",
-        "<div class='pane_item'><a href='' target='_blank'>youtube</a> - quick demo.</div>",
-        "<div class='pane_item'><a href='' target='_blank'>about</a> - more information.</div><br><br>",
-        "<div class='widget_box_title'>Logged in as <span id='user_name'>???</span></div>",
-        "<div class='pane_item'><a href='https://drive.google.com' target='_blank' id='drive_link'>Google Drive</a> - open your Drive</div>",
-        "<div class='widget_pane_bottom_before'></div>",
-        "<div class='widget_pane_bottom'>*positive feedback is always appriciated!</div>"].join('');
-
-    dn.el_pane_help.id = 'pane_help';
-    dn.el_pane_help.classList.add('widget_pane');
-    dn.el_pane_help.style.display = 'none';
-    dn.el_widget_content.appendChild(dn.el_pane_help);
-    dn.el_user_name = document.getElementById('user_name');
-    dn.el_menu_help.addEventListener('click', function(){
-        dn.g_settings.set('pane', 'pane_help');
-    })
-
 }
 
 
@@ -463,7 +382,7 @@ dn.do_find = function(str){
         dn.editor.session.removeMarker(dn.find_result_markers.pop());
                 
     if(str == ""){
-        dn.el_find_replace_info.innerHTML = "Type to search.<br>Ctrl-Up/Down: cycle though history";
+        dn.el.find_replace_info.innerHTML = "Type to search.<br>Ctrl-Up/Down: cycle though history";
     }else{
         var search = dn.editor.$search;
         search.set({needle: str});
@@ -473,11 +392,11 @@ dn.do_find = function(str){
             for(var i=0;i<r.length;i++)
                 dn.find_result_markers.push(dn.editor.session.addMarker(r[i], "find_result", "find_result",false)); 
             
-                dn.el_find_replace_info.innerHTML = "Found " + r.length + " occurances<br>" +
+                dn.el.find_replace_info.innerHTML = "Found " + r.length + " occurances<br>" +
                  "Enter: find next<br>Shift+Enter: find previous<br>Esc: hide the find/replace box" +
                  (dn.showing_replace ?  "<br>Tab: focus on replace field" : "") + "<br>Ctrl-Up/Down: cycle though history";
         }else{
-            dn.el_find_replace_info.innerHTML = "No occurences found.<br>Ctrl-Up/Down: cycle though history";
+            dn.el.find_replace_info.innerHTML = "No occurences found.<br>Ctrl-Up/Down: cycle though history";
         }
     }
     dn.finding_str = str;
@@ -514,171 +433,149 @@ dn.blur_find_and_focus_editor = function(flag){
         return; //note that we are assuming here that the blur event is triggered on the first element *before* the focus is triggered on the second element..if that isn't guaranteed to be true we'd need to check whether the second element already has the focus when the first element gets its blur event.
     }
     dn.showing_find_results = false;
-    dn.reclaim_focus();
+   dn.focus_editor();
     while(dn.find_result_markers.length)
         dn.editor.session.removeMarker(dn.find_result_markers.pop());               
 }
     
-
-dn.create_pane_find = function(){
-    dn.el_pane_find = document.createElement('div');
-
-    dn.el_pane_find.innerHTML = [
-        "<div class='pane_item'><input class='find_input' tabindex='1' placeholder='find text'></input>",
-        "<div class='replace_form'><input tabindex='2' class='replace_input' placeholder='replace with'></input>",
-        "<div class='find_replace_info'></div></div></div><br><br>",
-        "<div class='pane_item'>Go to: <input class='gotoline_input' id='goto_input' placeholder='line number'></input></div>"].join('');
-    dn.el_pane_find.id = 'pane_find';
-    dn.el_pane_find.classList.add('widget_pane');
-    dn.el_pane_find.style.display = 'none';
-    dn.el_widget_content.appendChild(dn.el_pane_find);
-
-    dn.el_menu_find.addEventListener('click', dn.show_find);
-
-    dn.el_replace_form = dn.el_pane_find.getElementsByClassName("replace_form")[0];
-    dn.el_find_replace_info = dn.el_pane_find.getElementsByClassName('find_replace_info')[0];
-    dn.el_find_input = dn.el_pane_find.getElementsByClassName("find_input")[0];
-    dn.el_replace_input = dn.el_pane_find.getElementsByClassName("replace_input")[0];
-    
-    dn.el_find_input.addEventListener('focus', function(){
-            dn.cancel_blur_find_and_focus_editor();
-            dn.showing_find_results = true;
-            if(dn.showing_replace)
-                dn.el_replace_input.setAttribute("tabindex", parseInt(dn.el_find_input.getAttribute("tabindex"))+1); //we want to force the replace input to always be the next tab index
-            dn.do_find(dn.finding_str);
-        });
-    dn.el_find_input.addEventListener('blur', function(){
-            if(dn.showing_replace)
-                dn.blur_find_and_focus_editor("delay");
-            else
-              dn.blur_find_and_focus_editor();
-        });
-    dn.el_find_input.addEventListener('keydown',function(e){ //we want keydown here so that we can get repeated firing whith keydown (i think on most browsers)
-        if(e.which == WHICH.ENTER)
-            if(e.shiftKey)
-                dn.editor.findPrevious();
-            else
-                dn.editor.findNext();
-                                     
-        if(e.which == WHICH.ESC){
-            dn.blur_find_and_focus_editor(); 
-            //the normal togglewidget shortcut will kick in
-        }
-        if(e.ctrlKey && (e.which == WHICH.UP || e.which == WHICH.DOWN)){
-            if(isNaN(dn.find_history_pointer)){
-                dn.add_tofind_history(dn.finding_str);  //when we begin delving into history
-                dn.find_history_pointer = dn.g_find_history.length-1;
-            }
-            dn.find_history_pointer += e.which == WHICH.DOWN? -1 : +1;
-            dn.find_history_pointer = dn.find_history_pointer < 0 ? 0 : dn.find_history_pointer;
-            dn.find_history_pointer = dn.find_history_pointer > dn.g_find_history.length-1 ? dn.g_find_history.length-1 : dn.find_history_pointer; 
-            var newStr = dn.g_find_history.get(dn.find_history_pointer);
-            dn.el_find_input.value = newStr;
-            dn.do_find(newStr);
-            e.preventDefault();
-        }
-    });
-
-    dn.el_find_input.addEventListener("keyup", function(e){ //we need keyup here in order that the val has the new character or new backspace
-        if(e.which == WHICH.ENTER || e.which == WHICH.ESC || e.which == WHICH.UP || e.which == WHICH.DOWN)
-            return; 
-        if(dn.finding_str == dn.el_find_input.value)
-            return;
-        if(dn.el_find_input.value != dn.finding_str)
-            dn.find_history_pointer = NaN;
-        dn.do_find(dn.el_find_input.value)
-    })
-    dn.el_replace_input.addEventListener('focus', function(){
-        dn.cancel_blur_find_and_focus_editor();
-        if(!dn.showing_find_results)
-            dn.do_find(dn.finding_str);
-            
-        //we want to force the find input to always be the next tab index
-        dn.el_find_input.setAttribute("tabindex",parseInt(dn.el_replace_input.setAttribute("tabindex"))+1); 
-        if(dn.find_result_markers.length)
-            dn.el_find_replace_info.innerHTML = "Found " + dn.find_result_markers.length + " occurances<br>" +
-             "Enter: replace current selection<br>Ctrl+Enter: replace all<br>Esc: hide the find/replace box<br>Tab: focus on find field";
-        else
-            dn.el_find_replace_info.innerHTML = "Nothing to replace.<br>Esc: hide the find/replace box<br>Tab: focus on find field";
-    });
-    dn.el_replace_input.addEventListener("keydown",function(e){ //we want keydown here so that we can get repeated firing whith keydown (i think on most browsers)
-        if(e.which == WHICH.ENTER){
-            if(!dn.find_result_markers.length)
-                return;
-            var n = e.ctrlKey ? dn.find_result_markers.length : 1;
-            if(e.ctrlKey)
-                dn.editor.replaceAll(dn.el_replace_input.value);
-            else
-                dn.editor.replace(dn.el_replace_input.value);
-            if(e.shiftKey)
-                dn.editor.findPrevious()
-            else
-                dn.editor.findNext();
-            dn.do_find(dn.finding_str); 
-            if(dn.find_result_markers.length){
-                dn.el_find_replace_info.innerHTML = "Replaced " + n + " occurence" + (n>1? "s" : "") + ". <br>" +  dn.find_result_markers.length + " occurances remain<br>" +
-                 "Enter: replace current selection<br>Ctrl+Enter: replace all<br>Esc: hide the find/replace box<br>Tab: focus on find field";
-            } else {
-                dn.el_find_replace_info.innerHTML = "Replaced " + (n>1 ? "all " + n + " occurences" : "the 1 occurance") +
-                ". <br> Nothing further to replace.<br>Esc: hide the find/replace box<br>Tab: focus on find field";
-            }
-        }
-        if(e.which == WHICH.ESC){
-            dn.blur_find_and_focus_editor(); 
-            //the normal togglewidget shortcut will kick in
-        }
-    })
-    dn.el_replace_input.addEventListener('blur', function(){
-          dn.blur_find_and_focus_editor("delay");
-    });
-
-
-    // GOTO stuff
-    dn.el_goto_input = document.getElementById('goto_input');
-    dn.el_goto_input.addEventListener('blur', dn.reclaim_focus); // TODO: make this work properly
-    dn.el_goto_input.addEventListener('keyup', function(e){
-        if(e.which == WHICH.ENTER || e.which == WHICH.ESC){
-                if(e.which == WHICH.ENTER) //if it's esc the normal ToggleWidget shortcut will kick in.
-                    dn.el_widget_goto.style.display = 'none';
-            dn.reclaim_focus();
-            return;
-        }
-        var val = this.value;
-        if(val){
-            var line = parseInt(val,10);
-            if(!isNaN(line))
-                dn.editor.gotoLine(line,0,true);
-        }
-    });
-
-
-                  
+dn.find_input_focus = function(){
+    dn.cancel_blur_find_and_focus_editor();
+    dn.showing_find_results = true;
+    if(dn.showing_replace)
+        dn.el.replace_input.setAttribute("tabindex", parseInt(dn.el.find_input.getAttribute("tabindex"))+1); //we want to force the replace input to always be the next tab index
+    dn.do_find(dn.finding_str);
 }
+
+dn.find_input_blur = function(){
+    if(dn.showing_replace)
+        dn.blur_find_and_focus_editor("delay");
+    else
+        dn.blur_find_and_focus_editor();
+}
+
+dn.find_input_keydown = function(e){ 
+    //we want keydown here so that we can get repeated firing whith keydown (i think on most browsers)
+    if(e.which == WHICH.ENTER)
+        if(e.shiftKey)
+            dn.editor.findPrevious();
+        else
+            dn.editor.findNext();
+                                 
+    if(e.which == WHICH.ESC){
+        dn.blur_find_and_focus_editor(); 
+        //the normal togglewidget shortcut will kick in
+    }
+    if(e.ctrlKey && (e.which == WHICH.UP || e.which == WHICH.DOWN)){
+        if(isNaN(dn.find_history_pointer)){
+            dn.add_tofind_history(dn.finding_str);  //when we begin delving into history
+            dn.find_history_pointer = dn.g_find_history.length-1;
+        }
+        dn.find_history_pointer += e.which == WHICH.DOWN? -1 : +1;
+        dn.find_history_pointer = dn.find_history_pointer < 0 ? 0 : dn.find_history_pointer;
+        dn.find_history_pointer = dn.find_history_pointer > dn.g_find_history.length-1 ? dn.g_find_history.length-1 : dn.find_history_pointer; 
+        var newStr = dn.g_find_history.get(dn.find_history_pointer);
+        dn.el.find_input.value = newStr;
+        dn.do_find(newStr);
+        e.preventDefault();
+    }
+}
+
+dn.find_goto_keyup = function(e){
+    if(e.which == WHICH.ENTER || e.which == WHICH.ESC){
+        if(e.which == WHICH.ENTER) //if it's esc the normal ToggleWidget shortcut will kick in.
+            dn.el.widget_goto.style.display = 'none';
+       dn.focus_editor();
+        return;
+    }
+    if(this.value){
+        var line = parseInt(this.value, 10);
+        if(!isNaN(line))
+            dn.editor.gotoLine(line,0,true);
+    }
+}
+
+dn.find_input_keyup = function(e){ 
+    //we need keyup here in order that the val has the new character or new backspace
+    if(e.which == WHICH.ENTER || e.which == WHICH.ESC || e.which == WHICH.UP || e.which == WHICH.DOWN)
+        return; 
+    if(dn.finding_str == dn.el.find_input.value)
+        return;
+    if(dn.el.find_input.value != dn.finding_str)
+        dn.find_history_pointer = NaN;
+    dn.do_find(dn.el.find_input.value)
+}
+
+dn.find_replace_input_blur = function(){
+    dn.blur_find_and_focus_editor("delay");
+}
+
+dn.find_replace_input_focus = function(){
+    dn.cancel_blur_find_and_focus_editor();
+    if(!dn.showing_find_results)
+        dn.do_find(dn.finding_str);
+    //we want to force the find input to always be the next tab index
+    dn.el.find_input.setAttribute("tabindex",parseInt(dn.el.replace_input.setAttribute("tabindex"))+1); 
+    if(dn.find_result_markers.length)
+        dn.el.find_replace_info.innerHTML = "Found " + dn.find_result_markers.length + " occurances<br>" +
+         "Enter: replace current selection<br>Ctrl+Enter: replace all<br>Esc: hide the find/replace box<br>Tab: focus on find field";
+    else
+        dn.el.find_replace_info.innerHTML = "Nothing to replace.<br>Esc: hide the find/replace box<br>Tab: focus on find field";
+}
+
+dn.find_replace_input_keydown = function(e){ 
+    //we want keydown here so that we can get repeated firing whith keydown (i think on most browsers)
+    if(e.which == WHICH.ENTER){
+        if(!dn.find_result_markers.length)
+            return;
+        var n = e.ctrlKey ? dn.find_result_markers.length : 1;
+        if(e.ctrlKey)
+            dn.editor.replaceAll(dn.el.replace_input.value);
+        else
+            dn.editor.replace(dn.el.replace_input.value);
+        if(e.shiftKey)
+            dn.editor.findPrevious()
+        else
+            dn.editor.findNext();
+        dn.do_find(dn.finding_str); 
+        if(dn.find_result_markers.length){
+            dn.el.find_replace_info.innerHTML = "Replaced " + n + " occurence" + (n>1? "s" : "") + ". <br>" +  dn.find_result_markers.length + " occurances remain<br>" +
+             "Enter: replace current selection<br>Ctrl+Enter: replace all<br>Esc: hide the find/replace box<br>Tab: focus on find field";
+        } else {
+            dn.el.find_replace_info.innerHTML = "Replaced " + (n>1 ? "all " + n + " occurences" : "the 1 occurance") +
+            ". <br> Nothing further to replace.<br>Esc: hide the find/replace box<br>Tab: focus on find field";
+        }
+    }
+    if(e.which == WHICH.ESC){
+        dn.blur_find_and_focus_editor(); 
+        //the normal togglewidget shortcut will kick in
+    }
+}
+
 
 dn.show_find = function(){
     dn.g_settings.set('pane', 'pane_find');
     dn.showing_replace = false;
-    dn.el_replace_form.style.display = 'none';
+    dn.el.replace_form.style.display = 'none';
     var sel = dn.editor.session.getTextRange(dn.editor.getSelectionRange());
     if(sel)
-        dn.el_find_input.value = sel;
-    dn.el_find_input.focus();
+        dn.el.find_input.value = sel;
+    dn.el.find_input.focus();
     if(!sel)
-        dn.el_find_input.select();
+        dn.el.find_input.select();
     dn.find_history_pointer = NaN;
     return false;
 }
 
 dn.show_replace = function(){
     dn.showing_replace = true;
-    dn.el_replace_form.style.display = '';
+    dn.el.replace_form.style.display = '';
     var sel = dn.editor.session.getTextRange(dn.editor.getSelectionRange());
-    dn.el_pane_find.style.display = '';
+    dn.el.pane_find.style.display = '';
     if(sel)
-        dn.el_find_input.value = sel;
-    dn.el_find_input.focus()
+        dn.el.find_input.value = sel;
+    dn.el.find_input.focus()
     if(!sel)
-        dn.el_find_input.select();
+        dn.el.find_input.select();
     return false;
 }
 
@@ -691,9 +588,9 @@ dn.show_replace = function(){
 dn.show_pane = function(el){
     // el can be undefined/null to hide everything
 
-    for(var ii=0; ii < dn.el_widget_content.children.length; ii++)if(dn.el_widget_content.children[ii] !== el){
-        dn.el_widget_content.children[ii].style.display = 'none';
-        var el_icon = dn.menu_icon_from_pane_id[dn.el_widget_content.children[ii].id];
+    for(var ii=0; ii < dn.el.widget_content.children.length; ii++)if(dn.el.widget_content.children[ii] !== el){
+        dn.el.widget_content.children[ii].style.display = 'none';
+        var el_icon = dn.menu_icon_from_pane_id[dn.el.widget_content.children[ii].id];
         if(el_icon)
             el_icon.classList.remove('icon_selected');
     }
@@ -709,222 +606,6 @@ dn.show_pane = function(el){
        if(dn.status.local_settings == 1)   
             dn.g_settings.set('pane_open', false);
     }
-}
-
-dn.create_pane_general_settings = function(){
-    dn.el_pane_general_settings = document.createElement('div');
-    dn.el_pane_general_settings.innerHTML = [            
-        "<div class='pane_item'>Recent changes: ",
-            "<div class='button inline_button ' id='gutter_history_hide'>hide</div>",
-            "<div class='button inline_button ' id='gutter_history_show'>show</div>",
-        "</div>",
-    
-        "<div class='pane_item'>Word wrap: ",
-            "<div class='button inline_button ' id='word_wrap_off'>none</div>",
-            "<div class='button inline_button ' id='word_wrap_at'>",
-                "at <span id='word_wrap_at_text'>??</span>",
-                "<div class='button_up_down_wrapper'>",
-                    "<div class='button_up' id='word_wrap_at_inc'>&nbsp;</div>",
-                    "<div class='button_down' id='word_wrap_at_dec'>&nbsp;</div>",
-                "</div>",
-            "</div>", 
-            "<div class='button inline_button ' id='word_wrap_edge'>edge</div>",
-        "</div>",
-
-        "<div class='pane_item'>Tab default: ",
-            "<div class='button inline_button ' id='tab_hard'>hard</div>",
-            "<div class='button inline_button ' id='tab_soft'>",
-                "<span id='tab_soft_text'>??</span> spaces",
-                "<div class='button_up_down_wrapper'>",
-                    "<div class='button_up' id='tab_soft_inc'>&nbsp;</div>",
-                    "<div class='button_down' id='tab_soft_dec'>&nbsp;</div>",
-                "</div>",
-            "</div>", 
-        "</div>",
-                
-        "<div class='pane_item'>Newline default: ",
-            "<div class='button inline_button ' id='newline_menu_windows'>windows</div>",
-            "<div class='button inline_button ' id='newline_menu_unix'>unix</div>",
-        "</div>",
-
-        "<div class='pane_item'>Font size: ",
-            "<div class='button_like'><span id='font_size_text'>??</span> em",
-                "<div class='button_up_down_wrapper'>",
-                    "<div class='button_up' id='font_size_increment'></div>",
-                    "<div class='button_down' id='font_size_decrement'></div>",
-                "</div>",
-            "</div>",
-        "</div>",
-        
-        "<div class='pane_item'>Theme: ",
-            "<div class='button inline_button dropdown_button no_select' id='theme_chooser'></div>",
-        "</div>",
-
-        "<div class='widget_pane_bottom_before'></div>",    
-        "<div class='widget_pane_bottom'>",
-            "<div class='button icon' id='button_clear_clipboard'><div class='tooltip button_tooltip'>clear clipboard history</div></div> ",
-            "<div class='button icon' id='button_clear_find_replace'><div class='tooltip button_tooltip'>clear find/replace history</div></div> ",
-        "</div>"].join('');
-    dn.el_pane_general_settings.id = 'pane_general_settings';
-    dn.el_pane_general_settings.classList.add('widget_pane');
-    dn.el_pane_general_settings.style.display = 'none';
-    dn.el_widget_content.appendChild(dn.el_pane_general_settings);
-
-    dn.theme_drop_down = dn.create_theme_menu()
-    
-    dn.el_theme_chooser = document.getElementById('theme_chooser')
-    dn.el_theme_chooser.appendChild(dn.theme_drop_down.el);
-
-    dn.el_widget_sub_general_box = document.getElementById('sub_general_box')
-    dn.el_button_clear_clipboard = document.getElementById("button_clear_clipboard");
-    dn.el_button_clear_find_replace = document.getElementById("button_clear_find_replace");
-    dn.el_gutter_history_show = document.getElementById('gutter_history_show');
-    dn.el_gutter_history_hide = document.getElementById('gutter_history_hide');
-    dn.el_word_wrap_off = document.getElementById('word_wrap_off');
-    dn.el_word_wrap_at = document.getElementById('word_wrap_at');
-    dn.el_word_wrap_edge = document.getElementById('word_wrap_edge');
-    dn.el_font_size_decrement = document.getElementById('font_size_decrement');
-    dn.el_font_size_increment = document.getElementById('font_size_increment');
-    dn.el_font_size_text = document.getElementById('font_size_text');
-    dn.el_tab_hard = document.getElementById('tab_hard');
-    dn.el_tab_soft = document.getElementById('tab_soft');
-    dn.el_newline_menu_windows = document.getElementById('newline_menu_windows');
-    dn.el_newline_menu_unix = document.getElementById('newline_menu_unix');
-
-    dn.create_newlinemenu_tool(); // TODO: could be inlined here
-    dn.create_tab_tool();
-    dn.create_font_size_tool();
-    dn.create_wordwrap_tool();
-    dn.create_gutterhistory_tool();
-    dn.create_clipboard_tool();
-
-    dn.el_menu_general_settings.addEventListener('click', function(){
-        dn.g_settings.set('pane', 'pane_general_settings');
-    })
-}
-
-dn.create_pane_file = function(){
-    dn.el_pane_file = document.createElement('div');
-    dn.el_pane_file.innerHTML = [
-        "<div class='pane_item details_file_title clickable'>" ,
-            "<div class='details_file_title_text' data-info='title'></div>" ,
-            "<input type='text' placeholder='title' class='details_file_title_input' style='display:none;'/>" ,
-        "</div>" ,
-
-        "<div class='pane_item details_file_description clickable'>",
-            "<div class='details_file_description_text' data-info='description'></div>",
-            "<textarea placeholder='description' class='details_file_description_input' style='display:none;'></textarea>",
-        "</div>",
-       
-        "<div class='pane_spacer'></div>",
-       
-       "<div class='pane_item details_file_ace_mode'>Syntax: ",
-            "<div class='button inline_button ' id='file_ace_mode_detect'>detect</div>",
-            "<div class='button inline_button dropdown_button' id='file_ace_mode_choose'></div>",
-            "<div class='file_info' id='file_ace_mode_info'></div>",  
-        "</div>",
-        "<div class='pane_spacer'></div>",
-        "<div class='pane_item details_file_newline'>Newline: ",
-            "<div class='button inline_button ' id='file_newline_detect'>detect</div>",
-            "<div class='button inline_button ' id='file_newline_windows'>windows</div>",
-            "<div class='button inline_button ' id='file_newline_unix'>unix</div>",
-            "<div class='file_info' id='file_newline_info'></div>",
-        "</div>",
-        "<div class='pane_spacer'></div>",
-        "<div class='pane_item details_file_tab'>Tabs: ",
-            "<div class='button inline_button ' id='file_tab_detect'>detect</div>",
-            "<div class='button inline_button ' id='file_tab_hard'>hard</div>",
-            "<div class='button inline_button ' id='file_tab_soft'>",
-                "<span id='file_tab_soft_text'>??</span> spaces",
-                "<div class='button_up_down_wrapper'>",
-                    "<div class='button_up' id='file_tab_soft_inc'>&nbsp;</div>",
-                    "<div class='button_down' id='file_tab_soft_dec'>&nbsp;</div>",
-                "</div>",
-            "</div>", 
-            "<div class='file_info' id='file_tab_info'></div>",
-        "</div>",
-    
-        "<div class='widget_pane_bottom_before'></div>",
-        "<div class='widget_pane_bottom'>",
-            "<div class='button icon' id='button_save'><div class='tooltip button_tooltip'>save file</div></div> ",
-            "<div class='button icon' id='button_print'><div class='tooltip button_tooltip'>print...</div></div> ",
-            "<div class='button icon' id='button_share'><div class='tooltip button_tooltip'>file share settings...</div></div> ",
-            "<div class='button icon' id='button_history'><div class='tooltip button_tooltip'>history of changes...</div></div> ",            
-        "</div>"
-        ].join("");
-    dn.el_pane_file.id = 'pane_file';
-    dn.el_pane_file.classList.add('widget_pane');
-    dn.el_pane_file.style.display = 'none';
-    dn.el_widget_content.appendChild(dn.el_pane_file);
-
-    dn.el_details_title_input  = dn.el_pane_file.getElementsByClassName('details_file_title_input')[0];
-    dn.el_details_title_text = dn.el_pane_file.getElementsByClassName('details_file_title_text')[0];
-    dn.el_details_description_input  = dn.el_pane_file.getElementsByClassName('details_file_description_input')[0];
-    dn.el_details_description_text = dn.el_pane_file.getElementsByClassName('details_file_description_text')[0];
-    dn.syntax_drop_down = dn.create_syntax_menu()
-    
-    // TODO: fix inconsitency of Ids versus classes
-    dn.el_file_ace_mode_choose = document.getElementById('file_ace_mode_choose')
-    dn.el_file_ace_mode_choose.appendChild(dn.syntax_drop_down.el);
-    dn.el_file_ace_mode_detect = document.getElementById('file_ace_mode_detect');
-    dn.el_file_ace_mode_info = document.getElementById('file_ace_mode_info');
-    dn.el_file_newline_detect = document.getElementById('file_newline_detect');
-    dn.el_file_newline_windows = document.getElementById('file_newline_windows');
-    dn.el_file_newline_unix = document.getElementById('file_newline_unix');
-    dn.el_file_newline_info = document.getElementById('file_newline_info');
-    dn.el_file_tab_detect = document.getElementById('file_tab_detect');
-    dn.el_file_tab_hard = document.getElementById('file_tab_hard');
-    dn.el_file_tab_soft = document.getElementById('file_tab_soft');
-    dn.el_file_tab_soft_text = document.getElementById('file_tab_soft_text');
-    dn.el_file_tab_info = document.getElementById('file_tab_info');
-
- 
-    dn.el_button_save = document.getElementById('button_save');
-    dn.el_button_print = document.getElementById('button_print');
-    dn.el_button_share = document.getElementById('button_share');
-    dn.el_button_history = document.getElementById('button_history');     
-
-    dn.create_file_details_tool();  // this could really be appended directly to this function.
-
-    dn.el_menu_file.addEventListener('click', function(){
-        dn.g_settings.set('pane', 'pane_file');
-    })
-}
-
-dn.create_menu = function(){
-    dn.el_widget_toolbar = document.getElementById('widget_toolbar');
-    dn.el_widget_toolbar.innerHTML =  [
-            "<div class='widget_menu_wrapper' id='menu_print' style='display:none;'></div>",
-            "<div class='widget_menu_wrapper' id='menu_sharing' style='display:none;'></div>",
-            "<div class='widget_menu_wrapper' id='menu_save' style='display:none;'></div>" ,
-            "<div class='widget_menu_wrapper' id='menu_history' style='display:none;'></div>" ,
-            "<div class='widget_menu_wrapper' id='menu_file'></div>" ,
-            "<div class='widget_menu_wrapper' id='menu_find'></div>",  
-            "<div class='widget_menu_wrapper' id='menu_new'  style='display:none;'></div>",
-            "<div class='widget_menu_wrapper' id='menu_open'></div>",    
-            "<div class='widget_menu_wrapper' id='menu_general_settings'></div>" ,
-            "<div class='widget_menu_wrapper' id='menu_shortcuts' style='display:none;'></div>",
-            "<div class='widget_menu_wrapper' id='menu_help'></div>"].join('');
-
-    dn.el_widget_toolbar.addEventListener('mousedown', function(e){e.stopPropagation();});
-    dn.menu_icon_from_pane_id = {}
-    var els = dn.el_widget_toolbar.getElementsByClassName('widget_menu_wrapper');
-    for(var ii=0; ii<els.length; ii++){
-        els[ii].addEventListener("click",function(){dn.reclaim_focus();});
-        els[ii].innerHTML = "<div class='tooltip widget_menu_tooltip'>" + dn.menu_id_to_caption[els[ii].id] + "</div>" +
-                            "<div class='widget_menu_icon' id='icon_" + els[ii].id + "'></div>";
-        var el_icon = els[ii].getElementsByClassName('widget_menu_icon')[0];
-        dn.menu_icon_from_pane_id['pane_' + els[ii].id.substr(5)] = el_icon;
-    }
-   
-    dn.el_menu_shortcuts = document.getElementById('menu_shortcuts');
-    dn.el_menu_status = document.getElementById('menu_status');
-
-    dn.el_menu_open = document.getElementById('menu_open');
-    dn.el_menu_find = document.getElementById('menu_find');
-    dn.el_menu_help = document.getElementById('menu_help');
-    dn.el_menu_file = document.getElementById('menu_file');
-    dn.el_menu_general_settings = document.getElementById('menu_general_settings');
 }
 
 dn.widget_mouse_down = function(e){
@@ -945,7 +626,7 @@ dn.document_mouse_move_widget = function(e){
                                               || (x*x + y*y > dn.drag_shift_px * dn.drag_shift_px);
     }
     if(dn.widget_mouse_down_info.is_dragging)
-        translate(dn.el_the_widget, x, y);
+        translate(dn.el.the_widget, x, y);
     e.stopPropagation();
 
 };
@@ -955,12 +636,12 @@ dn.document_mouse_up_widget = function(e){
     document.removeEventListener('mouseup', dn.document_mouse_up_widget);
 
     if(dn.widget_mouse_down_info.is_dragging){
-        var pos = dn.el_the_widget.getBoundingClientRect();
-        translate(dn.el_the_widget, 0, 0);
+        var pos = dn.el.the_widget.getBoundingClientRect();
+        translate(dn.el.the_widget, 0, 0);
     
         //work out what widget_anchor should be
-        var widget_w = dn.el_the_widget.offsetWidth;
-        var widget_h = dn.el_the_widget.offsetHeight;
+        var widget_w = dn.el.the_widget.offsetWidth;
+        var widget_h = dn.el.the_widget.offsetHeight;
         var window_w = window.innerWidth;
         var window_h = window.innerHeight;
         var anchor = []
@@ -990,8 +671,8 @@ dn.document_mouse_up_widget = function(e){
 
 dn.widget_apply_anchor = function(anchor){
     anchor = Array.isArray(anchor) ? anchor : dn.g_settings.get('widget_anchor');
-    var widget_w = dn.el_the_widget.offsetWidth;
-    var widget_h = dn.el_the_widget.offsetHeight;
+    var widget_w = dn.el.the_widget.offsetWidth;
+    var widget_h = dn.el.the_widget.offsetHeight;
     var window_w = window.innerWidth;
     var window_h = window.innerHeight;
 
@@ -1000,16 +681,16 @@ dn.widget_apply_anchor = function(anchor){
     if(anchor[0] == 'l'){
         // horizontal position is anchored to a fixed percentage of window width on left of widget
         if(window_w * anchor[1]/100 + widget_w > window_w){
-            dn.el_the_widget.style.left = 'inherit';
-            dn.el_the_widget.style.right = '0px'; //if the widget would overlap the right edge, then instead put it precisely on the right edge
+            dn.el.the_widget.style.left = 'inherit';
+            dn.el.the_widget.style.right = '0px'; //if the widget would overlap the right edge, then instead put it precisely on the right edge
         }else{
-            dn.el_the_widget.style.left = anchor[1] + '%';
-            dn.el_the_widget.style.right = ''; //use the anchor exactly
+            dn.el.the_widget.style.left = anchor[1] + '%';
+            dn.el.the_widget.style.right = ''; //use the anchor exactly
         }
 
         // set toolbar position
-        dn.el_widget_toolbar.classList.add('flipped');
-        dn.el_widget_content.classList.add('flipped');
+        dn.el.widget_menu.classList.add('flipped');
+        dn.el.widget_content.classList.add('flipped');
         var els = document.getElementsByClassName('widget_menu_icon');
         for(var ii=0; ii<els.length; ii++)
             els[ii].classList.add('flipped');
@@ -1020,16 +701,16 @@ dn.widget_apply_anchor = function(anchor){
     }else{
         // horizontal position is anchored to a fixed percentage of window width on right of widget
         if( window_w * anchor[1]/100 + widget_w > window_w){
-            dn.el_the_widget.style.left = '0px';
-            dn.el_the_widget.style.right = ''; //if the widget would overlap the left edge, then instead put it precisely on the left edge
+            dn.el.the_widget.style.left = '0px';
+            dn.el.the_widget.style.right = ''; //if the widget would overlap the left edge, then instead put it precisely on the left edge
         }else{
-            dn.el_the_widget.style.left = 'inherit';
-            dn.el_the_widget.style.right = anchor[1] + '%'; //use the anchor exactly
+            dn.el.the_widget.style.left = 'inherit';
+            dn.el.the_widget.style.right = anchor[1] + '%'; //use the anchor exactly
         }
 
         // set toolbar position
-        dn.el_widget_toolbar.classList.remove('flipped');
-        dn.el_widget_content.classList.remove('flipped');
+        dn.el.widget_menu.classList.remove('flipped');
+        dn.el.widget_content.classList.remove('flipped');
         var els = document.getElementsByClassName('widget_menu_icon');
         for(var ii=0; ii<els.length; ii++)
             els[ii].classList.remove('flipped');
@@ -1041,20 +722,20 @@ dn.widget_apply_anchor = function(anchor){
     if(anchor[2] == 't'){
         // vertical position is anchored to a fixed percentage of window height on top of widget
         if(window_h * anchor[3]/100 + widget_h > window_h){
-            dn.el_the_widget.style.top = 'inherit';
-            dn.el_the_widget.style.bottom = '0px';  
+            dn.el.the_widget.style.top = 'inherit';
+            dn.el.the_widget.style.bottom = '0px';  
         }else{
-            dn.el_the_widget.style.top = anchor[3] + '%';
-            dn.el_the_widget.style.bottom = ''; 
+            dn.el.the_widget.style.top = anchor[3] + '%';
+            dn.el.the_widget.style.bottom = ''; 
         }
     }else{
         // vertical position is anchored to a fixed percentage of window height on bottom of widget
         if(window_h * anchor[3]/100 + widget_h > window_h){
-            dn.el_the_widget.style.top = '0px';
-            dn.el_the_widget.style.bottom = ''; 
+            dn.el.the_widget.style.top = '0px';
+            dn.el.the_widget.style.bottom = ''; 
         }else{
-            dn.el_the_widget.style.top = 'inherit';
-            dn.el_the_widget.style.bottom = anchor[3] + '%'; 
+            dn.el.the_widget.style.top = 'inherit';
+            dn.el.the_widget.style.bottom = anchor[3] + '%'; 
         }
     }
 
@@ -1066,13 +747,13 @@ dn.open_close_widget = function(state){
     // provide argument "true" to open widget, "false" to close
 
     if(state){
-        dn.el_widget_toolbar.style.display = '';
-        dn.el_widget_content.style.display = '';
+        dn.el.widget_menu.style.display = '';
+        dn.el.widget_content.style.display = '';
     }else{
-        dn.el_widget_toolbar.style.display = 'none';
-        dn.el_widget_content.style.display = 'none';
+        dn.el.widget_menu.style.display = 'none';
+        dn.el.widget_content.style.display = 'none';
     }
-    dn.reclaim_focus();
+   dn.focus_editor();
     return false;
 }
 
@@ -1121,24 +802,25 @@ dn.show_status = function(){
         s = "ex nihilo omnia...";
     }
 
-    text_multi(dn.el_widget_text, s, true);
+    text_multi(dn.el.widget_text, s, true);
 }
 
 dn.show_error = function(message){
     console.log(message); //it's just useful to do this too
-    text_multi(dn.el_widget_error_text, message,true);
-    dn.el_widget_error.style.display = '';
-    css_animation(dn.el_the_widget, 'shake', function(){
-        dn.el_widget_error.style.display = 'none';
+    text_multi(dn.el.widget_error_text, message,true);
+    dn.el.widget_error.style.display = '';
+    css_animation(dn.el.the_widget, 'shake', function(){
+        dn.el.widget_error.style.display = 'none';
     }, dn.error_delay_ms);
 };
 
 dn.set_drive_link_to_folder = function(){
-    var el = document.getElementById('drive_link');
-    if(el && dn.the_file.folder_id)
-        el.setAttribute('href','https://drive.google.com/#folders/' + dn.the_file.folder_id);
-    else
-        el.setAttribute('href','https://drive.google.com');
+    var els = document.getElementsByClassName('link_drive');
+    var href = dn.the_file.folder_id ? 
+                'https://drive.google.com/#folders/' + dn.the_file.folder_id 
+                : 'https://drive.google.com';
+    for(var ii=0; ii<els.length; ii++)
+        div_as_link(els[ii], href);
 }
 
 
@@ -1147,6 +829,7 @@ dn.set_drive_link_to_folder = function(){
 // ############################
 
 dn.get_settings_from_cloud = function() {
+    return;
   gapi.drive.realtime.loadAppDataDocument(
   function(doc) {
     var old_temp_g_settings = dn.g_settings;
@@ -1175,7 +858,7 @@ dn.get_settings_from_cloud = function() {
     
     //Check lastDNVersionUsed at this point - by default it's blank, but could also have an out-of-date value
     if(dn.g_settings.get('lastDNVersionUsed') != dn.version_str){
-        dn.show_first_time_user_info(dn.g_settings.get('lastDNVersionUsed'));
+        dn.g_settings.set('pane', 'pane_first_time_info');
         dn.g_settings.set('lastDNVersionUsed', dn.version_str);
     }
   },
@@ -1238,7 +921,7 @@ dn.settings_changed = function(e){
                 break;
             case "fontSize":
                 var scrollLine = dn.get_scroll_line();
-                dn.el_font_size_text.textContent = new_value.toFixed(1);
+                dn.el.font_size_text.textContent = new_value.toFixed(1);
                 dn.editor.setFontSize(new_value + 'em')    
                 dn.editor.scrollToLine(scrollLine);
                 break;
@@ -1249,21 +932,21 @@ dn.settings_changed = function(e){
                 s.setWrapLimitRange(new_value[1],new_value[2]);
                  dn.editor.scrollToLine(scrollLine);
                 if(!new_value[0])
-                    dn.el_word_wrap_off.classList.add('selected');
+                    dn.el.word_wrap_off.classList.add('selected');
                 else
-                    dn.el_word_wrap_off.classList.remove('selected');
+                    dn.el.word_wrap_off.classList.remove('selected');
                 if(new_value[0] && !new_value[1])
-                    dn.el_word_wrap_edge.classList.add('selected');
+                    dn.el.word_wrap_edge.classList.add('selected');
                 else
-                    dn.el_word_wrap_edge.classList.remove('selected');
+                    dn.el.word_wrap_edge.classList.remove('selected');
                 if(new_value[0] && new_value[1])
-                    dn.el_word_wrap_at.classList.add('selected');
+                    dn.el.word_wrap_at.classList.add('selected');
                 else
-                    dn.el_word_wrap_at.classList.remove('selected');
+                    dn.el.word_wrap_at.classList.remove('selected');
 
                 break;
             case "wordWrapAt":
-                dn.el_word_wrap_at_text.textContent = new_value;
+                dn.el.word_wrap_at_text.textContent = new_value;
                 var curWrap = dn.g_settings.get('wordWrap');
                 if(curWrap[1] && curWrap[1] != new_value)
                     dn.g_settings.set('wordWrap',[1,new_value,new_value]);
@@ -1272,15 +955,15 @@ dn.settings_changed = function(e){
             case "showGutterHistory":
                 var s = dn.editor.getSession(); 
                 if(new_value){
-                    dn.el_gutter_history_show.classList.add('selected')
-                    dn.el_gutter_history_hide.classList.remove('selected');
+                    dn.el.gutter_history_show.classList.add('selected')
+                    dn.el.gutter_history_hide.classList.remove('selected');
                 }else{
                     var h = dn.change_line_history;
                     for(var i=0;i<h.length;i++)if(h[i])
                         s.removeGutterDecoration(i,h[i]<0 ? dn.change_line_classes_rm[-h[i]] : dn.change_line_classes[h[i]]);
                     dn.change_line_history = []; 
-                    dn.el_gutter_history_hide.classList.add('selected')
-                    dn.el_gutter_history_show.classList.remove('selected');
+                    dn.el.gutter_history_hide.classList.add('selected')
+                    dn.el.gutter_history_show.classList.remove('selected');
                 }
                 break;
             case "newLineDefault":
@@ -1358,8 +1041,8 @@ dn.create_pane_shortcuts = function(){
     for(var action in dn.tooltip_info)if(action in dict)
         dn.tooltip_info[action] += dict[action];
 
-    dn.el_pane_shortcuts = document.createElement('div');
-    dn.el_pane_shortcuts.innerHTML = [
+    dn.el.pane_shortcuts = document.createElement('div');
+    dn.el.pane_shortcuts.innerHTML = [
             "<div class='widget_box_title shortcuts_title'>Keyboard Shortcuts ",
                  platform ? "(" + platform + ")" : "" ,
             "</div>",
@@ -1367,10 +1050,10 @@ dn.create_pane_shortcuts = function(){
             "<div class='shortcuts_list'>",
             html.join(''),
             "</div>"].join('');
-    dn.el_pane_shortcuts.style.display = 'none';
-    dn.el_pane_shortcuts.id = 'pane_shortcuts';
-    dn.el_pane_shortcuts.classList.add('widget_pane');
-    dn.el_widget_content.appendChild(dn.el_pane_shortcuts);
+    dn.el.pane_shortcuts.style.display = 'none';
+    dn.el.pane_shortcuts.id = 'pane_shortcuts';
+    dn.el.pane_shortcuts.classList.add('widget_pane');
+    dn.el.widget_content.appendChild(dn.el.pane_shortcuts);
 };
 
 dn.esc_pressed = function(){
@@ -1383,7 +1066,8 @@ dn.make_keyboard_shortcuts = function(){
     //annoying trying to ensure the editor always had focus, and not clear what to do when the editor wasn't showing.
     
     //we have to delete the default ace commands linked to the keys we care about
-    dn.editor.commands.removeCommands(["find","findprevious","findnext","replace", "jumptomatching","sortlines","selecttomatching","gotoline"]);
+    dn.editor.commands.removeCommands([
+        "find","findprevious","findnext","replace","jumptomatching","sortlines","selecttomatching","gotoline"]);
 
     //then add new commands on to the document using keymaster.js...
     key('command+s, ctrl+s,  ctrl+alt+s,  command+alt+s', dn.save_content);
@@ -1398,7 +1082,6 @@ dn.make_keyboard_shortcuts = function(){
     key('esc', dn.esc_pressed);
     key.filter = function(){return 1;}
 
-
     // it seems like the clipboard history cycling only works the old way, i.e. using ace....
     var HashHandler = require("ace/keyboard/hash_handler").HashHandler
     var extraKeyEvents = new HashHandler([
@@ -1408,86 +1091,39 @@ dn.make_keyboard_shortcuts = function(){
         {bindKey: {win: "Ctrl-Up",mac:"Command-Up"}, descr: "Clipboard cyle forward on paste", exec: dn.document_clipboard_right}
     ]);
     dn.editor.keyBinding.addKeyboardHandler(extraKeyEvents);
-}
 
-
-dn.reclaim_focus = function(){
-    dn.editor.focus(); //this was much more complciated previously when the non-ace shortcuts went through the editor rather than through the document
+    // Change "ctrl" to "cmd" if on Mac
+    if(dn.platform == 'Mac'){
+        var els = dn.getElementsByClassName('ctrl_key');
+        for(var ii=0; ii<els.length; ii++)
+            els[ii].textContent = 'cmd'
+    }
 }
 
 // ############################
 // Font size stuff
 // ############################
 
-dn.create_font_size_tool = function(){
-    dn.el_font_size_decrement.addEventListener('click', function(){
-        var fontSize = dn.g_settings.get('fontSize');
-        fontSize -= dn.font_size_increment;
-        fontSize = fontSize  < dn.min_font_size ? dn.min_font_size:fontSize;
-        dn.g_settings.set('fontSize',fontSize);
-    })
-    dn.el_font_size_increment.addEventListener('click', function(){
-        var fontSize = dn.g_settings.get('fontSize');
-        fontSize += dn.font_size_increment;
-        fontSize = fontSize  > dn.max_font_size ? dn.max_font_size:fontSize;
-        dn.g_settings.set('fontSize',fontSize);
-    })
+dn.font_size_decrement_click = function(){
+    var font_size = dn.g_settings.get('fontSize');
+    font_size -= dn.font_size_increment;
+    font_size = font_size  < dn.min_font_size ? dn.min_font_size: font_size;
+    dn.g_settings.set('fontSize', font_size);
+}
+
+dn.font_size_increment_click = function(){
+    var font_size = dn.g_settings.get('fontSize');
+    font_size += dn.font_size_increment;
+    font_size = font_size  > dn.max_font_size ? dn.max_font_size:font_size;
+    dn.g_settings.set('fontSize', font_size);
 }
 
 
-// ############################
-// Word wrap stuff
-// ############################
-
-dn.create_wordwrap_tool = function(){
-    dn.el_word_wrap_off.addEventListener('click', function(){
-        dn.g_settings.set('wordWrap',[0,0,0])
-    });
-    dn.el_word_wrap_at.addEventListener('click', function(){
-        var at = dn.g_settings.get('wordWrapAt');
-        dn.g_settings.set('wordWrap',[1,at,at]);
-    });
-    dn.el_word_wrap_at_text = document.getElementById('word_wrap_at_text');
-    document.getElementById('word_wrap_at_dec').addEventListener('click', function(){
-        var at = dn.g_settings.get('wordWrapAt') - dn.wrap_at_increment;
-        at = at < dn.min_wrap_at ? dn.min_wrap_at : at;
-        dn.g_settings.set('wordWrapAt',at);
-    });
-    document.getElementById('word_wrap_at_inc').addEventListener('click', function(){
-        var at = dn.g_settings.get('wordWrapAt') + dn.wrap_at_increment;
-        at = at > dn.max_wrap_at ? dn.max_wrap_at : at;
-        dn.g_settings.set('wordWrapAt',at);
-    });
-    dn.el_word_wrap_edge.addEventListener('click', function(){
-        dn.g_settings.set('wordWrap',[1,null,null])
-    });
-}
 
 // ############################
 // Tab stuff
 // ############################
 // Note that there is a whitespace extension for ace but it doesn't look that mature and we actually have slightly different requirements here.
-
-dn.create_tab_tool = function(){
-    dn.el_tab_soft_text = document.getElementById('tab_soft_text');
-
-    dn.el_tab_hard.addEventListener('click', function(){
-        dn.g_settings.set('tabIsHard',1)
-    });
-    dn.el_tab_soft.addEventListener('click', function(){
-        dn.g_settings.set('tabIsHard',0);
-    });
-    document.getElementById('tab_soft_dec').addEventListener('click', function(){
-        var at = dn.g_settings.get('softTabN') - 1;
-        at = at < dn.min_soft_tab_n ? dn.min_soft_tab_n : at;
-        dn.g_settings.set('softTabN',at);
-    });
-    document.getElementById('tab_soft_inc').addEventListener('click', function(){
-        var at = dn.g_settings.get('softTabN') + 1;
-        at = at > dn.max_soft_tab_n ? dn.max_soft_tab_n : at;
-        dn.g_settings.set('softTabN',at);
-    });
-}
 
 dn.detect_tab = function(str){    
     dn.the_file.tab_detected = (function(){ //no need to use a self-executing function here, just lazy coding....
@@ -1596,7 +1232,7 @@ dn.show_tab_status = function(d){
             }
     }
     
-    dn.el_file_tab_info.textContent = "(" + str +")";
+    dn.el.file_tab_info.textContent = "(" + str +")";
     return d;
 }
 
@@ -1643,28 +1279,28 @@ dn.apply_tab_choice = function(){
         dn.editor.session.setTabSize(nSpaces);
     }
     
-    dn.el_tab_soft_text.textContent = defaultSoftTabN;
+    dn.el.tab_soft_text.textContent = defaultSoftTabN;
     if(defaultTabIsHard){
-        dn.el_tab_hard.classList.add('selected');
-        dn.el_tab_soft.classList.remove('selected');
+        dn.el.tab_hard.classList.add('selected');
+        dn.el.tab_soft.classList.remove('selected');
     }else{
-        dn.el_tab_soft.classList.add('selected');
-        dn.el_tab_hard.classList.remove('selected');
+        dn.el.tab_soft.classList.add('selected');
+        dn.el.tab_hard.classList.remove('selected');
     }
     
     
-    dn.el_file_tab_detect.classList.remove('selected');
-    dn.el_file_tab_hard.classList.remove('selected');
-    dn.el_file_tab_soft.classList.remove('selected');
+    dn.el.file_tab_detect.classList.remove('selected');
+    dn.el.file_tab_hard.classList.remove('selected');
+    dn.el.file_tab_soft.classList.remove('selected');
     if(isDetected){
-        dn.el_file_tab_detect.classList.add('selected');
-        dn.el_file_tab_soft_text.textContent = nSpaces;
+        dn.el.file_tab_detect.classList.add('selected');
+        dn.el.file_tab_soft_text.textContent = nSpaces;
     }else{
         if(d.val == "tab")
-            dn.el_file_tab_hard.classList.add('selected');
+            dn.el.file_tab_hard.classList.add('selected');
         else
-            dn.el_file_tab_soft.classList.add('selected');
-        dn.el_file_tab_soft_text.textContent = nSpaces;
+            dn.el.file_tab_soft.classList.add('selected');
+        dn.el.file_tab_soft_text.textContent = nSpaces;
     }     
 
 
@@ -1696,7 +1332,7 @@ dn.set_file_tabs_to_soft_or_hard = function(val,delta){
 dn.show_syntax_status = function(d){
     var str = "detected " + d.syntax + " from file extension";
     //TODO: if we improve upon DetectSyntax will need to add stuff here
-    dn.el_file_ace_mode_info.textContent = "(" + str + ")";
+    dn.el.file_ace_mode_info.textContent = "(" + str + ")";
     return d.syntax;
 }
 dn.detect_syntax = function(){
@@ -1714,11 +1350,11 @@ dn.apply_syntax_choice = function(){
     dn.detect_syntax();
     if(dn.the_file.custom_props["aceMode"] == "detect"){
         dn.set_syntax(dn.the_file.syntax_detected);
-        dn.el_file_ace_mode_detect.classList.add('selected');
+        dn.el.file_ace_mode_detect.classList.add('selected');
         dn.syntax_drop_down.SetSelected(false);
     }else{
         dn.set_syntax(dn.the_file.custom_props["aceMode"])
-        dn.el_file_ace_mode_detect.classList.remove('selected');
+        dn.el.file_ace_mode_detect.classList.remove('selected');
         dn.syntax_drop_down.SetSelected(true);
     }
 }
@@ -1768,7 +1404,7 @@ dn.create_theme_menu = function(){
         dn.g_settings.set("theme",theme_drop_down.GetVal());
     })
     theme_drop_down.addEventListener("blur",function(){
-        dn.reclaim_focus();
+       dn.focus_editor();
     })
     return theme_drop_down;
 }
@@ -1787,7 +1423,7 @@ dn.create_syntax_menu = function(){
         dn.set_property("aceMode",syntax_drop_down.GetVal());
     })
     syntax_drop_down.addEventListener("blur",function(){
-        dn.reclaim_focus();
+       dn.focus_editor();
     })
     return syntax_drop_down;
 }
@@ -1799,119 +1435,119 @@ dn.read_only_bail = function(e){
     if(dn.the_file.is_read_only){
         dn.show_error("The file is read-only, so you cannot change its properties.");
         e.stopImmediatePropagation();
-        dn.reclaim_focus();
+       dn.focus_editor();
     }
 }
 dn.create_file_details_tool = function(){
-    var els = [dn.el_details_title_text,
-               dn.el_details_description_text,
-               dn.el_file_newline_detect,
-               dn.el_file_newline_windows,
-               dn.el_file_newline_unix,
-               dn.el_file_tab_detect,
-               dn.el_file_tab_soft,
-               dn.el_file_tab_hard,
-               dn.el_file_ace_mode_detect];
+    var els = [dn.el.details_title_text,
+               dn.el.details_description_text,
+               dn.el.file_newline_detect,
+               dn.el.file_newline_windows,
+               dn.el.file_newline_unix,
+               dn.el.file_tab_detect,
+               dn.el.file_tab_soft,
+               dn.el.file_tab_hard,
+               dn.el.file_ace_mode_detect];
     for(var ii=0; ii< els.length; ii++)
         els[ii].addEventListener("click",dn.read_only_bail); //If file is read only, ReadOnlyBail will prevent the click handlers below from running.
         
     //Title change stuff
-    dn.el_details_title_text.addEventListener('click', function(){                
-            dn.el_details_title_text.style.display = 'none';
-            dn.el_details_title_input.style.display = '';
-            dn.el_details_title_input.focus();
-            dn.el_details_title_input.select();
+    dn.el.details_title_text.addEventListener('click', function(){                
+            dn.el.details_title_text.style.display = 'none';
+            dn.el.details_title_input.style.display = '';
+            dn.el.details_title_input.focus();
+            dn.el.details_title_input.select();
     });
-    dn.el_details_title_input.addEventListener("blur", function(){
-            dn.el_details_title_input.style.display = 'none';
-            dn.el_details_title_text.style.display = '';
-            var new_val = dn.el_details_title_input.value;
+    dn.el.details_title_input.addEventListener("blur", function(){
+            dn.el.details_title_input.style.display = 'none';
+            dn.el.details_title_text.style.display = '';
+            var new_val = dn.el.details_title_input.value;
             if(new_val == dn.the_file.title)
                 return;
             dn.the_file.title = new_val
             dn.show_file_title(); //includes showStatus
             dn.apply_syntax_choice();
             dn.save_file_title();
-            dn.reclaim_focus();
+           dn.focus_editor();
     });
-    dn.el_details_title_input.addEventListener('keyup', function(e){
+    dn.el.details_title_input.addEventListener('keyup', function(e){
             if(e.which == WHICH.ENTER)
-                dn.el_details_title_input.trigger('blur');
+                dn.el.details_title_input.trigger('blur');
     });
-    dn.el_details_title_input.addEventListener('keydown', function(e){
+    dn.el.details_title_input.addEventListener('keydown', function(e){
         if(e.which == WHICH.ESC){
-            dn.el_details_title_input.value = dn.the_file.title;
-            dn.el_details_title_input.trigger('blur');
+            dn.el.details_title_input.value = dn.the_file.title;
+            dn.el.details_title_input.trigger('blur');
             dn.ignore_escape = true; //stops ToggleWidget
         }
     });
 
     // File action buttons stuff
-    dn.el_button_save.addEventListener('click', dn.save_content);
-    dn.el_button_print.addEventListener('click', dn.do_print);
-    dn.el_button_share.addEventListener('click', dn.do_share);
-    dn.el_button_history.addEventListener('click', dn.start_revisions_worker);
+    dn.el.button_save.addEventListener('click', dn.save_content);
+    dn.el.button_print.addEventListener('click', dn.do_print);
+    dn.el.button_share.addEventListener('click', dn.do_share);
+    dn.el.button_history.addEventListener('click', dn.start_revisions_worker);
 
     // Description stuff
-    dn.el_details_description_text.addEventListener('click', function(){            
-            dn.el_details_description_text.style.display = 'none';
-            dn.el_details_description_input.style.display = '';
-            dn.el_details_description_input.focus();
+    dn.el.details_description_text.addEventListener('click', function(){            
+            dn.el.details_description_text.style.display = 'none';
+            dn.el.details_description_input.style.display = '';
+            dn.el.details_description_input.focus();
     });
-    dn.el_details_description_input.addEventListener("blur", function(){
-            dn.el_details_description_input.style.display = 'none';
-            dn.el_details_description_text.style.display = '';
-            var new_val = dn.el_details_description_input.value;
+    dn.el.details_description_input.addEventListener("blur", function(){
+            dn.el.details_description_input.style.display = 'none';
+            dn.el.details_description_text.style.display = '';
+            var new_val = dn.el.details_description_input.value;
             if(dn.the_file.description === new_val)
                 return;
             dn.the_file.description = new_val;
             dn.show_description();
             dn.save_file_description();
-            dn.reclaim_focus();
+           dn.focus_editor();
     });
-    dn.el_details_description_input.addEventListener('keydown',function(e){
+    dn.el.details_description_input.addEventListener('keydown',function(e){
             if(e.which == WHICH.ESC){
-                dn.el_details_description_input.value = dn.the_file.description;
-                dn.el_details_description_input.trigger('blur');
+                dn.el.details_description_input.value = dn.the_file.description;
+                dn.el.details_description_input.trigger('blur');
                 dn.ignore_escape = true;
             }
     });
         
     // File custom props stuff
-    dn.el_file_newline_detect.addEventListener('click', function(){
+    dn.el.file_newline_detect.addEventListener('click', function(){
          dn.set_property("newline","detect");
-         dn.reclaim_focus();      
+        dn.focus_editor();      
     });
-    dn.el_file_newline_windows.addEventListener('click', function(){
+    dn.el.file_newline_windows.addEventListener('click', function(){
          dn.set_property("newline","windows");
-         dn.reclaim_focus();
+        dn.focus_editor();
         });
-    dn.el_file_newline_unix.addEventListener('click', function(){
+    dn.el.file_newline_unix.addEventListener('click', function(){
          dn.set_property("newline","unix");
-         dn.reclaim_focus();
+        dn.focus_editor();
         });
-    dn.el_file_tab_detect.classList.add('selected');
-    dn.el_file_tab_detect.addEventListener('click', function(){
+    dn.el.file_tab_detect.classList.add('selected');
+    dn.el.file_tab_detect.addEventListener('click', function(){
         dn.set_property("tabs","detect");
-        dn.reclaim_focus();
+       dn.focus_editor();
     });
-    dn.el_file_tab_soft.addEventListener('click', function(){
+    dn.el.file_tab_soft.addEventListener('click', function(){
         dn.set_file_tabs_to_soft_or_hard("spaces",0);
-        dn.reclaim_focus();
+       dn.focus_editor();
     });
     document.getElementById('file_tab_soft_dec').addEventListener('click', function(){
         dn.set_file_tabs_to_soft_or_hard("spaces",-1);
-        dn.reclaim_focus();
+       dn.focus_editor();
     });
     document.getElementById('file_tab_soft_inc').addEventListener('click', function(){
         dn.set_file_tabs_to_soft_or_hard("spaces",+1);
-        dn.reclaim_focus();
+       dn.focus_editor();
     })
-    dn.el_file_tab_hard.addEventListener('click', function(){
+    dn.el.file_tab_hard.addEventListener('click', function(){
         dn.set_file_tabs_to_soft_or_hard("tab",0);
-        dn.reclaim_focus();
+       dn.focus_editor();
     });
-    dn.el_file_ace_mode_detect.addEventListener('click', function(){
+    dn.el.file_ace_mode_detect.addEventListener('click', function(){
        dn.set_property("aceMode","detect"); 
     });
 }
@@ -1942,15 +1578,15 @@ dn.save_file_title = function(){
 }
 
 dn.show_file_title = function(){
-    dn.el_details_title_text.textContent = 'Title: ' + dn.the_file.title;
-    dn.el_details_title_input.value = dn.the_file.title;
+    dn.el.details_title_text.textContent = 'Title: ' + dn.the_file.title;
+    dn.el.details_title_input.value = dn.the_file.title;
     document.title = (dn.the_file.is_pristine ? "" : "*") + dn.the_file.title;
     dn.show_status();
 }
 
 dn.show_description = function(){
-    text_multi(dn.el_details_description_text, 'Description: ' + dn.the_file.description,true);
-    dn.el_details_description_input.value = dn.the_file.description;
+    text_multi(dn.el.details_description_text, 'Description: ' + dn.the_file.description,true);
+    dn.el.details_description_input.value = dn.the_file.description;
 }
 
 // ############################
@@ -1979,7 +1615,7 @@ dn.start_revisions_worker = function(){
     dn.is_showing_history = true;
     
     if(!dn.file_history){
-        dn.el_widget_content.innerHTML('afterend', 
+        dn.el.widget_content.innerHTML('afterend', 
             "<div class='widget_box widget_revisions'>" + 
             "<div class='widget_box_title widget_revisions_title'>File History</div>" +
             "<div class='revision_caption_at'></div>" +
@@ -1992,8 +1628,8 @@ dn.start_revisions_worker = function(){
             "Press Esc to return to editing." +
             "<br><div class='widget_divider'></div>" + 
             "Please note that the history viewing tool is missing some important features and those that have been implemented may include the odd bug.</div>");
-        dn.el_widget_file_history = dn.el_widget_content.parentNode.getElementsByClassName('widget_revisions')[0];
-        dn.el_widget_file_history.style.display = 'none';
+        dn.el.widget_file_history = dn.el.widget_content.parentNode.getElementsByClassName('widget_revisions')[0];
+        dn.el.widget_file_history.style.display = 'none';
         dn.file_history = {
             $revisions_display: $("<div class='revisions_view'><ol></ol></div>"),
             $view: null, 
@@ -2029,7 +1665,7 @@ dn.start_revisions_worker = function(){
                                         init: true});
     dn.file_history.$revisions_display.appendTo($('body'));
     $(window).on("resize",dn.revisions_window_resize);
-    dn.el_widget_file_history.style.display = '';
+    dn.el.widget_file_history.style.display = '';
     dn.file_history.$view.empty();
     $('#the_editor').style.display = 'none';
     return false;
@@ -2206,7 +1842,7 @@ dn.save_content = function(){
     if(!dn.the_file.is_pristine){
         dn.the_file.data_to_save.body = dn.editor.getSession().getValue();
         dn.the_file.generation_to_save.body++;
-        dn.el_ace_content.setAttribute('saving',true);
+        dn.el.ace_content.setAttribute('saving',true);
         dn.the_file.is_saving = true;
         dn.the_file.is_pristine = true;
     }
@@ -2260,7 +1896,7 @@ dn.save_done = function(resp){
                 dn.the_file.is_saving = false;
                 dn.the_file.is_pristine = false;
                 dn.show_file_title();
-                dn.el_ace_content.removeAttribute('saving');
+                dn.el.ace_content.removeAttribute('saving');
                 dn.the_file.data_to_save.body = null;
             }
             if(this.title && this.title == dn.the_file.generation_to_save.title)
@@ -2276,7 +1912,7 @@ dn.save_done = function(resp){
     }else{//success...
         if(this.body && this.body == dn.the_file.generation_to_save.body){
             dn.the_file.is_saving = false;
-            dn.el_ace_content.removeAttribute('saving');
+            dn.el.ace_content.removeAttribute('saving');
             dn.the_file.ext = resp.fileExtension;
             dn.g_settings.set('ext',resp.fileExtension);
             dn.the_file.data_to_save.body = null;
@@ -2410,7 +2046,7 @@ dn.document_clipboard_keyup = function(e){
     if(e.which == 17 || e.which == 91 || !e.ctrlKey){
         $(document).off('keyup',dn.document_clipboard_keyup);
         dn.clipboard_active = false;
-        dn.el_pane_clipboard.style.display = 'none';
+        dn.el.pane_clipboard.style.display = 'none';
         if(dn.clipboard_info_timer){
             clearTimeout(dn.clipboard_info_timer);
             dn.clipboard_info_timer = null;
@@ -2436,7 +2072,7 @@ dn.on_paste = function(text){
 
     dn.clipboard_info_timer = setTimeout(function(){
         dn.clipboard_info_timer = null;
-        dn.el_pane_clipboard.style.display = '';
+        dn.el.pane_clipboard.style.display = '';
     },dn.clipboard_info_delay);
 }
 
@@ -2450,18 +2086,11 @@ dn.on_copy = function(text){
 }
 
 dn.create_clipboard_tool = function(){
-    dn.el_pane_clipboard = document.createElement('div');
-    dn.el_pane_clipboard.innerHTML = [
-        "When you paste with 'ctrl-v' (or 'cmd-v') you can cycle through your Drive Notepad clipboard ",
-        "by pressing 'left' or 'right' before releaing the 'ctrl' (or 'cmd') key. <br><br> You can clear your clipboard history by clicking the ",
-        "relevant button in the settings menu."].join('');
-    dn.el_pane_clipboard.style.display = 'none';
-    dn.el_widget_content.appendChild(dn.el_pane_clipboard);
-
-    dn.el_button_clear_clipboard.addEventListener('click', function(){
+    dn.el.pane_clipboard = document.getElementById('pane_clipboard');
+    dn.el.button_clear_clipboard.addEventListener('click', function(){
             dn.g_clipboard.clear();
     });
-    dn.el_button_clear_find_replace.addEventListener('click', function(){
+    dn.el.button_clear_find_replace.addEventListener('click', function(){
             dn.g_find_history.clear();
     });
 }
@@ -2482,7 +2111,7 @@ dn.do_new = function(){
 }
 
 dn.create_new_tool = function(){
-    dn.el_menu_new.addEventListener('click', dn.do_new);
+    dn.el.menu_new.addEventListener('click', dn.do_new);
 }
 
 dn.create_file = function(){
@@ -2530,7 +2159,7 @@ dn.save_new_file = function(){
     f.is_saving = true;
     f.is_pristine = true;
     dn.show_file_title();
-    dn.el_ace_content.setAttribute('saving', true);
+    dn.el.ace_content.setAttribute('saving', true);
     dn.show_status();
     dn.save_file(null, meta, f.data_to_save.body, $.proxy(dn.save_done,gens));
 }
@@ -2727,15 +2356,6 @@ dn.on_change = function(e){
                 dn.change_line_classes[h[i]]);
 } 
 
-dn.create_gutterhistory_tool = function(){
-    dn.el_gutter_history_show.addEventListener('click', function(){
-            dn.g_settings.set('showGutterHistory',1);
-        });
-    dn.el_gutter_history_hide.addEventListener('click', function(){
-        dn.g_settings.set('showGutterHistory',0);
-        });
-}
-
 dn.query_unload = function(){
     if(!dn.the_file.is_pristine)
         return "If you leave the page now you will loose the unsaved " + (dn.the_file.is_brand_new ? "new " : "changes to ") + "file '" + dn.the_file.title + "'."
@@ -2875,56 +2495,223 @@ dn.dropped_file_read = function(e){
     // Note we don't encolse the above in a dn.setting_session_value = true block so the change event will fire and set pristine to false and ShowStatus etc.
 }
 
+dn.focus_editor = function(){
+   dn.editor.focus();
+}
 // ############################
 // Page ready stuff
 // ############################
 
 
 dn.document_ready = function(e){
-    dn.el_the_widget = document.getElementById('the_widget');
-    dn.el_the_widget.addEventListener('mousedown', dn.widget_mouse_down);
 
-    translate(dn.el_the_widget, 0, 0);
-    dn.el_the_widget.style.display = '';
-    dn.el_widget_text = document.getElementById('widget_text');
+    // widget :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    dn.el.the_widget = document.getElementById('the_widget');
+    dn.el.widget_text = document.getElementById('widget_text');
+    dn.el.widget_error_text = document.getElementById('widget_error_text');
+    dn.el.widget_error = document.getElementById('widget_error');
+    dn.el.widget_content = document.getElementById('widget_content');
+    dn.el.the_widget.addEventListener('mousedown', dn.widget_mouse_down);
+    translate(dn.el.the_widget, 0, 0);
+    dn.el.the_widget.style.display = '';
+    dn.el.widget_error.style.display = 'none';
+    dn.el.widget_content.addEventListener('mousedown', stop_propagation);
 
-    dn.el_widget_error_text = document.getElementById('widget_error_text');
-    dn.el_widget_error = document.getElementById('widget_error');
-    dn.el_widget_error.style.display = 'none';
-
-    dn.el_widget_content = document.getElementById('widget_content');
-    dn.el_widget_content.addEventListener('mousedown', function(e){e.stopPropagation();});
-
+    // editor :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     var editor_el = document.getElementById('the_editor');
     editor_el.innerHTML = '';
     editor_el.addEventListener('contextmenu', function(e){
         dn.show_error("See the list of keyboard shortcuts for copy/paste, select-all, and undo/redo.")
     });
     dn.editor = ace.edit("the_editor");
-    dn.el_ace_content = document.getElementsByClassName('ace_content')[0];
+    dn.el.ace_content = document.getElementsByClassName('ace_content')[0];
     dn.editor.on('focus', dn.blur_find_and_focus_editor)
-    dn.editor.focus();
+   dn.focus_editor();
     dn.editor.getSession().addEventListener("change", dn.on_change);
     dn.editor.on("paste", dn.on_paste);
     dn.editor.on("copy", dn.on_copy);
     dn.editor.setAnimatedScroll(true);
     
-    
-    dn.create_menu();
-    dn.create_pane_file();
-    dn.create_pane_general_settings();
-    dn.create_pane_shortcuts();
-    dn.create_pane_permissions();
-    dn.create_pane_help();
+    // widget menu ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    dn.el.widget_menu = document.getElementById('widget_menu');
+    dn.el.menu_open = document.getElementById('menu_open');
+    dn.el.menu_find = document.getElementById('menu_find');
+    dn.el.menu_help = document.getElementById('menu_help');
+    dn.el.menu_file = document.getElementById('menu_file');
+    dn.el.menu_general_settings = document.getElementById('menu_general_settings');
+    dn.el.widget_menu.addEventListener('mousedown', stop_propagation);
+    dn.menu_icon_from_pane_id = {}
+    var els = dn.el.widget_menu.getElementsByClassName('widget_menu_wrapper');
+    for(var ii=0; ii<els.length; ii++){
+        els[ii].addEventListener("click",dn.focus_editor);
+        els[ii].innerHTML = "<div class='tooltip widget_menu_tooltip'>" + dn.menu_id_to_caption[els[ii].id] + "</div>" +
+                            "<div class='widget_menu_icon' id='icon_" + els[ii].id + "'></div>";
+        var el_icon = els[ii].getElementsByClassName('widget_menu_icon')[0];
+        dn.menu_icon_from_pane_id['pane_' + els[ii].id.substr(5)] = el_icon;
+    }
 
-    dn.create_open_tool();
-    
-    dn.create_pane_find();
-    
+     // pane file ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    dn.el.pane_file = document.getElementById('pane_file');
+    dn.el.details_title_input  = document.getElementById('details_file_title_input');
+    dn.el.details_title_text = document.getElementById('details_file_title_text');
+    dn.el.details_description_input  = document.getElementById('details_file_description_input');
+    dn.el.details_description_text = document.getElementById('details_file_description_text');    
+    dn.el.file_ace_mode_choose = document.getElementById('file_ace_mode_choose')
+    dn.el.file_ace_mode_detect = document.getElementById('file_ace_mode_detect');
+    dn.el.file_ace_mode_info = document.getElementById('file_ace_mode_info');
+    dn.el.file_newline_detect = document.getElementById('file_newline_detect');
+    dn.el.file_newline_windows = document.getElementById('file_newline_windows');
+    dn.el.file_newline_unix = document.getElementById('file_newline_unix');
+    dn.el.file_newline_info = document.getElementById('file_newline_info');
+    dn.el.file_tab_detect = document.getElementById('file_tab_detect');
+    dn.el.file_tab_hard = document.getElementById('file_tab_hard');
+    dn.el.file_tab_soft = document.getElementById('file_tab_soft');
+    dn.el.file_tab_soft_text = document.getElementById('file_tab_soft_text');
+    dn.el.file_tab_info = document.getElementById('file_tab_info');
+    dn.el.button_save = document.getElementById('button_save');
+    dn.el.button_print = document.getElementById('button_print');
+    dn.el.button_share = document.getElementById('button_share');
+    dn.el.button_history = document.getElementById('button_history');     
+    dn.syntax_drop_down = dn.create_syntax_menu();   // TODO: tidy up
+    dn.el.file_ace_mode_choose.appendChild(dn.syntax_drop_down.el);
+    dn.create_file_details_tool();
+    dn.el.menu_file.addEventListener('click', function(){
+        dn.g_settings.set('pane', 'pane_file');
+    })
+
+     // pane general settings :::::::::::::::::::::::::::::::::::::::::::::::::::::
+    dn.el.pane_general_settings = document.getElementById('pane_general_settings');
+    dn.el.theme_chooser = document.getElementById('theme_chooser')
+    dn.el.widget_sub_general_box = document.getElementById('sub_general_box')
+    dn.el.button_clear_clipboard = document.getElementById("button_clear_clipboard");
+    dn.el.button_clear_find_replace = document.getElementById("button_clear_find_replace");
+    dn.el.gutter_history_show = document.getElementById('gutter_history_show');
+    dn.el.gutter_history_hide = document.getElementById('gutter_history_hide');
+    dn.el.word_wrap_off = document.getElementById('word_wrap_off');
+    dn.el.word_wrap_at = document.getElementById('word_wrap_at');
+    dn.el.word_wrap_edge = document.getElementById('word_wrap_edge');
+    dn.el.font_size_decrement = document.getElementById('font_size_decrement');
+    dn.el.font_size_increment = document.getElementById('font_size_increment');
+    dn.el.font_size_text = document.getElementById('font_size_text');
+    dn.el.tab_hard = document.getElementById('tab_hard');
+    dn.el.tab_soft = document.getElementById('tab_soft');
+    dn.el.newline_menu_windows = document.getElementById('newline_menu_windows');
+    dn.el.newline_menu_unix = document.getElementById('newline_menu_unix');
+    dn.el.tab_soft_text = document.getElementById('tab_soft_text');
+    dn.el.tab_soft_dec = document.getElementById('tab_soft_dec');
+    dn.el.tab_soft_inc = document.getElementById('tab_soft_inc');
+    dn.el.word_wrap_at_text = document.getElementById('word_wrap_at_text');
+    dn.el.word_wrap_at_dec = document.getElementById('word_wrap_at_dec');
+    dn.el.word_wrap_at_inc = document.getElementById('word_wrap_at_inc');
+    dn.theme_drop_down = dn.create_theme_menu()  // TODO: tidy this up
+    dn.el.theme_chooser.appendChild(dn.theme_drop_down.el);
+    dn.el.newline_menu_windows.addEventListener('click', function(){
+        dn.g_settings.set('newLineDefault', 'windows');
+    });
+    dn.el.newline_menu_unix.addEventListener('click', function(){
+        dn.g_settings.set('newLineDefault', 'unix');
+    });
+    dn.el.tab_hard.addEventListener('click', function(){
+        dn.g_settings.set('tabIsHard', 1)
+    });
+    dn.el.tab_soft.addEventListener('click', function(){
+        dn.g_settings.set('tabIsHard', 0);
+    });
+    dn.el.tab_soft_dec.addEventListener('click', function(){
+        var at = dn.g_settings.get('softTabN') - 1;
+        at = at < dn.min_soft_tab_n ? dn.min_soft_tab_n : at;
+        dn.g_settings.set('softTabN',at);
+    });
+    dn.el.tab_soft_dec.addEventListener('click', function(){
+        var at = dn.g_settings.get('softTabN') + 1;
+        at = at > dn.max_soft_tab_n ? dn.max_soft_tab_n : at;
+        dn.g_settings.set('softTabN',at);
+    });
+    dn.el.font_size_decrement.addEventListener('click', dn.font_size_decrement_click);
+    dn.el.font_size_increment.addEventListener('click', dn.font_size_increment_click);    
+    dn.el.word_wrap_off.addEventListener('click', function(){
+        dn.g_settings.set('wordWrap',[0,0,0])
+    });
+    dn.el.word_wrap_at.addEventListener('click', function(){
+        var at = dn.g_settings.get('wordWrapAt');
+        dn.g_settings.set('wordWrap',[1,at,at]);
+    });
+    dn.el.word_wrap_at_dec.addEventListener('click', function(){
+        var at = dn.g_settings.get('wordWrapAt') - dn.wrap_at_increment;
+        at = at < dn.min_wrap_at ? dn.min_wrap_at : at;
+        dn.g_settings.set('wordWrapAt',at);
+    });
+    dn.el.word_wrap_at_inc.addEventListener('click', function(){
+        var at = dn.g_settings.get('wordWrapAt') + dn.wrap_at_increment;
+        at = at > dn.max_wrap_at ? dn.max_wrap_at : at;
+        dn.g_settings.set('wordWrapAt',at);
+    });
+    dn.el.word_wrap_edge.addEventListener('click', function(){
+        dn.g_settings.set('wordWrap',[1,null,null])
+    });
+    dn.el.gutter_history_show.addEventListener('click', function(){
+        dn.g_settings.set('showGutterHistory',1);
+    });
+    dn.el.gutter_history_hide.addEventListener('click', function(){
+        dn.g_settings.set('showGutterHistory',0);
+    });
+    dn.create_clipboard_tool();
+    dn.el.menu_general_settings.addEventListener('click', function(){
+        dn.g_settings.set('pane', 'pane_general_settings');
+    })
+
+    // pane permissions :::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    dn.el.pane_permissions = document.getElementById('pane_permissions');
+    document.getElementById('button_auth').addEventListener('click', dn.launch_popup);
+
+    // pane help ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    dn.el.pane_help = document.getElementById('pane_help');
+    dn.el.user_name = document.getElementById('user_name');
+    dn.el.menu_help.addEventListener('click', function(){
+        dn.g_settings.set('pane', 'pane_help');
+    })
+
+    // pane find ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::    
+    dn.el.pane_find = document.getElementById('pane_find');
+    dn.el.replace_form = document.getElementById("replace_form");
+    dn.el.find_replace_info = document.getElementById('find_replace_info');
+    dn.el.find_input = document.getElementById("find_input");
+    dn.el.replace_input = document.getElementById("replace_input");
+    dn.el.goto_input = document.getElementById('goto_input');
+    dn.el.menu_find.addEventListener('click', dn.show_find);
+    dn.el.find_input.addEventListener('focus', dn.find_input_focus);
+    dn.el.find_input.addEventListener('blur', dn.find_input_blur);
+    dn.el.find_input.addEventListener('keydown', dn.find_input_keydown); 
+    dn.el.find_input.addEventListener("keyup", dn.find_input_keyup);
+    dn.el.replace_input.addEventListener('focus', dn.find_replace_input_focus);
+    dn.el.replace_input.addEventListener("keydown", dn.find_replace_input_keydown);
+    dn.el.replace_input.addEventListener('blur', dn.find_replace_input_blur);
+    dn.el.goto_input.addEventListener('blur',dn.focus_editor); // TODO: make this work properly
+    dn.el.goto_input.addEventListener('keyup', dn.find_goto_keyup);
+
+    // pane open ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    dn.el.pane_open = document.getElementById('pane_open');
+    dn.el.opener_button_a = document.getElementById('opener_button_a');
+    dn.el.opener_button_b = document.getElementById('opener_button_b');
+    dn.el.menu_open.addEventListener('click', function(){
+        dn.g_settings.set('pane', 'pane_open')
+    });
+    dn.el.opener_button_a.addEventListener('click', dn.do_open);
+    dn.el.opener_button_b.addEventListener('click', dn.do_open);
+
+    // pane first time info ::::::::::::::::::::::::::::::::::::::::::::::::::::    
+    dn.el.pane_first_time_info = document.getElementById('pane_first_time_info');
+    document.getElementById('first_time_dissmiss').addEventListener('click', function(){
+        dn.g_settings.set('pane','');
+    });
+
+    // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.make_keyboard_shortcuts();
     dn.load_default_settings();
-    dn.load_default_properties();
-    
+    dn.load_default_properties();    
+    document.addEventListener('contextmenu', prevent_default);
+    document.addEventListener('dragover', dn.document_drag_over);
+    document.addEventListener('drop', dn.document_drop_file);
     window.addEventListener('resize', dn.widget_apply_anchor);
     window.onbeforeunload = dn.query_unload;
 
@@ -2950,48 +2737,14 @@ dn.document_ready = function(e){
         dn.create_file();
     }
 
-    // authentication Promise defined inline at top of html head
-    dn.pr_auth.then(dn.authentication_done);
+    dn.pr_auth.then(dn.authentication_done); // authentication Promise-like defined inline at top of html head
     dn.show_status(); 
 }
-
-dn.get_user_info = function(){
-   Promise.resolve(
-        gapi.client.request({
-            'path' : 'userinfo/v2/me?fields=name'
-        })).then(function(a){
-            dn.user_info = a.result;
-            dn.el_user_name.textContent = a.result.name;
-        }, function(err){
-            // TODO: could be auth problem
-            dn.show_error('Failed to get user info');
-            console.dir(err);
-        });
-}
-
-dn.api_loaded = function(APIName){
-    // TODO: make this redundant
-    if(APIName == 'drive-realtime'){
-        dn.get_settings_from_cloud();
-    }
-    if(APIName == 'picker'){
-        console.log("got picker API");
-    }
-    if(APIName == 'sharer'){
-        dn.el_share_dialog = new gapi.drive.share.ShareClient(dn.client_id);
-    }
-}
-
 
 
 if (document.readyState != 'loading')
     dn.document_ready();
 else
-    document.addEventListener('DOMContentLoaded', dn.document_ready); // IE 9+ compatible
-
-document.addEventListener('contextmenu', function(e){e.preventDefault();});
-document.addEventListener('dragover', dn.document_drag_over);
-document.addEventListener('drop', dn.document_drop_file);
+    document.addEventListener('DOMContentLoaded', dn.document_ready);
 
 
-// See https://developers.google.com/apis-explorer 

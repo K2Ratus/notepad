@@ -51,6 +51,19 @@ var css_animation = (function(){
     }
 })();
 
+var stop_propagation = function(e){
+    e.stopPropagation();
+}
+
+var prevent_default = function(e){
+    e.preventDefault();    
+}
+
+var div_as_link = function(el, href){
+    el.click = function(){
+        window.open(href, "_blank");
+    }
+}
 
 /* TODO: ...............................................................
 
