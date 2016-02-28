@@ -85,7 +85,7 @@
 </head>
 
 <body class="noselect">
-    <div id="the_widget" class="noselect" style="display:none;"> 
+    <div id="the_widget" class="noselect"> 
         <div id="widget_text">ex nihilo omnia</div>
 
         <div id='widget_menu'>
@@ -97,9 +97,7 @@
         </div>
 
         <div id="widget_content"> 
-            <div class='widget_pane' style='display:none;' id='pane_???'></div>
-
-            <div class='widget_pane' style='display:none;' id='pane_file'>
+            <div class='widget_pane' id='pane_file' style="display: none;">
                 <div class='pane_item details_file_title clickable'>
                     <div class='details_file_title_text' data-info='title' id='details_file_title_text'></div>
                     <input type='text' placeholder='title' class='details_file_title_input' id='details_file_title_input' style='display:none;'/>
@@ -139,18 +137,10 @@
                 </div>
                 <div class='widget_pane_bottom_before'></div>
                 <div class='widget_pane_bottom'>
-                    <div class='button icon' id='button_save'>
-                        <div class='tooltip button_tooltip'>save file</div>
-                    </div>
-                    <div class='button icon' id='button_print'>
-                        <div class='tooltip button_tooltip'>print...</div>
-                    </div>
-                    <div class='button icon' id='button_share'>
-                        <div class='tooltip button_tooltip'>file share settings...</div>
-                    </div>
-                    <div class='button icon' id='button_history'>
-                        <div class='tooltip button_tooltip'>history of changes...</div>
-                    </div>           
+                    <div class='button icon' id='button_save' title='save file'></div>
+                    <div class='button icon' id='button_print' title='print...'></div>
+                    <div class='button icon' id='button_share' title="file share settings..."></div>
+                    <div class='button icon' id='button_history' title="history of changes..."></div>
                 </div>
             </div>
 
@@ -203,29 +193,26 @@
                 </div>
                 <div class='widget_pane_bottom_before'></div>
                 <div class='widget_pane_bottom'>
-                    <div class='button icon' id='button_clear_clipboard'>
-                        <div class='tooltip button_tooltip'>clear clipboard history</div>
-                    </div>
-                    <div class='button icon' id='button_clear_find_replace'>
-                        <div class='tooltip button_tooltip'>clear find/replace history</div>
-                    </div>
+                    <div class='button icon' id='button_clear_clipboard' title="clear clipboard history"></div>
+                    <div class='button icon' id='button_clear_find_replace' title="clear find/replace history"></div>
                 </div>
             </div>
 
             <div class='widget_pane' style='display:none;' id='pane_find'>
-                <div class='pane_item'>
-                    <input class='find_input' tabindex='1' placeholder='find text' id='find_input'></input>
-                    <div class='replace_form' id='replace_form'>
-                        <input tabindex='2' class='replace_input' id='replace_input' placeholder='replace with'></input>
-                        <div class='find_replace_info' id='find_replace_info'></div>
-                    </div>
-                </div><br><br>
-                <div class='pane_item'>
+                <div class='pane_item input no_select'>
+                    <input tabindex='1' placeholder='find text' id='find_input'></input>
+                    <div class='button inline_button' id='button_find_case_sensitive' title='case sensitive search'>Aa</div>
+                    <div class='button inline_button' id='button_find_whole_words' title='match whole words'><sup>&#9141;</sup></div>
+                    <div class='button inline_button' id='button_find_regex' title="use regular expressions">.*</div>
+                </div>
+                <div class='pane_item no_select find_results' id='find_results'></div>
+                <div class='pane_item no_select find_info' id='find_info'>Type to search</div>
+                <div class='pane_item' style="display:none;">
                     Go to: <input class='gotoline_input' id='goto_input' placeholder='line number'></input>
                 </div>
             </div>
 
-            <div class='widget_pane' style='display:none;' id='pane_help'>
+            <div class='widget_pane' id='pane_help'>
                 <div class='widget_box_title'>Drive Notepad 2016a, by DM.</div>
                 <div class='pane_item clickable link_google'>google+ - for bug reports, questions, etc.*</div>
                 <div class='pane_item clickable link_youtube'>youtube - quick demo</div>
@@ -278,7 +265,7 @@
         </div>
 
         <div id="widget_error">
-            <div id="widget_error_mark">&#x2718;</div><div id="widget_error_text"></div>
+            <div id="widget_error_mark">&#x2718;</div><div id="widget_error_text">Javascript disabled</div>
         </div>
 
     </div>

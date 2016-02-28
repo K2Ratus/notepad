@@ -7,52 +7,8 @@ dn.version_str = '2016a';
 // ############################
 // Constants and defaults, see alsp info.js
 // ############################
-dn.drag_delay_ms = 400;
-dn.drag_shift_px = 40;
 
-dn.default_settings = {
-ext: 'txt',
-wordWrap: [true,null,null],
-wordWrapAt: 80,
-fontSize: 1,
-widget_anchor: ['l',50,'t',10],
-showGutterHistory: 1,
-lastDNVersionUsed: '',
-newLineDefault: 'windows',
-historyRemovedIsExpanded: true,
-softTabN: 4,
-tabIsHard: 0,
-widgetSub: 'general',
-theme: "chrome",
-pane: '',
-pane_open: true
-}
-dn.default_custom_props = {
-    newline: "detect",
-    tabs: "detect",
-    aceMode: "detect"
-};
-dn.impersonal_settings_keys = ["wordWrap","wordWrapAt","fontSize","widget_anchor","showGutterHistory","historyRemovedIsExpanded",
-                                "tabIsHard","softTabN","widgetSub","theme", "pane", "pane_open"];
 dn.can_show_drag_drop_error = true;
-dn.min_font_size = 0.3;
-dn.max_font_size = 5; 
-dn.max_wrap_at = 200;
-dn.min_wrap_at = 20;
-dn.wrap_at_increment = 10;
-dn.max_soft_tab_n = 10;
-dn.min_soft_tab_n = 2;
-dn.detect_tabs_spaces_frac = 0.9;
-dn.detect_tabs_tabs_frac = 0.9;
-dn.detect_tabs_n_spaces_frac = 0.99;
-dn.detect_tabs_n_spaces_frac_for_default = 0.6;
-dn.font_size_increment = 0.15;
-dn.icon_mouse_over_ms = 300;
-dn.editor_refocus_time_ms = 500;
-dn.error_delay_ms = 5000;//5 seconds
-dn.find_history_add_delay = 2000; //ms
-dn.clipboard_info_delay = 500; //ms
-dn.clipboard_max_length = 20; //TODO: decide whether a large clipboard slows page loads and whether we can do anything about it.
 dn.is_showing_history = false;
 dn.apis = {drive_is_loaded: false};
 
@@ -143,8 +99,6 @@ dn.el = dn.el || {};
 // ############################
 // Auth stuff
 // ############################
-
-// See https://developers.google.com/apis-explorer 
 
 dn.authentication_done = function(auth_result){
     dn.status.popup_active = 0;
@@ -447,8 +401,6 @@ dn.widget_apply_anchor = function(anchor){
     var window_w = window.innerWidth;
     var window_h = window.innerHeight;
 
-    // TODO: should test whether toolbar tooltips are too close to the edge, in which case you can flip them.
-
     if(anchor[0] == 'l'){
         // horizontal position is anchored to a fixed percentage of window width on left of widget
         if(window_w * anchor[1]/100 + widget_w > window_w){
@@ -463,9 +415,6 @@ dn.widget_apply_anchor = function(anchor){
         dn.el.widget_menu.classList.add('flipped');
         dn.el.widget_content.classList.add('flipped');
         var els = document.getElementsByClassName('widget_menu_icon');
-        for(var ii=0; ii<els.length; ii++)
-            els[ii].classList.add('flipped');
-        els = document.getElementsByClassName('tooltip widget_menu_tooltip');
         for(var ii=0; ii<els.length; ii++)
             els[ii].classList.add('flipped');
 
@@ -483,9 +432,6 @@ dn.widget_apply_anchor = function(anchor){
         dn.el.widget_menu.classList.remove('flipped');
         dn.el.widget_content.classList.remove('flipped');
         var els = document.getElementsByClassName('widget_menu_icon');
-        for(var ii=0; ii<els.length; ii++)
-            els[ii].classList.remove('flipped');
-        els = document.getElementsByClassName('tooltip widget_menu_tooltip');
         for(var ii=0; ii<els.length; ii++)
             els[ii].classList.remove('flipped');
     }
@@ -757,6 +703,30 @@ dn.settings_changed = function(e){
                 if(dn.g_settings.keep)
                     dn.g_settings.keep('pane');
                 break; 
+            case 'find_regex':
+                if(new_value)
+                    dn.el.find_button_regex.classList.add('selected');
+                else
+                    dn.el.find_button_regex.classList.remove('selected');
+                if(dn.g_settings.get('pane') === 'pane_find' && dn.g_settings.get('pane_open'))
+                    dn.do_find();
+                break;
+            case 'find_whole_words':
+                if(new_value)
+                    dn.el.find_button_whole_words.classList.add('selected');
+                else
+                    dn.el.find_button_whole_words.classList.remove('selected');
+                if(dn.g_settings.get('pane') === 'pane_find' && dn.g_settings.get('pane_open'))
+                    dn.do_find();
+                break;
+            case 'find_case_sensitive':
+                if(new_value)
+                    dn.el.find_button_case_sensitive.classList.add('selected');
+                else
+                    dn.el.find_button_case_sensitive.classList.remove('selected');
+                if(dn.g_settings.get('pane') === 'pane_find' && dn.g_settings.get('pane_open'))
+                    dn.do_find();
+                break;
         }
     }catch(err){
         console.log("Error while uptating new settings value.")
@@ -1952,8 +1922,8 @@ dn.document_ready = function(e){
     dn.editor = ace.edit("the_editor");
     dn.el.ace_content = document.getElementsByClassName('ace_content')[0];
     dn.editor.on('focus', dn.blur_find_and_focus_editor)
-   dn.focus_editor();
     dn.editor.getSession().addEventListener("change", dn.on_change);
+    dn.focus_editor();
     dn.editor.on("paste", dn.on_paste);
     dn.editor.on("copy", dn.on_copy);
     dn.editor.setAnimatedScroll(true);
@@ -1970,8 +1940,8 @@ dn.document_ready = function(e){
     var els = dn.el.widget_menu.getElementsByClassName('widget_menu_wrapper');
     for(var ii=0; ii<els.length; ii++){
         els[ii].addEventListener("click",dn.focus_editor);
-        els[ii].innerHTML = "<div class='tooltip widget_menu_tooltip'>" + dn.menu_id_to_caption[els[ii].id] + "</div>" +
-                            "<div class='widget_menu_icon' id='icon_" + els[ii].id + "'></div>";
+        els[ii].title = dn.menu_id_to_caption[els[ii].id];
+        els[ii].innerHTML = "<div class='widget_menu_icon' id='icon_" + els[ii].id + "'></div>";
         var el_icon = els[ii].getElementsByClassName('widget_menu_icon')[0];
         dn.menu_icon_from_pane_id['pane_' + els[ii].id.substr(5)] = el_icon;
     }
@@ -2099,21 +2069,24 @@ dn.document_ready = function(e){
 
     // pane find ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::    
     dn.el.pane_find = document.getElementById('pane_find');
-    dn.el.replace_form = document.getElementById("replace_form");
-    dn.el.find_replace_info = document.getElementById('find_replace_info');
-    dn.el.find_input = document.getElementById("find_input");
-    dn.el.replace_input = document.getElementById("replace_input");
-    dn.el.goto_input = document.getElementById('goto_input');
+    dn.el.find_button_case_sensitive = document.getElementById('button_find_case_sensitive');
+    dn.el.find_button_whole_words = document.getElementById('button_find_whole_words');
+    dn.el.find_button_regex = document.getElementById('button_find_regex');
+    dn.el.find_input = document.getElementById('find_input');
+    dn.el.find_info = document.getElementById('find_info');
+    dn.el.find_results = document.getElementById('find_results');
+    dn.el.find_button_case_sensitive.addEventListener('click', function(){
+        dn.g_settings.set('find_case_sensitive', !dn.g_settings.get('find_case_sensitive'));
+    })
+    dn.el.find_button_whole_words.addEventListener('click', function(){
+        dn.g_settings.set('find_whole_words', !dn.g_settings.get('find_whole_words'));
+    })
+    dn.el.find_button_regex.addEventListener('click', function(){
+        dn.g_settings.set('find_regex', !dn.g_settings.get('find_regex'));
+    })
     dn.el.menu_find.addEventListener('click', dn.show_find);
-    dn.el.find_input.addEventListener('focus', dn.find_input_focus);
-    dn.el.find_input.addEventListener('blur', dn.find_input_blur);
-    dn.el.find_input.addEventListener('keydown', dn.find_input_keydown); 
-    dn.el.find_input.addEventListener("keyup", dn.find_input_keyup);
-    dn.el.replace_input.addEventListener('focus', dn.find_replace_input_focus);
-    dn.el.replace_input.addEventListener("keydown", dn.find_replace_input_keydown);
-    dn.el.replace_input.addEventListener('blur', dn.find_replace_input_blur);
-    dn.el.goto_input.addEventListener('blur',dn.focus_editor); // TODO: make this work properly
-    dn.el.goto_input.addEventListener('keyup', dn.find_goto_keyup);
+    dn.el.find_input.addEventListener('keyup', dn.find_input_keyup);
+    
 
     // pane open ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.el.pane_open = document.getElementById('pane_open');

@@ -107,11 +107,79 @@ dn.tooltip_info = { //keys correspond to icon data-info attr, which will be the 
     "description": "Click to edit the file's description."
 }
 
-
-
+// TODO: use keymaster rather than relying on this
 var WHICH = {
 ENTER: 13,
 ESC: 27,
 UP: 38,
 DOWN: 40
 };
+
+dn.default_settings = {
+ext: 'txt',
+wordWrap: [true,null,null],
+wordWrapAt: 80,
+fontSize: 1,
+widget_anchor: ['l',50,'t',10],
+showGutterHistory: 1,
+lastDNVersionUsed: '',
+newLineDefault: 'windows',
+historyRemovedIsExpanded: true,
+softTabN: 4,
+tabIsHard: 0,
+widgetSub: 'general',
+theme: "chrome",
+pane: '',
+pane_open: true,
+find_regex: false,
+find_whole_words: false,
+find_case_sensitive: false
+}
+
+dn.default_custom_props = {
+newline: "detect",
+tabs: "detect",
+aceMode: "detect"
+};
+
+dn.impersonal_settings_keys = [
+"wordWrap",
+"wordWrapAt",
+"fontSize",
+"widget_anchor",
+"showGutterHistory",
+"historyRemovedIsExpanded",
+"tabIsHard",
+"softTabN",
+"widgetSub",
+"theme",
+"pane",
+"pane_open",
+"find_regex",
+"find_whole_words",
+"find_case_sensitive"
+];
+
+dn.drag_delay_ms = 400;
+dn.drag_shift_px = 40;
+dn.min_font_size = 0.3;
+dn.max_font_size = 5; 
+dn.max_wrap_at = 200;
+dn.min_wrap_at = 20;
+dn.wrap_at_increment = 10;
+dn.max_soft_tab_n = 10;
+dn.min_soft_tab_n = 2;
+dn.detect_tabs_spaces_frac = 0.9;
+dn.detect_tabs_tabs_frac = 0.9;
+dn.detect_tabs_n_spaces_frac = 0.99;
+dn.detect_tabs_n_spaces_frac_for_default = 0.6;
+dn.font_size_increment = 0.15;
+dn.icon_mouse_over_ms = 300;
+dn.editor_refocus_time_ms = 500;
+dn.error_delay_ms = 5000;//5 seconds
+dn.find_history_add_delay = 2000; //ms
+dn.clipboard_info_delay = 500; //ms
+dn.clipboard_max_length = 20; //TODO: decide whether a large clipboard slows page loads and whether we can do anything about it.
+dn.find_max_results = 7; // must be odd
+dn.find_max_prefix_chars = 10;
+dn.find_max_suffix_chars = 60;

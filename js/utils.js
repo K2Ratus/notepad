@@ -32,6 +32,13 @@ var text_multi = function(el, text, truncate_long_words){
     el.innerHTML = el.innerHTML.replace(/\n/g,'<br/>').replace(/\t/g,'&nbsp;&nbsp;&nbsp; ');
 }
 
+var escape_str = function(str){
+    // http://stackoverflow.com/a/18750001/2399799
+    return str.replace(/[\u00A0-\u9999<>\&]/g, function(i) {
+        return '&#' + i.charCodeAt(0) + ';';
+    });
+}
+
 var css_animation = (function(){
     var timers = []; // we store timers and matching els so we can cancel if needed
     var els = [];
