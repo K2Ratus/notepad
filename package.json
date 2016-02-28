@@ -1,0 +1,22 @@
+{
+  "name": "drivenotepad",
+  "version": "3.0.0",
+  "main": "app.html",
+  "scripts": {
+    "build": "uglifyjs node_modules/keymaster/keymaster.js js/utils.js js/drop_down.js js/info.js js/revisions_main_thread.js js/find_replace.js js/keyboard.js js/app.js -o all.build.js --source-map all.build.map.js --source-map-include-sources --screw-ie8v && html-minifier html/app.html -o app.build.html --minify-js --collapse-whitespace --conservative-collapse"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/d1manson/drivenotepad.git"
+  },
+  "author": "D.M.",
+  "bugs": {
+    "url": "https://github.com/d1manson/drivenotepad/issues"
+  },
+  "homepage": "https://github.com/d1manson/drivenotepad",
+  "devDependencies": {
+    "html-minifier": "^1.2.0",
+    "keymaster": "^1.6.2",
+    "uglify-js": "^2.6.2"
+  }
+}

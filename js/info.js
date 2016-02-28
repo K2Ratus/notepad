@@ -1,7 +1,5 @@
 "use strict";
 
-var dn = dn || {};
-
 dn.menu_id_to_caption = {
 'menu_print': 'print',
 'menu_sharing': 'sharing',

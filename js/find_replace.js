@@ -1,5 +1,4 @@
 "use strict";
-var dn = dn || {};
 
 //A "quick", no sorry, a "longish" note:
 //Each time DoFind runs it stores its str in dn.finding_str for next time.

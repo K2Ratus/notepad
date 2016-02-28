@@ -1,6 +1,4 @@
 "use strict";
-dn = dn || {};
-dn.el = dn.el || {};
 
 dn.close_history = function(){
     dn.file_history.$revisions_display.remove();
@@ -59,7 +57,7 @@ dn.start_revisions_worker = function(){
             at: null, //revision object
             from: null, //revision object,
             canShowResizeError: true, //used by Revisions_WindowResize
-            worker: new Worker("revisions_worker.js")
+            worker: new Worker("js/revisions_worker.js")
         };
     
         dn.file_history.$view = dn.file_history.$revisions_display.find('ol'); 
