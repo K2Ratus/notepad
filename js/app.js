@@ -10,7 +10,6 @@ dn.version_str = '2016a';
 
 dn.can_show_drag_drop_error = true;
 dn.is_showing_history = false;
-dn.apis = {drive_is_loaded: false};
 
 dn.status = {
     // 0: get action in progress
@@ -48,8 +47,6 @@ dn.the_file = {
 };
 dn.change_line_history = [];
 dn.last_change = null;
-dn.finding_str = "";
-dn.find_result_markers = [];
 dn.change_line_classes =(function(rootStr,trueN,factor){
     var x = [''];
     for(var i=trueN;i;i--)for(var k=0;k<factor;k++)
@@ -708,24 +705,21 @@ dn.settings_changed = function(e){
                     dn.el.find_button_regex.classList.add('selected');
                 else
                     dn.el.find_button_regex.classList.remove('selected');
-                if(dn.g_settings.get('pane') === 'pane_find' && dn.g_settings.get('pane_open'))
-                    dn.do_find();
+                dn.find_settings_changed();
                 break;
             case 'find_whole_words':
                 if(new_value)
                     dn.el.find_button_whole_words.classList.add('selected');
                 else
                     dn.el.find_button_whole_words.classList.remove('selected');
-                if(dn.g_settings.get('pane') === 'pane_find' && dn.g_settings.get('pane_open'))
-                    dn.do_find();
+                dn.find_settings_changed();
                 break;
             case 'find_case_sensitive':
                 if(new_value)
                     dn.el.find_button_case_sensitive.classList.add('selected');
                 else
                     dn.el.find_button_case_sensitive.classList.remove('selected');
-                if(dn.g_settings.get('pane') === 'pane_find' && dn.g_settings.get('pane_open'))
-                    dn.do_find();
+                dn.find_settings_changed();
                 break;
         }
     }catch(err){
@@ -1920,6 +1914,7 @@ dn.document_ready = function(e){
         dn.show_error("See the list of keyboard shortcuts for copy/paste, select-all, and undo/redo.")
     });
     dn.editor = ace.edit("the_editor");
+    dn.editor.setHighlightSelectedWord(true);
     dn.el.ace_content = document.getElementsByClassName('ace_content')[0];
     dn.editor.on('focus', dn.blur_find_and_focus_editor)
     dn.editor.getSession().addEventListener("change", dn.on_change);
@@ -1927,6 +1922,7 @@ dn.document_ready = function(e){
     dn.editor.on("paste", dn.on_paste);
     dn.editor.on("copy", dn.on_copy);
     dn.editor.setAnimatedScroll(true);
+    dn.editor.$blockScrolling = Infinity; // disables scrolling message
     
     // widget menu ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.el.widget_menu = document.getElementById('widget_menu');
@@ -2086,6 +2082,8 @@ dn.document_ready = function(e){
     })
     dn.el.menu_find.addEventListener('click', dn.show_find);
     dn.el.find_input.addEventListener('keyup', dn.find_input_keyup);
+    dn.el.find_input.addEventListener('keydown', dn.find_input_keydown);
+    dn.el.find_input.addEventListener('blur', dn.blur_find_and_focus_editor);
     
 
     // pane open ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -2105,6 +2103,8 @@ dn.document_ready = function(e){
     });
 
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    var els = document.getElementsByClassName('button');
+
     dn.make_keyboard_shortcuts();
     dn.load_default_settings();
     dn.load_default_properties();    

@@ -63,7 +63,7 @@ var stop_propagation = function(e){
 }
 
 var prevent_default = function(e){
-    e.preventDefault();    
+    e.preventDefault();  
 }
 
 var div_as_link = function(el, href){

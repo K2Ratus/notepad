@@ -276,6 +276,7 @@ white-space: nowrap;
 }
 .find_result_item{
 display: table-row;
+cursor: pointer;
 }
 .find_result_line_num,
 .find_result_text{
@@ -285,6 +286,19 @@ position: relative;
 }
 .find_result_current{
 background: rgb(80, 132, 222);
+cursor: default;
+}
+.find_match_marker,
+.find_current_match_marker{
+-moz-box-sizing: border-box;
+-webkit-box-sizing: border-box;
+box-sizing: border-box;
+position: absolute;
+border-bottom: 1px solid #f00;
+z-index:10;
+}
+.find_current_match_marker{
+border: 3px solid #f00;
 }
 input{
 min-width: 20px;

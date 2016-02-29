@@ -2,7 +2,7 @@
 
 /*
 A "quick", no sorry, a "longish" note:
-Each time DoFind runs it stores its str in dn.finding_str for next time.
+Each time DoFind runs it stores its str in dn.find_str for next time.
 dn.find_history_pointer is nan except when we are cycling through history. As soon 
 as we change the search string we leave this history-cyclying mode.  Also, immediately before
 entering the history-cycling mode we store the current str at the top of the history so it's
@@ -20,6 +20,52 @@ the call if it is the thing recieving the focus, otherwise it will go ahead.
 There are other complications too, but this is the bulk of it.
 */
 
+
+/*
+The find focus/blur problem
+============================
+
+We have to work quite hard to give the user a good focus/blur experience.
+
+The main principle is that we only show results in the widget & mark them
+in the editor when find_input_active is true.  And when this flag is true
+we force the input to keep the focus, unless we have reason to let it go
+back to the editor.
+
+Here is a list of all the relevant actions that have to be considered, we label each with T/F, indicating
+whether find_input_active should be true or false after the action:
+
+(a)   T typing standard chars or backspace in input
+(b)   T typing up/down or (Enter/Shift-Enter) in input
+(c)   T clicking results in widget
+(d.1) T clicking search settings buttons when find_input_active is true
+(d.2) F clicking search settings buttons when find_input_active is false and search str is empty
+(d.3) T clicking search settings buttons when find_input_active is false and search str is non-empty
+(e)   T using ctrl-f shortcut, possibly with find-pane already visible
+(f.1) T opening widget directly into find with Esc
+(f.2) F open widget directly into find by clicking widget
+(g)   F clicking, to select find pane, with widget already open
+(h)   F g_settings remotely opening widget into find
+(i)   F pressing Esc with find_input_active true
+(j)   F* ressing Esc or clicking the widget with find_input_active false
+(k)   F pressing Tab with find_input_active true
+(l.1) F switching to another pane with find_input_active true
+(l.2) F switching to another pane with find_input_active false
+(m)   F clicking editor (when find_input_active is true)
+(n)   F g_settings remotely switch to another pane or close widget
+
+*for (j), we should close the widget as well as setting find_input_active to false.
+
+...and then we have to deal with replace input as well, but let's leave that for now!!
+
+*/
+
+dn.find_results = [];
+dn.find_current_match_idx = -1;
+dn.find_markers = [];
+dn.find_marker_current = undefined;
+dn.find_str = "";
+
 dn.show_find = function(){
     dn.g_settings.set('pane', 'pane_find');
     var sel = dn.editor.session.getTextRange(dn.editor.getSelectionRange());
@@ -31,112 +77,181 @@ dn.show_find = function(){
     return false;
 }
 
+dn.find_settings_changed = function(){
+    if(dn.g_settings.get('pane') === 'pane_find' && dn.g_settings.get('pane_open') && dn.find_str)
+        dn.do_find();
+}
+
+dn.find_select_result_idx = function(current_match_idx){
+    /* This is called within do_find when a new search returns some results, it's also
+       called when we move through the results without changing the search.   */
+
+    // Get a small sub set of results to show in the widget.
+    // We carefully implement some wrapping logic, which is a bit fiddly.
+    dn.find_current_match_idx = current_match_idx;
+
+    var session = dn.editor.getSession();
+    if (dn.find_marker_current !== undefined){
+        session.removeMarker(dn.find_marker_current);
+        dn.find_marker_current = undefined;
+    }
+
+    var results = dn.find_results;
+    var results_sub = [];
+    
+    if(results.length <= dn.find_max_results){
+        results_sub = results;
+    }else{
+        var n = Math.floor(dn.find_max_results/2);
+        if(current_match_idx < n){
+            results_sub = results_sub.concat(results.slice(current_match_idx - n));
+            results_sub = results_sub.concat(results.slice(0, current_match_idx));
+        } else {
+            results_sub = results_sub.concat(results.slice(current_match_idx - n, current_match_idx));
+        }
+        results_sub.push(results[current_match_idx]); 
+        if(current_match_idx + n >= results.length){
+            results_sub = results_sub.concat(results.slice(current_match_idx + 1));
+            results_sub = results_sub.concat(results.slice(0, n + 1 - (results.length - current_match_idx)));
+        } else {
+            results_sub = results_sub.concat(results.slice(current_match_idx + 1, current_match_idx + n + 1));
+        }
+    }
+
+    // Now lets build the html to show the subset of results in the widget
+    var html = "";
+    for(var ii=0; ii<results_sub.length; ii++){
+        var row = results_sub[ii].range.start.row;
+        var col = results_sub[ii].range.start.column;
+        var prefix_range = new dn.AceRange(row, Math.max(0, col-dn.find_max_prefix_chars), row, col);
+        var pre_ellipses = col > dn.find_max_prefix_chars; //TODO: deal with indent better
+        row = results_sub[ii].range.end.row;
+        col = results_sub[ii].range.end.column;
+        var suffix_range = new dn.AceRange(row, col, row, col+dn.find_max_suffix_chars);
+        html += "<div class='find_result_item" + (results_sub[ii].idx==current_match_idx? " find_result_current" : "") + "'>" +
+                    "<div class='find_result_line_num'>" + (row+1) + "</div>" +
+                    "<div class='find_result_text'>" +
+                        "<div class='find_result_text_inner'>" +
+                            (pre_ellipses ? "&#8230;" : "") + escape_str(session.getTextRange(prefix_range)) +
+                            "<span class='find_result_match'>" + escape_str(session.getTextRange(results_sub[ii].range)) + "</span>" +
+                            escape_str(session.getTextRange(suffix_range)) +
+                        "</div>" +
+                    "</div>" +
+                "</div>";
+    }
+    dn.el.find_results.innerHTML = html;
+    var els = dn.el.find_results.getElementsByClassName('find_result_item');
+    for(var ii=0; ii<els.length; ii++) if(results_sub[ii].idx !== current_match_idx)
+        els[ii].addEventListener('click', dn.find_result_click(results_sub[ii].idx));
+
+    if(results.length > dn.find_max_results)
+        dn.el.find_info.textContent = "... and " + (results.length - dn.find_max_results) + " more matches";
+    else
+        dn.el.find_info.textContent = "";
+
+    // do the special marker for the current selection and actually select it
+    dn.find_marker_current = session.addMarker(results[current_match_idx].range, "find_current_match_marker", "find_current_match_marker", false);
+    dn.editor.selection.setSelectionRange(results[current_match_idx].range, false);
+    dn.editor.renderer.scrollSelectionIntoView();
+}
+
+dn.find_result_click = function(ii){
+    return function(e){dn.find_select_result_idx(ii);};
+}
+
 dn.do_find = function(str){
-    //this function is to be used internally by the find/replace functions
+    /* This  is called when the find text changes, when any of the find settings changes,
+       or when the find text gets the focus. It is *not* called when we move through an existing
+       result list.*/
+
     dn.AceSearch = dn.AceSearch || ace.require("./search").Search;
     dn.AceRange = dn.AceRange || ace.require("./range").Range;
-    str = str === undefined ? dn.el.find_input.value : str;
+    dn.editor.setHighlightSelectedWord(false);
 
-    //while(dn.find_result_markers.length)
-    //    dn.editor.session.removeMarker(dn.find_result_markers.pop());
-                
-    dn.finding_str = str;
-    if(str == ""){
+    str = str === undefined ? dn.el.find_input.value : str;
+    var session = dn.editor.getSession();   
+
+    // clear previous find (but leave selection for now)
+    for(var ii=0; ii<dn.find_markers.length; ii++)
+        session.removeMarker(dn.find_markers[ii]);
+    if(dn.find_marker_current !== undefined){
+        session.removeMarker(dn.find_marker_current)
+        dn.find_marker_current = undefined;
+    }
+    dn.find_markers = [];
+    dn.find_results = [];
+    dn.find_current_match_idx = -1;
+    dn.el.find_results.innerHTML = "";  
+    
+    dn.find_str = str;
+
+    // If requested, try and parse as regex. On failure display no results with message.
+    var use_reg_exp = dn.g_settings.get('find_regex');
+    if(use_reg_exp){
+        var re = undefined;
+        try {
+            re = new RegExp(str);
+        } catch(e) {
+            dn.el.find_info.textContent = escape_str(e.message);
+        }
+    }
+
+    if(use_reg_exp && re === undefined){
+        // failed regex, don't show any results
+        dn.editor.selection.clearSelection();
+
+    } else if(str == ""){
+        // empty string (including empty regex), dont show any results
         dn.el.find_info.textContent = "type to search. " + dn.ctrl_key + "-up/down for history.";
-        dn.el.find_results.innerHTML = "";
-    }else{
+        dn.editor.selection.clearSelection();
+        
+    } else {
+        // valid regex or pure str search..
+
+        // This is the actual search
         var search = new dn.AceSearch();
         search.setOptions({
-            needle: str,
+            needle: use_reg_exp ? re : str,
             wrap: true,
             caseSensitive: dn.g_settings.get('find_case_sensitive'),
             wholeWord: dn.g_settings.get('find_whole_words'),
-            regExp: dn.g_settings.get('find_regex')
+            regExp: use_reg_exp
         });
+        var results = dn.find_results = search.findAll(session);
 
-        var session = dn.editor.getSession();
-        var results = search.findAll(session);
         if(results.length === 0){
+            // No results to display, life is easy...
             dn.el.find_info.textContent = "no matches found.";
-            dn.el.find_results.innerHTML = "";
+            dn.editor.selection.clearSelection();
+
         }else{
-            html = "";
+            // Right, we got some results ....
+
+            // Work out which result we should consider the current match.
             var selected_range = session.getSelection().getRange();
             for(var ii=0; ii<results.length; ii++) 
                 if(results[ii].end.row > selected_range.start.row  || 
                     (results[ii].end.row == selected_range.start.row &&
                      results[ii].end.column >= selected_range.start.column))
                 break;
-            var current_match_idx = ii == results.length ? results.length-1 : ii;
+            var current_match_idx = (ii == results.length ? results.length-1 : ii);
 
-            // collecting the right sub selection, with all the wrapping etc. seems to be a bit fiddly...
-            var n = Math.floor(dn.find_max_results/2);
-            var results_sub = [];
-            var current_match_sub_idx;
-            if(results.length <= dn.find_max_results){
-                results_sub = results;
-                current_match_sub_idx = current_match_idx;
-            }else{
-                if(current_match_idx < n){
-                    results_sub = results_sub.concat(results.slice(current_match_idx - n));
-                    results_sub = results_sub.concat(results.slice(0, current_match_idx));
-                } else {
-                    results_sub = results_sub.concat(results.slice(current_match_idx - n, current_match_idx));
-                }
-                current_match_sub_idx = results_sub.length;
-                results_sub.push(results[current_match_idx]); 
-                if(current_match_idx + n >= results.length){
-                    results_sub = results_sub.concat(results.slice(current_match_idx + 1));
-                    results_sub = results_sub.concat(results.slice(0, n + 1 - (results.length - current_match_idx)));
-                } else {
-                    results_sub = results_sub.concat(results.slice(current_match_idx + 1, current_match_idx + n + 1));
-                }
-            }
+            // Add markers into the editor to show *all* the results
+            for(var ii=0; ii<results.length; ii++)
+                dn.find_markers.push(session.addMarker(results[ii], "find_match_marker", "find_match_marker", false));
 
-            for(var ii=0; ii<results_sub.length; ii++){
-                var row = results_sub[ii].start.row;
-                var col = results_sub[ii].start.column;
-                var prefix_range = new dn.AceRange(row, Math.max(0, col-dn.find_max_prefix_chars), row, col);
-                var pre_ellipses = col > dn.find_max_prefix_chars; //TODO: deal with indent better
-                row = results_sub[ii].end.row;
-                col = results_sub[ii].end.column;
-                var suffix_range = new dn.AceRange(row, col, row, col+dn.find_max_suffix_chars);
+            // augment the results with their idx, this is useful for the subselection stuff
+            for(var ii=0; ii<results.length; ii++)
+                results[ii] = {range: results[ii], idx: ii};
 
-                html += "<div class='find_result_item" + (ii==current_match_sub_idx? " find_result_current" : "") + "'>" +
-                            "<div class='find_result_line_num'>" + (row+1) + "</div>" +
-                            "<div class='find_result_text'>" +
-                                "<div class='find_result_text_inner'>" +
-                                    (pre_ellipses ? "&#8230;" : "") + escape_str(session.getTextRange(prefix_range)) +
-                                    "<span class='find_result_match'>" + escape_str(session.getTextRange(results_sub[ii])) + "</span>" +
-                                    escape_str(session.getTextRange(suffix_range)) +
-                                "</div>" +
-                            "</div>" +
-                        "</div>";
-            }
-            dn.el.find_results.innerHTML = html;
-            if(results.length > dn.find_max_results)
-                dn.el.find_info.textContent = "... and " + (results.length - dn.find_max_results) + " more matches";
-            else
-                dn.el.find_info.textContent = "";
+            // Render a subset of the results into the widget and mark & select the current match
+            dn.find_select_result_idx(current_match_idx);
         }
 
-        /*
-        dn.editor.find(str,{skipCurrent: false});
-        var r = search.findAll(dn.editor.session);
-        if(r && r.length > 0){
-            for(var i=0;i<r.length;i++)
-                dn.find_result_markers.push(dn.editor.session.addMarker(r[i], "find_result", "find_result",false)); 
-            
-                dn.el.find_replace_info.innerHTML = "Found " + r.length + " occurances<br>" +
-                 "Enter: find next<br>Shift+Enter: find previous<br>Esc: hide the find/replace box" +
-                 (dn.showing_replace ?  "<br>Tab: focus on replace field" : "") + "<br>Ctrl-Up/Down: cycle though history";
-        }else{
-            dn.el.find_replace_info.innerHTML = "No occurences found.<br>Ctrl-Up/Down: cycle though history";
-        }
-        */
     }
 
-    //dn.finding_str = str;
+
+    //dn.find_str = str;
     //if(dn.g_find_history && isNaN(dn.find_history_pointer)){
     //    if(dn.find_history_add_timeout)
     //        clearTimeout(dn.find_history_add_timeout);
@@ -145,22 +260,38 @@ dn.do_find = function(str){
     //}
 }
 
-/*
+
 dn.find_input_keydown = function(e){ 
-    //we want keydown here so that we can get repeated firing whith keydown (i think on most browsers)
-    if(e.which == WHICH.ENTER)
-        if(e.shiftKey)
-            dn.editor.findPrevious();
-        else
-            dn.editor.findNext();
-                                 
+    //we want keydown here so that we can get repeated firing with keydown (i think on most browsers)
+
+    if ((e.which == WHICH.ENTER && !e.shiftKey) || (!e.ctrlKey && e.which == WHICH.DOWN)){
+        //find next
+        dn.find_select_result_idx(dn.find_current_match_idx + 1 < dn.find_results.length ? 
+                                    dn.find_current_match_idx + 1 
+                                  : 0);
+        e.preventDefault();
+        return;
+    }else if((e.which == WHICH.ENTER && e.shiftKey) || (!e.ctrlKey && e.which == WHICH.UP)){
+        //find previous
+        dn.find_select_result_idx(dn.find_current_match_idx - 1 < 0 ? 
+                                    dn.find_results.length -1 
+                                  : dn.find_current_match_idx - 1);
+        e.preventDefault();
+        return;
+    }
+
     if(e.which == WHICH.ESC){
         dn.blur_find_and_focus_editor(); 
+        e.preventDefault();
+        return;   
+    }
+    /*                                 
+    
         //the normal togglewidget shortcut will kick in
     }
     if(e.ctrlKey && (e.which == WHICH.UP || e.which == WHICH.DOWN)){
         if(isNaN(dn.find_history_pointer)){
-            dn.add_to_find_history(dn.finding_str);  //when we begin delving into history
+            dn.add_to_find_history(dn.find_str);  //when we begin delving into history
             dn.find_history_pointer = dn.g_find_history.length-1;
         }
         dn.find_history_pointer += e.which == WHICH.DOWN? -1 : +1;
@@ -171,16 +302,19 @@ dn.find_input_keydown = function(e){
         dn.do_find(newStr);
         e.preventDefault();
     }
+    */
+
+
 }
-*/
+
 
 dn.find_input_keyup = function(e){ 
     //we need keyup here in order that the val has the new character or new backspace
     if(e.which == WHICH.ENTER || e.which == WHICH.ESC || e.which == WHICH.UP || e.which == WHICH.DOWN)
         return; 
-    if(dn.finding_str == dn.el.find_input.value)
+    if(dn.find_str == dn.el.find_input.value)
         return;
-    //if(dn.el.find_input.value != dn.finding_str)
+    //if(dn.el.find_input.value != dn.find_str)
     //    dn.find_history_pointer = NaN;
     dn.do_find(dn.el.find_input.value)
 }
@@ -208,6 +342,20 @@ dn.cancel_blur_find_and_focus_editor = function(){
 */
 
 dn.blur_find_and_focus_editor = function(flag){
+    dn.editor.setHighlightSelectedWord(true);
+
+    var session = dn.editor.getSession();   
+
+    // remove all markers
+    for(var ii=0; ii<dn.find_markers.length; ii++)
+        session.removeMarker(dn.find_markers[ii]);
+    if (dn.find_marker_current !== undefined){
+        session.removeMarker(dn.find_marker_current);
+        dn.find_marker_current = undefined;
+    }
+
+    dn.focus_editor();
+
     /*
     clearTimeout(dn.blur_find_and_focus_editor_timer);
     dn.blur_find_and_focus_editor_timer = 0;
@@ -216,18 +364,17 @@ dn.blur_find_and_focus_editor = function(flag){
         return; //note that we are assuming here that the blur event is triggered on the first element *before* the focus is triggered on the second element..if that isn't guaranteed to be true we'd need to check whether the second element already has the focus when the first element gets its blur event.
     }
     dn.showing_find_results = false;
-   dn.focus_editor();
-    while(dn.find_result_markers.length)
-        dn.editor.session.removeMarker(dn.find_result_markers.pop());               
+    
     */
 }
+
 /*    
 dn.find_input_focus = function(){
     dn.cancel_blur_find_and_focus_editor();
     dn.showing_find_results = true;
     if(dn.showing_replace)
         dn.el.replace_input.setAttribute("tabindex", parseInt(dn.el.find_input.getAttribute("tabindex"))+1); //we want to force the replace input to always be the next tab index
-    dn.do_find(dn.finding_str);
+    dn.do_find(dn.find_str);
 }
 
 dn.find_input_blur = function(){
@@ -262,7 +409,7 @@ dn.find_replace_input_blur = function(){
 dn.find_replace_input_focus = function(){
     dn.cancel_blur_find_and_focus_editor();
     if(!dn.showing_find_results)
-        dn.do_find(dn.finding_str);
+        dn.do_find(dn.find_str);
     //we want to force the find input to always be the next tab index
     dn.el.find_input.setAttribute("tabindex",parseInt(dn.el.replace_input.setAttribute("tabindex"))+1); 
     if(dn.find_result_markers.length)
@@ -286,7 +433,7 @@ dn.find_replace_input_keydown = function(e){
             dn.editor.findPrevious()
         else
             dn.editor.findNext();
-        dn.do_find(dn.finding_str); 
+        dn.do_find(dn.find_str); 
         if(dn.find_result_markers.length){
             dn.el.find_replace_info.innerHTML = "Replaced " + n + " occurence" + (n>1? "s" : "") + ". <br>" +  dn.find_result_markers.length + " occurances remain<br>" +
              "Enter: replace current selection<br>Ctrl+Enter: replace all<br>Esc: hide the find/replace box<br>Tab: focus on find field";
