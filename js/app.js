@@ -290,8 +290,7 @@ dn.picker_callback = function(data) {
   if (data.action == google.picker.Action.PICKED) {
     var fileId = data.docs[0].id;
    dn.focus_editor();
-    var url = window.location.href.match(/^https?:\/\/[\w-.]*\/\w*/)[0] +
-              "?state={\"action\":\"open\",\"ids\":[\"" + fileId +"\"]}";
+   // var url = window.location.href.match(/^https?:\/\/[\w-.]*\/\w*/)[0] + "?state={\"action\":\"open\",\"ids\":[\"" + fileId +"\"]}";
     dn.el.opener_button_a.setAttribute('href', url);
     dn.el.opener_button_b.setAttribute('href', url);
     dn.g_settings.set('pane_open', false);
@@ -306,6 +305,27 @@ dn.picker_callback = function(data) {
 // ############################
 // Widget stuff
 // ############################
+
+dn.show_help_inner = function(inner_pane){
+    // expects string 'shorcuts' or 'tips',  any other values shows main
+
+    dn.el.pane_help_shortcuts.style.display = 'none';
+    dn.el.pane_help_tips.style.display = 'none';
+    dn.el.pane_help_main.style.display = 'none';
+
+    dn.el.button_shortcuts.classList.remove('selected');
+    dn.el.button_tips.classList.remove('selected');
+    
+    if(inner_pane == 'tips'){
+        dn.el.pane_help_tips.style.display = '';
+        dn.el.button_tips.classList.add('selected');
+    } else if(inner_pane == 'shortcuts'){
+        dn.el.pane_help_shortcuts.style.display = '';
+        dn.el.button_shortcuts.classList.add('selected');
+    } else {
+        dn.el.pane_help_main.style.display = '';
+    }
+}
 
 dn.show_pane = function(el){
     // el can be undefined/null to hide everything
@@ -535,7 +555,7 @@ dn.set_drive_link_to_folder = function(){
                 'https://drive.google.com/#folders/' + dn.the_file.folder_id 
                 : 'https://drive.google.com';
     for(var ii=0; ii<els.length; ii++)
-        div_as_link(els[ii], href);
+        els[ii].href = href;
 }
 
 
@@ -573,7 +593,8 @@ dn.get_settings_from_cloud = function() {
     
     //Check lastDNVersionUsed at this point - by default it's blank, but could also have an out-of-date value
     if(dn.g_settings.get('lastDNVersionUsed') != dn.version_str){
-        dn.g_settings.set('pane', 'pane_first_time_info');
+        dn.g_settings.set('help_inner', 'tips');
+        dn.g_settings.set('pane', 'pane_help');
         dn.g_settings.set('lastDNVersionUsed', dn.version_str);
     }
   },
@@ -702,7 +723,12 @@ dn.settings_changed = function(e){
                     dn.g_settings.keep('pane');
                 if(new_value !== 'pane_find')
                     dn.find_set_find_active_false();
+                if(new_value !== 'pane_help')
+                    dn.g_settings.set('help_inner', 'main');
                 break; 
+            case 'help_inner':
+                dn.show_help_inner(new_value);
+                break;
             case 'find_regex':
                 if(new_value)
                     dn.el.find_button_regex.classList.add('selected');
@@ -731,6 +757,7 @@ dn.settings_changed = function(e){
         console.dir(err);
     }
 }
+
 
 
 // ############################
@@ -2068,9 +2095,27 @@ dn.document_ready = function(e){
     // pane help ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.el.pane_help = document.getElementById('pane_help');
     dn.el.user_name = document.getElementById('user_name');
+    dn.el.pane_help_shortcuts = document.getElementById('pane_help_shortcuts');
+    dn.el.pane_help_tips = document.getElementById('pane_help_tips');
+    dn.el.pane_help_main = document.getElementById('pane_help_main');
+    dn.el.button_shortcuts = document.getElementById('button_view_shortcuts');
+    dn.el.button_tips = document.getElementById('button_view_tips');
+    dn.el.button_shortcuts.addEventListener('click', function(){
+        if(dn.g_settings.get('help_inner') === 'shortcuts')
+            dn.g_settings.set('help_inner', 'main');
+        else
+            dn.g_settings.set('help_inner', 'shortcuts');
+    })
+    dn.el.button_tips.addEventListener('click', function(){
+        if(dn.g_settings.get('help_inner') === 'tips')
+            dn.g_settings.set('help_inner', 'main');
+        else
+            dn.g_settings.set('help_inner', 'tips');
+    })
     dn.el.menu_help.addEventListener('click', function(){
         dn.g_settings.set('pane', 'pane_help');
     })
+    dn.create_pane_shortcuts();
 
     // pane find ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::    
     dn.el.pane_find = document.getElementById('pane_find');
@@ -2108,12 +2153,6 @@ dn.document_ready = function(e){
     });
     dn.el.opener_button_a.addEventListener('click', dn.do_open);
     dn.el.opener_button_b.addEventListener('click', dn.do_open);
-
-    // pane first time info ::::::::::::::::::::::::::::::::::::::::::::::::::::    
-    dn.el.pane_first_time_info = document.getElementById('pane_first_time_info');
-    document.getElementById('first_time_dissmiss').addEventListener('click', function(){
-        dn.g_settings.set('pane','');
-    });
 
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.make_keyboard_shortcuts();

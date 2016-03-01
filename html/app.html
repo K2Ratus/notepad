@@ -213,15 +213,37 @@
             </div>
 
             <div class='widget_pane' id='pane_help'>
-                <div class='widget_box_title'>Drive Notepad 2016a, by DM.</div>
-                <div class='pane_item clickable link_google'>google+ - for bug reports, questions, etc.*</div>
-                <div class='pane_item clickable link_youtube'>youtube - quick demo</div>
-                <div class='pane_item clickable link_about'>about - more information.</div><br><br>
-
-                <div class='widget_box_title'>Logged in as <span id='user_name'>???</span></div>
-                <div class='pane_item clickable link_drive'>Google Drive - open your Drive</div>
+                <div class='widget_pane_inner' id='pane_help_main'>
+                    <div class='widget_box_title'>Drive Notepad 2016a, by DM.</div>
+                    <a class='pane_item clickable link_google' href='https://plus.google.com/communities/107691649945880497995' target="_blank">
+                        <div class='wiget_item_icon icon_bug'></div> give feedback (good or bad)
+                    </a>
+                    <a class='pane_item clickable link_youtube' href='https://www.youtube.com/watch?v=JhV-8L7Kkvk' target='_blank'>
+                        <div class='wiget_item_icon icon_demo'></div> view a quick demo
+                    </a>
+                    <a class='pane_item clickable link_about' href='/' target='_blank'>
+                        <div class='wiget_item_icon icon_about'></div> go to Drive Notepad website
+                    </a><br>
+                    <div class='widget_box_title'>Logged in as <span id='user_name'>???</span></div>
+                    <a class='pane_item clickable link_drive' href='https:\\drive.google.com' target="_blank">
+                        <div class='wiget_item_icon icon_drive'></div> open your Google Drive
+                    </a>
+                </div>
+                <div class='pane_help_inner' id='pane_help_tips' style="display:none;">
+                    <div class='pane_item no_select'>
+                        Drag this widget to reposition it. Click it or press Esc to toggle it open/close. All of the program's controls are contained within the widget's five tabs. <br><br>
+                        Changes are not saved as you type: use the save button in the file tab or <span class='ctrl_key'>ctrl</span>-s.<br><br>
+                        The help tab gives keyboard shortcuts, links for reporting bugs etc., and the option to view these tips again.
+                    </div>
+                </div>
+                <div class='pane_help_inner' id='pane_help_shortcuts' style="display:none;">
+                    <div class='widget_box_title'>Keyboard Shortcuts</div>
+                </div>
                 <div class='widget_pane_bottom_before'></div>
-                <div class='widget_pane_bottom'>*positive feedback is always appriciated!</div>
+                <div class='widget_pane_bottom'>
+                    <div class='button icon icon_tips' id='button_view_tips' title="view tips"></div>
+                    <div class='button icon icon_shortcuts' id='button_view_shortcuts' title="view keyboard shorcuts"></div>
+                </div>
             </div>
 
             <div class='widget_pane' style='display:none;' id='pane_open'>
@@ -236,15 +258,6 @@
                         <div class='button' id='opener_button_d'>a new tab</div>
                     </div><br>
                 </div>
-            </div>
-
-            <div class='widget_pane' style='display:none;' id='pane_first_time_info'>
-                <div class='widget_box_title widget_firsttime_title'>First-time usage tips</div>
-                You can move this thing by dragging the top part.<br><br>
-                To access the menu click the status text above or use the shortcut key, Esc<br><br>
-                Changes are not saved as you type, you have to press save in the menu or use the shortcut key,
-                <span class='ctrl_key'>ctrl</span>-s.
-                <br><br><div class='button_wrapper'><div class='button' id='first_time_dissmiss'>Dismiss</div></div>
             </div>
 
             <div class='widget_pane' style='display:none;' id='pane_permissions'>

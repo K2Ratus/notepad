@@ -42,19 +42,15 @@ dn.create_pane_shortcuts = function(){
     for(var action in dn.tooltip_info)if(action in dict)
         dn.tooltip_info[action] += dict[action];
 
-    dn.el.pane_shortcuts = document.createElement('div');
-    dn.el.pane_shortcuts.innerHTML = [
-            "<div class='widget_box_title shortcuts_title'>Keyboard Shortcuts ",
-                 platform ? "(" + platform + ")" : "" ,
-            "</div>",
-            "<div class='shortcuts_header_action'>action</div><div class='shortcuts_header_key'>key</div>",
-            "<div class='shortcuts_list'>",
-            html.join(''),
-            "</div>"].join('');
-    dn.el.pane_shortcuts.style.display = 'none';
-    dn.el.pane_shortcuts.id = 'pane_shortcuts';
-    dn.el.pane_shortcuts.classList.add('widget_pane');
-    dn.el.widget_content.appendChild(dn.el.pane_shortcuts);
+    dn.el.pane_help_shortcuts.innerHTML =  [
+        "<div class='widget_box_title shortcuts_title'>Keyboard Shortcuts ",
+             platform ? "(" + platform + ")" : "" ,
+        "</div>",
+        "<div class='shortcuts_header_action'>action</div><div class='shortcuts_header_key'>key</div>",
+        "<div class='shortcuts_list'>",
+        html.join(''),
+        "</div>"].join('');
+
 };
 
 dn.esc_pressed = function(e){

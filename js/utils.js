@@ -66,12 +66,6 @@ var prevent_default = function(e){
     e.preventDefault();  
 }
 
-var div_as_link = function(el, href){
-    el.click = function(){
-        window.open(href, "_blank");
-    }
-}
-
 /* TODO: ...............................................................
 
 $.fn.fixHeightFromAuto = function(){

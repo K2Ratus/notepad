@@ -133,7 +133,8 @@ pane: '',
 pane_open: true,
 find_regex: false,
 find_whole_words: false,
-find_case_sensitive: false
+find_case_sensitive: false,
+help_inner: 'main'
 }
 
 dn.default_custom_props = {
@@ -157,7 +158,8 @@ dn.impersonal_settings_keys = [
 "pane_open",
 "find_regex",
 "find_whole_words",
-"find_case_sensitive"
+"find_case_sensitive",
+"help_inner"
 ];
 
 dn.drag_delay_ms = 400;
