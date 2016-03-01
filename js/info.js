@@ -134,7 +134,9 @@ pane_open: true,
 find_regex: false,
 find_whole_words: false,
 find_case_sensitive: false,
-help_inner: 'main'
+help_inner: 'main',
+find_goto: false,
+find_replace: false
 }
 
 dn.default_custom_props = {
@@ -159,7 +161,9 @@ dn.impersonal_settings_keys = [
 "find_regex",
 "find_whole_words",
 "find_case_sensitive",
-"help_inner"
+"help_inner",
+"find_goto",
+"find_replace"
 ];
 
 dn.drag_delay_ms = 400;
@@ -182,6 +186,6 @@ dn.error_delay_ms = 5000;//5 seconds
 dn.find_history_add_delay = 2000; //ms
 dn.clipboard_info_delay = 500; //ms
 dn.clipboard_max_length = 20; //TODO: decide whether a large clipboard slows page loads and whether we can do anything about it.
-dn.find_max_results = 7; // must be odd
+dn.find_max_results_half = 3; 
 dn.find_max_prefix_chars = 10;
 dn.find_max_suffix_chars = 60;

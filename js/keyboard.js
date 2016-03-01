@@ -54,26 +54,40 @@ dn.create_pane_shortcuts = function(){
 };
 
 dn.esc_pressed = function(e){
-    var will_show_find = !dn.g_settings.get('pane_open') && dn.g_settings.get('pane') == 'pane_find';
-    if(will_show_find)
-        dn.find_set_find_active_true();
-    dn.g_settings.set('pane_open', !dn.g_settings.get('pane_open')); // doing this after the find_active=true, tells the change handler not to put focus back to editor
-    if(will_show_find)
-        dn.el.find_input.focus(); // we have to do this explcitly because we ran find_active=true when the input was (possibly) hidden
+    dn.g_settings.set('pane_open', !dn.g_settings.get('pane_open'));
+
+    if(dn.g_settings.get('pane_open') && dn.g_settings.get('pane') == 'pane_find')
+        if(dn.g_settings.get('find_goto'))
+            dn.el.find_goto_input.focus();
+        else
+            dn.el.find_input.focus();
     e.preventDefault();
 }
 
 dn.find_shortcut_used = function(e){
     var sel = dn.editor.session.getTextRange(dn.editor.getSelectionRange());
-    if(sel)
+    dn.g_settings.set('find_goto', false);
+    dn.g_settings.set('pane', 'pane_find');
+    dn.g_settings.set('pane_open', true);
+    if(sel){
         dn.el.find_input.value = sel;
-    dn.find_set_find_active_true();
-    dn.g_settings.set('pane', 'pane_find'); // doing this after the find_active=true, tells the change handler not to put focus back to editor
-    if(sel)
         dn.el.find_input.select();
-    else
-        dn.el.find_input.focus(); // we have to do this explcitly because we ran find_active=true when the input was (possibly) hidden
+    }
+    dn.el.find_input.focus();
     e.preventDefault();
+}
+
+dn.find_goto_shortcut_used = function(e){
+    dn.g_settings.set('find_goto', true);
+    dn.g_settings.set('pane', 'pane_find'); // doing this after the find_active=true, tells the change handler not to put focus back to editor
+    dn.g_settings.set('pane_open', true);
+    dn.el.find_goto_input.focus();
+    e.preventDefault();
+}
+
+dn.show_replace_shortcut_used = function(e){
+    dn.g_settings.set('find_replace', true);
+    dn.find_shortcut_used(e);   
 }
 
 dn.make_keyboard_shortcuts = function(){
@@ -89,10 +103,10 @@ dn.make_keyboard_shortcuts = function(){
     key('command+p, ctrl+p,  ctrl+alt+p,  command+alt+p', dn.do_print);
     key('command+o, ctrl+o,  ctrl+alt+o,  command+alt+o', dn.do_open);
     key('command+n, ctrl+n,  ctrl+alt+n,  command+alt+n', dn.do_new);
-    key('command+l, ctrl+l,  ctrl+alt+l,  command+alt+l', dn.show_go_to);
+    key('command+l, ctrl+l,  ctrl+alt+l,  command+alt+l', dn.find_goto_shortcut_used);
     key('command+f, ctrl+f,  ctrl+alt+f,  command+alt+f', dn.find_shortcut_used); 
     key('command+r, ctrl+r,  ctrl+alt+r,  command+alt+r' + 
-       ', command+g, ctrl+g,  ctrl+alt+g,  command+alt+g', dn.show_replace);
+       ', command+g, ctrl+g,  ctrl+alt+g,  command+alt+g', dn.show_replace_shortcut_used);
     key('command+h, ctrl+h,  ctrl+alt+h,  command+alt+h', dn.start_revisions_worker);
     key('esc', dn.esc_pressed);
     key.filter = function(){return 1;}

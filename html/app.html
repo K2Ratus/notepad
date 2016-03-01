@@ -199,17 +199,28 @@
             </div>
 
             <div class='widget_pane' style='display:none;' id='pane_find'>
-                <div class='pane_item input no_select'>
-                    <input tabindex='1' placeholder='find text' id='find_input'></input>
+                <div class='pane_item input no_select' id='find_find_wrapper'>
+                    <input tabindex='1' placeholder='find text' id='find_input' tabindex="101"></input>
                     <div class='button inline_button' id='button_find_case_sensitive' title='case sensitive search'>Aa</div>
                     <div class='button inline_button' id='button_find_whole_words' title='match whole words'><sup>&#9141;</sup></div>
                     <div class='button inline_button' id='button_find_regex' title="use regular expressions">.*</div>
                 </div>
-                <div class='pane_item no_select find_results' id='find_results'></div>
-                <div class='pane_item no_select find_info' id='find_info'>type to search</div>
-                <div class='pane_item' style="display:none;">
-                    Go to: <input class='gotoline_input' id='goto_input' placeholder='line number'></input>
+                <div class='pane_item input no_select' style='display:none;' id='find_replace_wrapper'>
+                    <input tabindex='1' placeholder='replace text' id='find_replace_input' tabindex="102" title="Enter to replace. Ctrl-Enter to replace all"></input>
+                    <div class='button inline_button inline_button_tripple' id='button_find_replace_all' title='replace all'>replace all</div>
                 </div>
+                <div class='pane_item' style="display:none;" id='find_goto_wrapper'>
+                    <input class='gotoline_input' id='goto_input' placeholder='line number'></input>
+                </div>
+                <div class='pane_item no_select find_results' id='find_results'></div>
+                <div class='pane_item no_select find_info' id='find_info'>search inactive</div>
+                <div class='widget_pane_bottom_before'></div>
+                <div class='widget_pane_bottom'>
+                    <span class='find_info_overflow' id='find_info_overflow'></span>
+                    <div class='button icon icon_goto' id='button_goto' title="goto line mode"></div>
+                    <div class='button icon icon_replace' id='button_replace' title="replace mode"></div>
+                </div>
+
             </div>
 
             <div class='widget_pane' id='pane_help'>
