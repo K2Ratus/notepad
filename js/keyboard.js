@@ -57,9 +57,27 @@ dn.create_pane_shortcuts = function(){
     dn.el.widget_content.appendChild(dn.el.pane_shortcuts);
 };
 
-dn.esc_pressed = function(){
-    // TODO: it's a bit more complicated
-    dn.g_settings.set('pane_open', !dn.g_settings.get('pane_open'));
+dn.esc_pressed = function(e){
+    var will_show_find = !dn.g_settings.get('pane_open') && dn.g_settings.get('pane') == 'pane_find';
+    if(will_show_find)
+        dn.find_set_find_active_true();
+    dn.g_settings.set('pane_open', !dn.g_settings.get('pane_open')); // doing this after the find_active=true, tells the change handler not to put focus back to editor
+    if(will_show_find)
+        dn.el.find_input.focus(); // we have to do this explcitly because we ran find_active=true when the input was (possibly) hidden
+    e.preventDefault();
+}
+
+dn.find_shortcut_used = function(e){
+    var sel = dn.editor.session.getTextRange(dn.editor.getSelectionRange());
+    if(sel)
+        dn.el.find_input.value = sel;
+    dn.find_set_find_active_true();
+    dn.g_settings.set('pane', 'pane_find'); // doing this after the find_active=true, tells the change handler not to put focus back to editor
+    if(sel)
+        dn.el.find_input.select();
+    else
+        dn.el.find_input.focus(); // we have to do this explcitly because we ran find_active=true when the input was (possibly) hidden
+    e.preventDefault();
 }
 
 dn.make_keyboard_shortcuts = function(){
@@ -76,7 +94,7 @@ dn.make_keyboard_shortcuts = function(){
     key('command+o, ctrl+o,  ctrl+alt+o,  command+alt+o', dn.do_open);
     key('command+n, ctrl+n,  ctrl+alt+n,  command+alt+n', dn.do_new);
     key('command+l, ctrl+l,  ctrl+alt+l,  command+alt+l', dn.show_go_to);
-    key('command+f, ctrl+f,  ctrl+alt+f,  command+alt+f', dn.show_find);
+    key('command+f, ctrl+f,  ctrl+alt+f,  command+alt+f', dn.find_shortcut_used); 
     key('command+r, ctrl+r,  ctrl+alt+r,  command+alt+r' + 
        ', command+g, ctrl+g,  ctrl+alt+g,  command+alt+g', dn.show_replace);
     key('command+h, ctrl+h,  ctrl+alt+h,  command+alt+h', dn.start_revisions_worker);

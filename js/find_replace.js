@@ -1,62 +1,58 @@
 "use strict";
 
 /*
-A "quick", no sorry, a "longish" note:
-Each time DoFind runs it stores its str in dn.find_str for next time.
-dn.find_history_pointer is nan except when we are cycling through history. As soon 
-as we change the search string we leave this history-cyclying mode.  Also, immediately before
-entering the history-cycling mode we store the current str at the top of the history so it's
-available to come back to.
-A search is added to the history if it's not the empty string and has not been modified for 
-dn.find_history_add_delay milliseconds.
-Dealing with focus is a bit of a pain.  Basically either of the two input boxes may have it
-or a third party (such as the editor itself) may have it. We only want to show the markings
-when one of the two input boxes has the focus and not otherwise.  Also, while the inputs have the focus
-they disable the editor's steal-back-the-focus timer, which normally ensures it doesn't loose the focus.
-So we need to make sure that timer is reneabled when the focus is with neither of the two inputs.
-To make this work, whenver one of the inputs loses focus (the "blur" event) it triggers a delayed
-call to BlurFindAndFocusEditor, the fact that it is delayed allows the other input to cancel
-the call if it is the thing recieving the focus, otherwise it will go ahead.
-There are other complications too, but this is the bulk of it.
-*/
-
-
-/*
 The find focus/blur problem
 ============================
 
-We have to work quite hard to give the user a good focus/blur experience.
+We have to work quite hard to give the user a good focus/blur experience.  The hooks for all the
+behaviour are spread across various files, but we list all the cases here and the desired outcomes.
 
 The main principle is that we only show results in the widget & mark them
-in the editor when find_input_active is true.  And when this flag is true
+in the editor when find_active is true.  And when this flag is true
 we force the input to keep the focus, unless we have reason to let it go
 back to the editor.
 
+Setting find_active to false is fairly simple, and can be done with the
+find_set_find_active_false() function.  Setting it to true is a bit more complciated:
+it may have previously been false, or it may have already been true, and if true the search
+ may not even need to be re-run. All three cases are dealt with by 
+the find_set_find_active_true() function.
+
 Here is a list of all the relevant actions that have to be considered, we label each with T/F, indicating
-whether find_input_active should be true or false after the action:
+whether find_active should be true or false after the action:
 
 (a)   T typing standard chars or backspace in input
 (b)   T typing up/down or (Enter/Shift-Enter) in input
 (c)   T clicking results in widget
-(d.1) T clicking search settings buttons when find_input_active is true
-(d.2) F clicking search settings buttons when find_input_active is false and search str is empty
-(d.3) T clicking search settings buttons when find_input_active is false and search str is non-empty
-(e)   T using ctrl-f shortcut, possibly with find-pane already visible
+(d.1) T clicking search settings buttons when find_active is true
+(d.2) F clicking search settings buttons when find_active is false and search str is empty
+(d.3) T clicking search settings buttons when find_active is false and search str is non-empty
+(e.1) T using ctrl-f shortcut, possibly with find-pane already visible
+(e.2) T^ using ctrl-f shorctut, possibly with find-pane already visible, with text selected
 (f.1) T opening widget directly into find with Esc
 (f.2) F open widget directly into find by clicking widget
-(g)   F clicking, to select find pane, with widget already open
+(g)   T clicking, to select find pane, with widget already open
 (h)   F g_settings remotely opening widget into find
-(i)   F pressing Esc with find_input_active true
-(j)   F* ressing Esc or clicking the widget with find_input_active false
-(k)   F pressing Tab with find_input_active true
-(l.1) F switching to another pane with find_input_active true
-(l.2) F switching to another pane with find_input_active false
-(m)   F clicking editor (when find_input_active is true)
+(i)   F* pressing Esc with find_active true
+(j)   F* ressing Esc or clicking the widget with find_active false, but find_pane showing
+(k)   F pressing Tab with find_active true
+(l.1) F switching to another pane with find_active true
+(l.2) F switching to another pane with find_active false
+(m)   F clicking editor (when find_active is true)
 (n)   F g_settings remotely switch to another pane or close widget
+(o)   T clicking the input
 
-*for (j), we should close the widget as well as setting find_input_active to false.
+*for (j) and (i), we should close the widget as well as setting find_active to false.
+^ for (e.2) we need to make set the search string to the selection
+
+Two important callees of find_set_find_active_false() are the handlers for:
+    g_settings.set('pane', <all_panes_except_find>) ...and...
+    g_settings.set('pane_open', false)
+This covers a number of the actions in the list above.
+
 
 ...and then we have to deal with replace input as well, but let's leave that for now!!
+...and maybe evetunally the realtime document changes.
 
 */
 
@@ -66,24 +62,168 @@ dn.find_markers = [];
 dn.find_marker_current = undefined;
 dn.find_str = "";
 
-dn.show_find = function(){
-    dn.g_settings.set('pane', 'pane_find');
-    var sel = dn.editor.session.getTextRange(dn.editor.getSelectionRange());
-    if(sel)
-        dn.el.find_input.value = sel;
-    dn.el.find_input.focus();
-    if(!sel)
-        dn.el.find_input.select();
-    return false;
+dn.find_active = false; 
+
+dn.find_set_find_active_false = function(){
+    if(!dn.find_active)
+        return;
+    dn.find_active = false;
+
+    // remove all markers
+    var session = dn.editor.getSession();   
+    for(var ii=0; ii<dn.find_markers.length; ii++)
+        session.removeMarker(dn.find_markers[ii]);
+    if (dn.find_marker_current !== undefined){
+        session.removeMarker(dn.find_marker_current);
+        dn.find_marker_current = undefined;
+    }
+
+    // reset widget display
+    dn.el.find_info.textContent = dn.find_str === "" ? "type to search" : "search inactive";
+    dn.el.find_results.innerHTML = "";
+
+    // forget last search
+    dn.find_markers = [];
+    dn.find_results = [];
+    dn.find_current_match_idx = -1;
+
+    // forget last selection in input (in preparation for next time it gets focus)
+    dn.el.find_input.setSelectionRange(dn.el.find_input.selectionEnd, dn.el.find_input.selectionEnd);
+
+    // restore focus to editor
+    dn.editor.setHighlightSelectedWord(true); // we had this on false during find
+    dn.focus_editor();
+
+
+    /*
+    clearTimeout(dn.blur_find_and_focus_editor_timer);
+    dn.blur_find_and_focus_editor_timer = 0;
+    if(flag==="delay"){
+        dn.blur_find_and_focus_editor_timer = setTimeout(dn.blur_find_and_focus_editor,10); //this gives the other input element time to cancel the closing if there is a blur-focus event when focus shifts
+        return; //note that we are assuming here that the blur event is triggered on the first element *before* the focus is triggered on the second element..if that isn't guaranteed to be true we'd need to check whether the second element already has the focus when the first element gets its blur event.
+    }
+    */
+
 }
 
-dn.find_settings_changed = function(){
-    if(dn.g_settings.get('pane') === 'pane_find' && dn.g_settings.get('pane_open') && dn.find_str)
-        dn.do_find();
+dn.find_set_find_active_true = function(select_match_idx){
+    /* There are three reasons this can be called:
+        1. dn.find_active was previously false, and we now need to do everything from scratch
+        2. dn.find_active was true, but the search stirng or settings have changed, so we
+           need to re-run the search (which is almost identical to 1).
+        3. find_active was true and we are just navigating through results rather than
+           changing the search.  To select this option rather than 2, pass the select_match_idx
+           as an argument. 
+    */
+
+    if(!dn.find_active){
+        dn.find_active = true;
+        dn.AceSearch = dn.AceSearch || ace.require("./search").Search;
+        dn.AceRange = dn.AceRange || ace.require("./range").Range;
+        dn.editor.setHighlightSelectedWord(false);
+    }
+
+    if(select_match_idx === undefined)
+        dn.find_perform_search();
+    else
+        dn.find_select_result_idx(select_match_idx);
+
+    dn.el.find_input.focus();
+}
+
+dn.find_perform_search = function(){
+    // clear previous find (but leave selection for now)
+    var session = dn.editor.getSession();   
+    for(var ii=0; ii<dn.find_markers.length; ii++)
+        session.removeMarker(dn.find_markers[ii]);
+    if(dn.find_marker_current !== undefined){
+        session.removeMarker(dn.find_marker_current)
+        dn.find_marker_current = undefined;
+    }
+    dn.find_markers = [];
+    dn.find_results = [];
+    dn.find_current_match_idx = -1;
+    dn.el.find_results.innerHTML = "";  
+    
+    var str = dn.find_str = dn.el.find_input.value; // we only store it to make it easier for key_down to check for true changes
+
+    // If requested, try and parse as regex. On failure display no results with message.
+    var use_reg_exp = dn.g_settings.get('find_regex');
+    if(use_reg_exp){
+        var re = undefined;
+        try {
+            re = new RegExp(str);
+        } catch(e) {
+            dn.el.find_info.textContent = escape_str(e.message); //TODO: could force first letter to lower case
+        }
+    }
+
+    if(use_reg_exp && re === undefined){
+        // failed regex, don't show any results
+        dn.editor.selection.clearSelection();
+
+    } else if(str == ""){
+        // empty string (including empty regex), dont show any results
+        dn.el.find_info.textContent = "type to search. " + dn.ctrl_key + "-up/down for history.";
+        dn.editor.selection.clearSelection();
+        
+    } else {
+        // valid regex or pure str search..
+
+        // This is the actual search
+        var search = new dn.AceSearch();
+        search.setOptions({
+            needle: use_reg_exp ? re : str,
+            wrap: true,
+            caseSensitive: dn.g_settings.get('find_case_sensitive'),
+            wholeWord: dn.g_settings.get('find_whole_words'),
+            regExp: use_reg_exp
+        });
+        var results = dn.find_results = search.findAll(session);
+
+        if(results.length === 0){
+            // No results to display, life is easy...
+            dn.el.find_info.textContent = "no matches found.";
+            dn.editor.selection.clearSelection();
+
+        }else{
+            // Right, we got some results ....
+
+            // Work out which result we should consider the current match.
+            var selected_range = session.getSelection().getRange();
+            for(var ii=0; ii<results.length; ii++) 
+                if(results[ii].end.row > selected_range.start.row  || 
+                    (results[ii].end.row == selected_range.start.row &&
+                     results[ii].end.column >= selected_range.start.column))
+                break;
+            var current_match_idx = (ii == results.length ? results.length-1 : ii);
+
+            // Add markers into the editor to show *all* the results
+            for(var ii=0; ii<results.length; ii++)
+                dn.find_markers.push(session.addMarker(results[ii], "find_match_marker", "find_match_marker", false));
+
+            // augment the results with their idx, this is useful for the subselection stuff
+            for(var ii=0; ii<results.length; ii++)
+                results[ii] = {range: results[ii], idx: ii};
+
+            // Render a subset of the results into the widget and mark & select the current match
+            dn.find_select_result_idx(current_match_idx);
+        }
+
+    }
+
+
+    //dn.find_str = str;
+    //if(dn.g_find_history && isNaN(dn.find_history_pointer)){
+    //    if(dn.find_history_add_timeout)
+    //        clearTimeout(dn.find_history_add_timeout);
+    //    if(str.length)
+    //        dn.find_history_add_timeout = setTimeout(function(){dn.add_to_find_history(str);},dn.find_history_add_delay)
+    //}
 }
 
 dn.find_select_result_idx = function(current_match_idx){
-    /* This is called within do_find when a new search returns some results, it's also
+    /* This is called within find_perform_search when a new search returns some results, it's also
        called when we move through the results without changing the search.   */
 
     // Get a small sub set of results to show in the widget.
@@ -155,125 +295,40 @@ dn.find_select_result_idx = function(current_match_idx){
     dn.editor.renderer.scrollSelectionIntoView();
 }
 
+
+dn.find_blur_input = function(){
+    dn.find_set_find_active_false();
+}
+
+dn.find_settings_changed = function(){
+    // TODO: if the settings were changed remotely then we don't want to set find_active to true
+    if(dn.g_settings.get('pane') === 'pane_find' && dn.g_settings.get('pane_open') &&  
+        (dn.el.find_input.value || dn.find_active))
+        dn.find_set_find_active_true();
+}
+
 dn.find_result_click = function(ii){
-    return function(e){dn.find_select_result_idx(ii);};
+    return function(e){dn.find_set_find_active_true(ii);};
 }
 
-dn.do_find = function(str){
-    /* This  is called when the find text changes, when any of the find settings changes,
-       or when the find text gets the focus. It is *not* called when we move through an existing
-       result list.*/
-
-    dn.AceSearch = dn.AceSearch || ace.require("./search").Search;
-    dn.AceRange = dn.AceRange || ace.require("./range").Range;
-    dn.editor.setHighlightSelectedWord(false);
-
-    str = str === undefined ? dn.el.find_input.value : str;
-    var session = dn.editor.getSession();   
-
-    // clear previous find (but leave selection for now)
-    for(var ii=0; ii<dn.find_markers.length; ii++)
-        session.removeMarker(dn.find_markers[ii]);
-    if(dn.find_marker_current !== undefined){
-        session.removeMarker(dn.find_marker_current)
-        dn.find_marker_current = undefined;
-    }
-    dn.find_markers = [];
-    dn.find_results = [];
-    dn.find_current_match_idx = -1;
-    dn.el.find_results.innerHTML = "";  
-    
-    dn.find_str = str;
-
-    // If requested, try and parse as regex. On failure display no results with message.
-    var use_reg_exp = dn.g_settings.get('find_regex');
-    if(use_reg_exp){
-        var re = undefined;
-        try {
-            re = new RegExp(str);
-        } catch(e) {
-            dn.el.find_info.textContent = escape_str(e.message);
-        }
-    }
-
-    if(use_reg_exp && re === undefined){
-        // failed regex, don't show any results
-        dn.editor.selection.clearSelection();
-
-    } else if(str == ""){
-        // empty string (including empty regex), dont show any results
-        dn.el.find_info.textContent = "type to search. " + dn.ctrl_key + "-up/down for history.";
-        dn.editor.selection.clearSelection();
-        
-    } else {
-        // valid regex or pure str search..
-
-        // This is the actual search
-        var search = new dn.AceSearch();
-        search.setOptions({
-            needle: use_reg_exp ? re : str,
-            wrap: true,
-            caseSensitive: dn.g_settings.get('find_case_sensitive'),
-            wholeWord: dn.g_settings.get('find_whole_words'),
-            regExp: use_reg_exp
-        });
-        var results = dn.find_results = search.findAll(session);
-
-        if(results.length === 0){
-            // No results to display, life is easy...
-            dn.el.find_info.textContent = "no matches found.";
-            dn.editor.selection.clearSelection();
-
-        }else{
-            // Right, we got some results ....
-
-            // Work out which result we should consider the current match.
-            var selected_range = session.getSelection().getRange();
-            for(var ii=0; ii<results.length; ii++) 
-                if(results[ii].end.row > selected_range.start.row  || 
-                    (results[ii].end.row == selected_range.start.row &&
-                     results[ii].end.column >= selected_range.start.column))
-                break;
-            var current_match_idx = (ii == results.length ? results.length-1 : ii);
-
-            // Add markers into the editor to show *all* the results
-            for(var ii=0; ii<results.length; ii++)
-                dn.find_markers.push(session.addMarker(results[ii], "find_match_marker", "find_match_marker", false));
-
-            // augment the results with their idx, this is useful for the subselection stuff
-            for(var ii=0; ii<results.length; ii++)
-                results[ii] = {range: results[ii], idx: ii};
-
-            // Render a subset of the results into the widget and mark & select the current match
-            dn.find_select_result_idx(current_match_idx);
-        }
-
-    }
-
-
-    //dn.find_str = str;
-    //if(dn.g_find_history && isNaN(dn.find_history_pointer)){
-    //    if(dn.find_history_add_timeout)
-    //        clearTimeout(dn.find_history_add_timeout);
-    //    if(str.length)
-    //        dn.find_history_add_timeout = setTimeout(function(){dn.add_to_find_history(str);},dn.find_history_add_delay)
-    //}
+dn.find_input_focus = function(){
+    if(!dn.find_active) // we have to test to prevent recursion
+        dn.find_set_find_active_true();
 }
-
 
 dn.find_input_keydown = function(e){ 
     //we want keydown here so that we can get repeated firing with keydown (i think on most browsers)
 
     if ((e.which == WHICH.ENTER && !e.shiftKey) || (!e.ctrlKey && e.which == WHICH.DOWN)){
         //find next
-        dn.find_select_result_idx(dn.find_current_match_idx + 1 < dn.find_results.length ? 
+        dn.find_set_find_active_true(dn.find_current_match_idx + 1 < dn.find_results.length ? 
                                     dn.find_current_match_idx + 1 
                                   : 0);
         e.preventDefault();
         return;
     }else if((e.which == WHICH.ENTER && e.shiftKey) || (!e.ctrlKey && e.which == WHICH.UP)){
         //find previous
-        dn.find_select_result_idx(dn.find_current_match_idx - 1 < 0 ? 
+        dn.find_set_find_active_true(dn.find_current_match_idx - 1 < 0 ? 
                                     dn.find_results.length -1 
                                   : dn.find_current_match_idx - 1);
         e.preventDefault();
@@ -281,7 +336,8 @@ dn.find_input_keydown = function(e){
     }
 
     if(e.which == WHICH.ESC){
-        dn.blur_find_and_focus_editor(); 
+        dn.find_set_find_active_false(); 
+        dn.g_settings.set('pane_open', !dn.g_settings.get('pane_open'));
         e.preventDefault();
         return;   
     }
@@ -316,7 +372,7 @@ dn.find_input_keyup = function(e){
         return;
     //if(dn.el.find_input.value != dn.find_str)
     //    dn.find_history_pointer = NaN;
-    dn.do_find(dn.el.find_input.value)
+    dn.find_set_find_active_true()
 }
 
 
@@ -341,32 +397,6 @@ dn.cancel_blur_find_and_focus_editor = function(){
 }
 */
 
-dn.blur_find_and_focus_editor = function(flag){
-    dn.editor.setHighlightSelectedWord(true);
-
-    var session = dn.editor.getSession();   
-
-    // remove all markers
-    for(var ii=0; ii<dn.find_markers.length; ii++)
-        session.removeMarker(dn.find_markers[ii]);
-    if (dn.find_marker_current !== undefined){
-        session.removeMarker(dn.find_marker_current);
-        dn.find_marker_current = undefined;
-    }
-
-    dn.focus_editor();
-
-    /*
-    clearTimeout(dn.blur_find_and_focus_editor_timer);
-    dn.blur_find_and_focus_editor_timer = 0;
-    if(flag==="delay"){
-        dn.blur_find_and_focus_editor_timer = setTimeout(dn.blur_find_and_focus_editor,10); //this gives the other input element time to cancel the closing if there is a blur-focus event when focus shifts
-        return; //note that we are assuming here that the blur event is triggered on the first element *before* the focus is triggered on the second element..if that isn't guaranteed to be true we'd need to check whether the second element already has the focus when the first element gets its blur event.
-    }
-    dn.showing_find_results = false;
-    
-    */
-}
 
 /*    
 dn.find_input_focus = function(){
@@ -465,4 +495,25 @@ dn.show_replace = function(){
         dn.el.find_input.select();
     return false;
 }
+*/
+
+
+/*
+A "quick", no sorry, a "longish" note:
+Each time DoFind runs it stores its str in dn.find_str for next time.
+dn.find_history_pointer is nan except when we are cycling through history. As soon 
+as we change the search string we leave this history-cyclying mode.  Also, immediately before
+entering the history-cycling mode we store the current str at the top of the history so it's
+available to come back to.
+A search is added to the history if it's not the empty string and has not been modified for 
+dn.find_history_add_delay milliseconds.
+Dealing with focus is a bit of a pain.  Basically either of the two input boxes may have it
+or a third party (such as he editor itself) may have it. We only want to show the markings
+when one of the two input boxes has the focus and not otherwise.  Also, while the inputs have the focus
+they disable the editor's steal-back-the-focus timer, which normally ensures it doesn't loose the focus.
+So we need to make sure that timer is reneabled when the focus is with neither of the two inputs.
+To make this work, whenver one of the inputs loses focus (the "blur" event) it triggers a delayed
+call to BlurFindAndFocusEditor, the fact that it is delayed allows the other input to cancel
+the call if it is the thing recieving the focus, otherwise it will go ahead.
+There are other complications too, but this is the bulk of it.
 */

@@ -459,15 +459,16 @@ dn.widget_apply_anchor = function(anchor){
 
 dn.open_close_widget = function(state){
     // provide argument "true" to open widget, "false" to close
-
     if(state){
         dn.el.widget_menu.style.display = '';
         dn.el.widget_content.style.display = '';
     }else{
         dn.el.widget_menu.style.display = 'none';
         dn.el.widget_content.style.display = 'none';
+        dn.find_set_find_active_false();
     }
-   dn.focus_editor();
+    if(!dn.find_active)
+        dn.focus_editor();
     return false;
 }
 
@@ -699,6 +700,8 @@ dn.settings_changed = function(e){
                 dn.show_pane(document.getElementById(new_value));
                 if(dn.g_settings.keep)
                     dn.g_settings.keep('pane');
+                if(new_value !== 'pane_find')
+                    dn.find_set_find_active_false();
                 break; 
             case 'find_regex':
                 if(new_value)
@@ -1905,7 +1908,13 @@ dn.document_ready = function(e){
     translate(dn.el.the_widget, 0, 0);
     dn.el.the_widget.style.display = '';
     dn.el.widget_error.style.display = 'none';
-    dn.el.widget_content.addEventListener('mousedown', stop_propagation);
+    dn.el.widget_content.addEventListener('mousedown', function(e){
+        e.preventDefault();
+        e.stopPropagation();
+    });
+    var els = dn.el.widget_content.getElementsByTagName('input');
+    for(var ii=0; ii<els.length; ii++)
+        els[ii].addEventListener('mousedown', stop_propagation); // prevents propagation to preventDefault, installed above.
 
     // editor :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     var editor_el = document.getElementById('the_editor');
@@ -1916,7 +1925,7 @@ dn.document_ready = function(e){
     dn.editor = ace.edit("the_editor");
     dn.editor.setHighlightSelectedWord(true);
     dn.el.ace_content = document.getElementsByClassName('ace_content')[0];
-    dn.editor.on('focus', dn.blur_find_and_focus_editor)
+    dn.editor.on('focus', dn.find_set_find_active_false)
     dn.editor.getSession().addEventListener("change", dn.on_change);
     dn.focus_editor();
     dn.editor.on("paste", dn.on_paste);
@@ -1935,7 +1944,7 @@ dn.document_ready = function(e){
     dn.menu_icon_from_pane_id = {}
     var els = dn.el.widget_menu.getElementsByClassName('widget_menu_wrapper');
     for(var ii=0; ii<els.length; ii++){
-        els[ii].addEventListener("click",dn.focus_editor);
+        els[ii].addEventListener("mousedown", prevent_default);
         els[ii].title = dn.menu_id_to_caption[els[ii].id];
         els[ii].innerHTML = "<div class='widget_menu_icon' id='icon_" + els[ii].id + "'></div>";
         var el_icon = els[ii].getElementsByClassName('widget_menu_icon')[0];
@@ -2080,18 +2089,22 @@ dn.document_ready = function(e){
     dn.el.find_button_regex.addEventListener('click', function(){
         dn.g_settings.set('find_regex', !dn.g_settings.get('find_regex'));
     })
-    dn.el.menu_find.addEventListener('click', dn.show_find);
+    dn.el.menu_find.addEventListener('click', function(){
+        dn.find_set_find_active_true();
+        dn.g_settings.set('pane', 'pane_find');
+        dn.el.find_input.focus(); // we have to do this here because it was (possibly) hidden  when we called find_set_find_active_true
+    });
     dn.el.find_input.addEventListener('keyup', dn.find_input_keyup);
     dn.el.find_input.addEventListener('keydown', dn.find_input_keydown);
-    dn.el.find_input.addEventListener('blur', dn.blur_find_and_focus_editor);
-    
+    dn.el.find_input.addEventListener('blur', dn.find_input_blur);
+    dn.el.find_input.addEventListener('focus', dn.find_input_focus);
 
     // pane open ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.el.pane_open = document.getElementById('pane_open');
     dn.el.opener_button_a = document.getElementById('opener_button_a');
     dn.el.opener_button_b = document.getElementById('opener_button_b');
-    dn.el.menu_open.addEventListener('click', function(){
-        dn.g_settings.set('pane', 'pane_open')
+    dn.el.menu_open.addEventListener('click', function(){    
+        dn.g_settings.set('pane', 'pane_open');
     });
     dn.el.opener_button_a.addEventListener('click', dn.do_open);
     dn.el.opener_button_b.addEventListener('click', dn.do_open);
@@ -2103,8 +2116,6 @@ dn.document_ready = function(e){
     });
 
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    var els = document.getElementsByClassName('button');
-
     dn.make_keyboard_shortcuts();
     dn.load_default_settings();
     dn.load_default_properties();    
