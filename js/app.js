@@ -186,6 +186,7 @@ dn.do_share = function(){
     dn.the_file.is_shared = 0;
     dn.show_status();
     dn.el.share_dialog.setItemIds([dn.the_file.file_id]);
+    dn.el.share_dialog.setOAuthToken(gapi.auth.getToken().access_token);
     dn.el.share_dialog.showSettingsDialog();
     return false;
 }
@@ -1415,7 +1416,7 @@ dn.do_print = function(){
     var html = Array(content.length);
 
     for(var i=0; i<content.length;i++)
-        html[i] = "<li><div class='printline'>" + dn.line_tohtml(i) + '</div></li>';
+        html[i] = "<li><div class='printline'>" + dn.line_to_html(i) + '</div></li>';
 
     var printWindow = window.open('','');
     printWindow.document.writeln(
@@ -1425,14 +1426,14 @@ dn.do_print = function(){
             + dn.g_settings.get('fontSize') *14 +"px; white-space:pre-wrap;" + 
             "font-family:'Monaco','Menlo','Ubuntu Mono','Droid Sans Mono','Consolas',monospace;}"
             + "\nli{color:gray;}\n.printline{color:black;}</style>" + 
-            "<body class='ace-"+ dn.g_settings.get('theme') +"'><ol id='content'>" + 
+            "<body class='ace-"+ dn.g_settings.get('theme').replace('_','-') +"'><ol id='content'>" + 
             html.join("") +
             "</ol></body></html>");
     printWindow.print();
     return false;
 }
 
-dn.line_tohtml = function (n){
+dn.line_to_html = function (n){
     var printLayer = Object.create(ace.require('ace/layer/text').Text.prototype); 
     var tokens  = dn.editor.getSession().getTokens(n);
     var html = [];
