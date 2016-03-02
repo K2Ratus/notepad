@@ -115,10 +115,7 @@ dn.authentication_done = function(auth_result){
 
     // Access token has been successfully retrieved, requests can be sent to the API
     //TODO: make these redundant
-    gapi.load('drive-realtime', dn.get_settings_from_cloud());
-    gapi.load('drive-share', function(){
-        dn.el.share_dialog = new gapi.drive.share.ShareClient(dn.client_id);
-    });
+    gapi.load('drive-realtime', dn.get_settings_from_cloud); // TODO: this can be loaded before auth is  done I think, but have to wait for auth before doing anything
 }
 
 dn.get_user_info = function(){
@@ -185,12 +182,23 @@ dn.do_share = function(){
     dn.status.file_sharing = -1; //TODO: see SO question about no callback for share dialog...how are we supposed to know when it's closed and what happened?
     dn.the_file.is_shared = 0;
     dn.show_status();
+
+    if(dn.el.share_dialog){
+        dn.do_share_sub();
+    } else {
+        gapi.load('drive-share', function(){
+            dn.el.share_dialog = new gapi.drive.share.ShareClient(dn.client_id);
+            dn.do_share_sub();
+        });
+    }
+
+}
+
+dn.do_share_sub = function(){
     dn.el.share_dialog.setItemIds([dn.the_file.file_id]);
     dn.el.share_dialog.setOAuthToken(gapi.auth.getToken().access_token);
     dn.el.share_dialog.showSettingsDialog();
-    return false;
 }
-
 
 // ############################
 // Newline stuff
@@ -571,7 +579,6 @@ dn.set_drive_link_to_folder = function(){
 // ############################
 
 dn.get_settings_from_cloud = function() {
-    return;
   gapi.drive.realtime.loadAppDataDocument(
   function(doc) {
     var old_temp_g_settings = dn.g_settings;
