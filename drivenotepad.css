@@ -461,8 +461,15 @@ moz-box-shadow: 5px 5px 5px #888;
 box-shadow: 5px 5px 5px #888;
 z-index: 100;
 }
+.dropdown_collapsed {
+ overflow-x: hidden;
+ text-overflow: ellipsis;
+ margin-right: 12px;
+}
 .dropdown_collapsed:after{
-float: right;
+position: absolute;
+top: 1px;
+right: 4px;
 content: '\25a4';
 }
 .dropdown_collapsed.selected:after{
@@ -520,9 +527,6 @@ background: #3963AB;
 .inline_button.selected,
 .inline_button:active{
 padding-bottom: 4px;
-}
-.dropdown_button{
-padding: 2px 6px 1px 6px;
 }
 .dropdown_button.selected,
 .dropdown_button:active{

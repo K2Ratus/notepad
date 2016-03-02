@@ -4,7 +4,7 @@ var DropDown = function(val_array){
     //constructor, must use <new>
     
     var str = val_array.map(function(val){
-                    return "<div class='dropdown_item'>" + val + "</div>";
+                    return "<div class='dropdown_item' title='" + escape_str(val) + "'>" + escape_str(val) + "</div>";
                  }).join("");
     
     this.val_array = val_array.slice(0); 
@@ -28,6 +28,13 @@ var DropDown = function(val_array){
     
     var dd = this;
 
+    this.document_mousedown = function(e){
+        dd.el_list.style.display = 'none';
+        dd.open = false;
+        dd.trigger("blur");
+        document.removeEventListener('mousedown', dd.document_mousedown);
+    }
+
     this.el_collapsed.addEventListener('mousedown',function(){
         if(!dd.trigger("click"))
             return;
@@ -37,17 +44,15 @@ var DropDown = function(val_array){
         setTimeout(function(){
             dd.el_list.focus();
             dd.el_list.scrollTop = dd.el_list.children[dd.ind].offsetTop;
+            document.addEventListener('mousedown', dd.document_mousedown)
         },1);
     });
-    this.el_list.addEventListener('blur',function(e){
-        dd.el_list.style.display = 'none';
-        dd.open = false;
-        dd.trigger("blur");
-    })
     var on_click = function(e){
             dd.SetInd(this.getAttribute('data-ind'));
             dd.el_list.style.display = 'none';
             dd.open = false;
+            e.stopPropagation();
+            document.removeEventListener('mousedown', dd.document_mousedown);
     };
     for(var ii=0; ii<this.el_list.children.length; ii++){
         this.el_list.children[ii].setAttribute('data-ind', ii);
@@ -94,6 +99,7 @@ DropDown.prototype.SetInd = function(ind,no_trigger){
         return;
     this.el_list.children[this.ind].classList.remove("selected");
     this.el_collapsed.textContent = this.val_array[ind];
+    this.el_collapsed.title = escape_str(this.val_array[ind]);
     this.ind = ind;
     this.el_list.children[ind].classList.add("selected");
     if(!no_trigger)
