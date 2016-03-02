@@ -272,34 +272,45 @@ dn.show_newline_status = function(statusStr){
 // Open stuff
 // ############################
 
-dn.do_open = function(){
-    if(!dn.open_picker){
+dn.new_window_content = "<html><head><script>"
+dn.open_button_click = function(){
+    gapi.load('picker', function(){
         var view = new google.picker.View(google.picker.ViewId.DOCS);
-        dn.open_picker = new google.picker.PickerBuilder()
-        .enableFeature(google.picker.Feature.NAV_HIDDEN)
-        .setAppId(dn.client_id)
-        .setOAuthToken(gapi.auth.getToken().access_token)
-        .addView(view)
-        .setCallback(dn.picker_callback)
-        .build();
-    }
-    dn.open_picker.setVisible(true);
-    return false;
+        try{
+            if(!dn.open_picker){
+                dn.open_picker = new google.picker.PickerBuilder()
+                .enableFeature(google.picker.Feature.NAV_HIDDEN)
+                .setAppId(dn.client_id) /* the drive scope requires explicit permission to open each file, and by providing the client_id here you get it for the chosen file */
+                .setOAuthToken(gapi.auth.getToken().access_token) /* this gives permission to open the picker..you can do it wtihout a user-specific access_token, but we have one so lets use it */
+                .addView(view)
+                .setCallback(dn.picker_callback)
+                .build();        
+                if(!dn.open_picker)
+                    throw "could not build picker";
+            }
+            dn.open_picker.setVisible(true);
+        } catch (e){
+            dn.show_error("" + e);
+        }
+    });
+
 }
 
 dn.picker_callback = function(data) {
-  if (data.action == google.picker.Action.PICKED) {
-    var fileId = data.docs[0].id;
-   dn.focus_editor();
-   // var url = window.location.href.match(/^https?:\/\/[\w-.]*\/\w*/)[0] + "?state={\"action\":\"open\",\"ids\":[\"" + fileId +"\"]}";
-    dn.el.opener_button_a.setAttribute('href', url);
-    dn.el.opener_button_b.setAttribute('href', url);
-    dn.g_settings.set('pane_open', false);
-    dn.el.opener_chooser.style.display = '';
-    css_animation(dn.el.the_widget, 'shake', function(){}, dn.error_delay_ms);
-  }else if(data.action == "cancel"){
-     dn.focus_editor();
-  } 
+    if (data.action == google.picker.Action.PICKED) {
+        var file_id = data.docs[0].id;
+        var url = "?state=" + JSON.stringify({
+            action: "open",
+            userId: dn.url_user_id,
+            ids: [file_id]
+        });
+        window.location = url;
+    }else if(data.action == "cancel"){
+        if(dn.open_new_tab)
+            dn.open_new_tab.close();
+        dn.focus_editor();
+    }
+    dn.open_new_tab = undefined;
 }
 
 
@@ -2182,14 +2193,11 @@ dn.document_ready = function(e){
     // pane open ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.el.pane_open = document.getElementById('pane_open');
     dn.el.opener_button_a = document.getElementById('opener_button_a');
-    dn.el.opener_button_b = document.getElementById('opener_button_b');
     dn.el.menu_open.addEventListener('click', function(){    
         dn.g_settings.set('pane', 'pane_open');
     });
-    dn.el.opener_button_a.addEventListener('click', dn.do_open);
-    dn.el.opener_button_b.addEventListener('click', dn.do_open);
-    dn.el.find_goto_input.addEventListener('focus', dn.find_goto_focus);
-    dn.el.find_goto_input.addEventListener('blur', dn.find_goto_blur);
+    dn.el.opener_button_a.addEventListener('click', dn.open_button_click);
+
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.make_keyboard_shortcuts();
     dn.load_default_settings();
