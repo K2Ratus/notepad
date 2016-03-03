@@ -446,6 +446,7 @@ background-color: #fdd;
 .dropdown{
 width: 120px;
 cursor: pointer;
+padding: 3px 6px 3px 6px;
 }
 .dropdown_item_list{
 height: 200px;
@@ -489,7 +490,6 @@ color: #333;
 .button_wrapper{
 text-align: center;
 }
-
 .button,
 .button_like{
 display: inline-block;
@@ -538,7 +538,7 @@ padding: 0px 3px 0px 3px;
 }
 .button_up_down_wrapper{
 display: inline-block;
-margin: -3px -6px -5px 4px;
+margin: -3px -6px -5px 2px;
 line-height: 0px;
 font-size: 9px;
 position: relative;
@@ -590,6 +590,11 @@ left: 5px;
 .button_down:hover:after{
 top: 6px;
 color: #fff;
+}
+.dropdown_button,
+.dropdown_button.selected{
+padding: 0px;
+vertical-align: top;
 }
 .file_details_save{
 margin-top: 20px;
