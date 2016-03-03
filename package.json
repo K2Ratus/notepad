@@ -3,17 +3,17 @@
   "version": "3.0.0",
   "main": "app.html",
   "scripts": {
-    "build": "cleancss css/app.css -o app.build.css && uglifyjs node_modules/keymaster/keymaster.js js/utils.js js/drop_down.js js/info.js js/revisions_main_thread.js js/find_replace.js js/print.js js/keyboard.js js/app.js -o all.build.js --source-map all.build.map.js --source-map-include-sources --screw-ie8v && html-minifier html/app.html -o app.build.html --minify-js --collapse-whitespace --conservative-collapse"
+    "build": "cleancss css/app.css -o app.build.css && uglifyjs node_modules/keymaster/keymaster.js js/utils.js js/drop_down.js js/info.js js/revisions_main_thread.js js/find_replace.js js/print.js js/keyboard.js js/app.js -o all.build.js --source-map all.build.map.js --source-map-include-sources --screw-ie8v && html-minifier html/app.html -o index.html --minify-js --collapse-whitespace --conservative-collapse"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/d1manson/drivenotepad.git"
+    "url": "https://github.com/drivenotepad/app.git"
   },
   "author": "D.M.",
   "bugs": {
-    "url": "https://github.com/d1manson/drivenotepad/issues"
+    "url": "https://github.com/drivenotepad/app/issues"
   },
-  "homepage": "https://github.com/d1manson/drivenotepad",
+  "homepage": "https://drivenotepad.github.com",
   "devDependencies": {
     "clean-css": "^3.4.10",
     "html-minifier": "^1.2.0",
