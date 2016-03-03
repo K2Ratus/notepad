@@ -111,11 +111,6 @@ dn.authentication_done = function(auth_result){
         dn.get_user_info();
     if(dn.the_file.file_id &&  dn.status.file_meta != 1 || dn.status.file_body != 1)
         dn.load_file();
-    dn.get_properties_from_cloud();
-
-    // Access token has been successfully retrieved, requests can be sent to the API
-    //TODO: make these redundant
-    gapi.load('drive-realtime', dn.get_settings_from_cloud); // TODO: this can be loaded before auth is  done I think, but have to wait for auth before doing anything
 }
 
 dn.get_user_info = function(){
@@ -205,26 +200,22 @@ dn.do_share_sub = function(){
 // ############################
 
 dn.detect_new_line = function(str){
-    dn.the_file.new_line_detected = (function(){
-        //no special reason to use a self-executing function here, it's just lazy coding
-        var first_n = str.indexOf("\n");
-        if(first_n == -1)
-            return dn.show_newline_status("none");
+    var first_n = str.indexOf("\n");
+    if(first_n == -1)
+        return dn.show_newline_status("none");
+
+    var has_rn = str.indexOf("\r\n") != -1;
+    var has_solo_n = str.match(/[^\r]\n/) ? true : false;
     
-        var has_rn = str.indexOf("\r\n") != -1;
-        var has_solo_n = str.match(/[^\r]\n/) ? true : false;
-        
-        if(has_rn && !has_solo_n)
-            return dn.show_newline_status("windows");
-        if(has_solo_n && !has_rn)
-            return dn.show_newline_status("unix")
-        
-        return dn.show_newline_status("mixed");
-    })();    
+    if(has_rn && !has_solo_n)
+        return  dn.the_file.new_line_detected = dn.show_newline_status("windows");
+    if(has_solo_n && !has_rn)
+        return  dn.the_file.new_line_detected = dn.show_newline_status("unix")
+    
+    return  dn.the_file.new_line_detected = dn.show_newline_status("mixed");
 }
 
 dn.apply_newline_choice = function(str){
-        
     var newlineDefault = dn.g_settings.get('newLineDefault');
     
     if(newlineDefault == "windows"){
@@ -1018,14 +1009,12 @@ dn.show_syntax_status = function(d){
     return d.syntax;
 }
 dn.detect_syntax = function(){
-    dn.the_file.syntax_detected = (function(){ //no need to use self-ex-func here, just laziness...
-        //TODO: improve upon this
-        var title = dn.the_file.title || "untitled.txt";
-        var mode  = require("ace/ext/modelist").getModeForPath(title);
-        dn.the_file.syntax_detected = mode.caption;
-        dn.show_syntax_status({syntax: dn.the_file.syntax_detected});
-        return mode;
-    })();
+    //TODO: improve upon this
+    var title = dn.the_file.title || "untitled.txt";
+    var mode  = require("ace/ext/modelist").getModeForPath(title);
+    dn.the_file.syntax_detected = mode.caption;
+    dn.show_syntax_status({syntax: dn.the_file.syntax_detected});
+    dn.the_file.syntax_detected = mode;
 }
 
 dn.apply_syntax_choice = function(){
@@ -1041,19 +1030,7 @@ dn.apply_syntax_choice = function(){
     }
 }
 
-dn.get_current_syntax_name = function(){
-    try{
-        var modesArray = require("ace/ext/modelist").modesByName;
-        return modesArray[dn.editor.session.getMode().$id.split('/').pop()].caption
-    }catch(e){
-        console.log("ERROR in GetCurrentSyntaxName...");
-        console.dir(e);
-        return "Text";
-    }  
-}
-
 dn.set_syntax = function(val){
-
     var modesArray = require("ace/ext/modelist").modes;
     var mode;
     var ind;
@@ -1412,48 +1389,6 @@ dn.make_boundary = function(){
     // e.g. "13860126288389.206091766245663"
     return (new Date).getTime() + "" + Math.random()*10;
 }
-
-
-// ############################
-// Print stuff
-// ############################
-
-dn.do_print = function(){
-    var content = dn.editor.session.doc.getAllLines();
-    var html = Array(content.length);
-
-    for(var i=0; i<content.length;i++)
-        html[i] = "<li><div class='printline'>" + dn.line_to_html(i) + '</div></li>';
-
-    var printWindow = window.open('','');
-    printWindow.document.writeln(
-            "<html><head><title>" + dn.the_file.title 
-            + "</title></head><style>"
-            + ace.require('ace/theme/' + dn.g_settings.get('theme')).cssText + "\nbody{font-size:"
-            + dn.g_settings.get('fontSize') *14 +"px; white-space:pre-wrap;" + 
-            "font-family:'Monaco','Menlo','Ubuntu Mono','Droid Sans Mono','Consolas',monospace;}"
-            + "\nli{color:gray;}\n.printline{color:black;}</style>" + 
-            "<body class='ace-"+ dn.g_settings.get('theme').replace('_','-') +"'><ol id='content'>" + 
-            html.join("") +
-            "</ol></body></html>");
-    printWindow.print();
-    return false;
-}
-
-dn.line_to_html = function (n){
-    var printLayer = Object.create(ace.require('ace/layer/text').Text.prototype); 
-    var tokens  = dn.editor.getSession().getTokens(n);
-    var html = [];
-    var screenColumn = 0;
-    for (var i = 0; i < tokens.length; i++) {
-       var token = tokens[i];
-       var value = token.value.replace(/\t/g,'   ');//TODO:deal with tabs properly
-       if(value)
-           printLayer.$renderToken(html, 0, token, value);
-    }
-    return html.join('').replace(/&#160;/g,' ');
-}
-
 
 // ############################
 // Clipboard stuff
@@ -1939,9 +1874,6 @@ dn.dropped_file_read = function(e){
     // Note we don't encolse the above in a dn.setting_session_value = true block so the change event will fire and set pristine to false and ShowStatus etc.
 }
 
-dn.focus_editor = function(){
-   dn.editor.focus();
-}
 // ############################
 // Page ready stuff
 // ############################
@@ -1978,6 +1910,7 @@ dn.document_ready = function(e){
     dn.editor.setHighlightSelectedWord(true);
     dn.el.ace_content = document.getElementsByClassName('ace_content')[0];
     dn.editor.getSession().addEventListener("change", dn.on_change);
+    dn.focus_editor = dn.editor.focus.bind(dn.editor);
     dn.focus_editor();
     dn.editor.on("paste", dn.on_paste);
     dn.editor.on("copy", dn.on_copy);
@@ -2237,7 +2170,11 @@ dn.document_ready = function(e){
         dn.create_file();
     }
 
-    dn.pr_auth.then(dn.authentication_done); // authentication Promise-like defined inline at top of html head
+    // hook onto the Promise-like things defined inline at top of html head
+    dn.pr_auth.then(dn.authentication_done); 
+    Promise.all([dn.pr_auth, dn.pr_realtime_loaded])
+           .then(dn.get_settings_from_cloud);
+
     dn.show_status(); 
 }
 

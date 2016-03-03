@@ -43,36 +43,37 @@
         }
         return m;
     }
+    var DelayedPromise = function(){
+        // a promise-like object which can be resolved by calling
+        // .resolve at any point after construction, with the 'then' callback
+        // called as soon as both resolution and callback registration have
+        // both occured. Supports muliple then's being registerd.
+        this._success_callback = [];
+        this._has_resolved = false;
+        this._value;
+        return this;
+    }
+    DelayedPromise.prototype.then = function(succ){
+        if(this._has_resolved)
+            succ(this._value);
+        else
+            this._success_callback.push(succ);
+    }
+    DelayedPromise.prototype.resolve = function(val){
+        this._has_resolved = true;
+        this._value = val;
+        for(var ii=0; ii<this._success_callback.length; ii++)
+            this._success_callback[ii](val);
+    }
 
-    // this is a promise-like object which can be resolved by calling
-    // .resolve at any point after construction, with the 'then' callback
-    // called as soon as both resolution and callback registration have
-    // both occured.
-    dn.pr_auth = (function(){
-        var success_callback = null;
-        var has_resolved = false;
-        var value;
-        return {
-        then: function(succ){
-                if(has_resolved)
-                    succ(value);
-                else
-                    success_callback = succ;
-              },
-        resolve: function(val){
-                if(success_callback){
-                    success_callback(val);
-                }else{
-                    has_resolved = true;
-                    value = val;
-                }
-              }
-        }
-    })();
+    dn.pr_auth = new DelayedPromise();
+    dn.pr_realtime_loaded = new DelayedPromise();
 
     function gapi_loaded() {
         Promise.resolve(gapi.auth.authorize(dn.auth_map(true)))
-            .then(dn.pr_auth.resolve);
+            .then(dn.pr_auth.resolve.bind(dn.pr_auth));
+        Promise.resolve(gapi.load('drive-realtime'))
+            .then(dn.pr_realtime_loaded.resolve.bind(dn.pr_realtime_loaded));
     } 
     </script>
     <script type="text/javascript" src="https://apis.google.com/js/client.js?onload=gapi_loaded"></script>
