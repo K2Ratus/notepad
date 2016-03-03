@@ -1284,7 +1284,7 @@ dn.save_content = function(){
     if(!dn.the_file.is_pristine){
         dn.the_file.data_to_save.body = dn.editor.getSession().getValue();
         dn.the_file.generation_to_save.body++;
-        dn.el.ace_content.setAttribute('saving',true);
+        dn.el.widget_pending.style.display = '';
         dn.the_file.is_saving = true;
         dn.the_file.is_pristine = true;
     }
@@ -1338,7 +1338,7 @@ dn.save_done = function(resp){
                 dn.the_file.is_saving = false;
                 dn.the_file.is_pristine = false;
                 dn.show_file_title();
-                dn.el.ace_content.removeAttribute('saving');
+                dn.el.widget_pending.style.display = 'none';
                 dn.the_file.data_to_save.body = null;
             }
             if(this.title && this.title == dn.the_file.generation_to_save.title)
@@ -1354,7 +1354,7 @@ dn.save_done = function(resp){
     }else{//success...
         if(this.body && this.body == dn.the_file.generation_to_save.body){
             dn.the_file.is_saving = false;
-            dn.el.ace_content.removeAttribute('saving');
+            dn.el.widget_pending.style.display = 'none';
             dn.the_file.ext = resp.fileExtension;
             dn.g_settings.set('ext',resp.fileExtension);
             dn.the_file.data_to_save.body = null;
@@ -1601,7 +1601,7 @@ dn.save_new_file = function(){
     f.is_saving = true;
     f.is_pristine = true;
     dn.show_file_title();
-    dn.el.ace_content.setAttribute('saving', true);
+    dn.el.widget_pending.style.display = '';
     dn.show_status();
     dn.save_file(null, meta, f.data_to_save.body, $.proxy(dn.save_done,gens));
 }
@@ -1955,6 +1955,7 @@ dn.document_ready = function(e){
     dn.el.widget_error_text = document.getElementById('widget_error_text');
     dn.el.widget_error = document.getElementById('widget_error');
     dn.el.widget_content = document.getElementById('widget_content');
+    dn.el.widget_pending = document.getElementById('widget_pending');
     dn.el.the_widget.addEventListener('mousedown', dn.widget_mouse_down);
     translate(dn.el.the_widget, 0, 0);
     dn.el.the_widget.style.display = '';

@@ -63,6 +63,17 @@ border-radius: 3px 3px 0px 0px;
 min-height: 2.2em;
 cursor: default;
 }
+.widget_pending{
+position: absolute;
+left: 0px;
+right: 0px;
+top: 0px;
+height: 4px;
+background: #D04BB2;
+border-radius: 2px 2px 0px 0px;
+box-shadow: 0 0 2px rgba(0,0,0,.12),0 2px 4px rgba(0,0,0,.24);
+overflow-x: hidden;
+}
 #widget_error_text{
 display: block;
 margin-left: 35px;
@@ -440,9 +451,6 @@ user-select: none;
 .find_results{
 font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', 'droid sans mono', monospace !important;
 }
-.ace_content[saving]{
-background-color: #fdd;
-}
 .dropdown{
 width: 120px;
 cursor: pointer;
@@ -796,15 +804,59 @@ color: #FF0000;
 content: "lines added";
 color: #069147;
 }
+
+
+/* progress width animation */
+@keyframes progress{
+	0%{left: 0%}
+	100%{left: 100%}
+}
+.widget_pending_inner{
+position: absolute;
+height: 0px;
+width: 5px;
+top: 2px;
+box-shadow: 0px 0px 20px 10px #BDA1B3;
+webkit-animation: progress 1s 0s infinite;
+-moz-animation: progress 1s 0s infinite;
+-ms-animation: progress 1s 0s infinite;
+-o-animation: progress 1s 0s infinite;
+animation: progress 1s 0s infinite;
+}
 /* ---------------------------- */
 
 /*shake css from daneden.me */
-@-webkit-keyframes shake{0%,100%{-webkit-transform:translateX(0)}10%,30%,50%,70%,90%{-webkit-transform:translateX(-10px)}20%,40%,60%,80%{-webkit-transform:translateX(10px)}}@-moz-keyframes shake{0%,100%{-moz-transform:translateX(0)}10%,30%,50%,70%,90%{-moz-transform:translateX(-10px)}20%,40%,60%,80%{-moz-transform:translateX(10px)}}@-o-keyframes shake{0%,100%{-o-transform:translateX(0)}10%,30%,50%,70%,90%{-o-transform:translateX(-10px)}20%,40%,60%,80%{-o-transform:translateX(10px)}}@keyframes shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-10px)}20%,40%,60%,80%{transform:translateX(10px)}}.shake{-webkit-animation-name:shake;-moz-animation-name:shake;-o-animation-name:shake;animation-name:shake;
+@-webkit-keyframes shake{
+0%,100%{-webkit-transform:translateX(0)}
+10%,30%,50%,70%,90%{-webkit-transform:translateX(-10px)}
+20%,40%,60%,80%{-webkit-transform:translateX(10px)}
+}
+@-moz-keyframes shake{
+0%,100%{-moz-transform:translateX(0)}
+10%,30%,50%,70%,90%{-moz-transform:translateX(-10px)}
+20%,40%,60%,80%{-moz-transform:translateX(10px)}
+}
+@-o-keyframes shake{
+0%,100%{-o-transform:translateX(0)}
+10%,30%,50%,70%,90%{-o-transform:translateX(-10px)}
+20%,40%,60%,80%{-o-transform:translateX(10px)}
+}
+@keyframes shake{
+0%,100%{transform:translateX(0)}
+10%,30%,50%,70%,90%{transform:translateX(-10px)}
+20%,40%,60%,80%{transform:translateX(10px)}
+}
+.shake{
+webkit-animation-name:shake;
+-moz-animation-name:shake;
+-o-animation-name:shake;
+animation-name:shake;
 -webkit-animation-duration: 1s;
 -moz-animation-duration: 1s;
 -ms-animation-duration: 1s;
 -o-animation-duration: 1s;
-animation-duration: 1s;}
+animation-duration: 1s;
+}
 
 
 /* --- all scrollbars --- */
