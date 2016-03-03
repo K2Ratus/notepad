@@ -21,6 +21,7 @@ dn.status = {
     authentication: 0,
     popup_active: 0, // 0 or 1, i.e. true or false
     local_settings: 0,
+    realtime_settings: 0
 }
 
 dn.the_file = {
@@ -93,77 +94,56 @@ dn.el = dn.el || {};
 ################################################################################################################## */
 
 
+
+
+
 // ############################
 // Auth stuff
 // ############################
 
-dn.authentication_done = function(auth_result){
-    dn.status.popup_active = 0;
-    if (!auth_result)
-        return dn.authentication_failed(null);
-    if(auth_result.error)
-        return dn.authentication_failed(auth_result.error);
 
-    dn.status.authentication = 1;
-    dn.show_status();
+dn.handle_auth_error = function(err){
+    // this is the error handler for dn.pr_auth
 
-    if(!dn.user_info)
-        dn.get_user_info();
-    if(dn.the_file.file_id &&  dn.status.file_meta != 1 || dn.status.file_body != 1)
-        dn.load_file();
-}
-
-dn.get_user_info = function(){
-   Promise.resolve(
-        gapi.client.request({
-            'path' : 'userinfo/v2/me?fields=name'
-        })).then(function(a){
-            dn.user_info = a.result;
-            dn.el.user_name.textContent = a.result.name;
-        }, function(err){
-            // TODO: could be auth problem
-            dn.show_error('Failed to get user info');
-            console.dir(err);
-        });
-}
-
-dn.authentication_failed = function(err){
     dn.status.authorization = -1;
     dn.status.popup_active = 0;
     dn.show_status();
-    if(err)
+    if(err && err.type && err.type === "token_refresh_required")
+        dn.reauth_auto();
+    else if(err)
         dn.show_error(err.result.error.message);
-    else
-        dn.show_pane_permissions(); // No access token could be retrieved, force the authorization flow.
+    else{
+        // user has to click button to trigger reauth-manual
+        dn.g_settings.set('pane', 'pane_permissions');
+        dn.g_settings.set('pane_open', 'true')
+        css_animation(dn.el.the_widget, 'shake', function(){}, dn.error_delay_ms);
+    }
 }
 
-dn.reauth = function(callback){ 
-    // TODO: as promise
-    dn.status.authentication = 0;
+dn.reauth_auto = function(){ 
+    dn.status.authorization = 0;
     dn.show_status();
-    gapi.auth.authorize(dn.auth_map(true), function(){
-        dn.status.authentication = 1;
-        dn.show_status();
-        callback();
-    });
+    gapi.auth.authorize(dn.auth_map(true))
+        .then(dn.pr_auth.resolve.bind(dn.pr_auth),
+              dn.pr_auth.reject.bind(dn.pr_auth));
 }
 
-dn.launch_popup = function(){
+dn.reauth_manual = function(){
+    // if this succeeds it will trigger dn.pr_auth.resolve, which will call 
+    // any pending (and future) success callbacks.
     dn.status.popup_active = 1;
     dn.status.authorization = 0;
     dn.show_status();    
-    Promise.resolve(
-        gapi.auth.authorize(dn.auth_map(false)))
-        .then(dn.authentication_done,
-              dn.authentication_failed);
+    gapi.auth.authorize(dn.auth_map(false))
+        .then(dn.pr_auth.resolve.bind(dn.pr_auth),
+              dn.pr_auth.reject.bind(dn.pr_auth));
 }
 
-dn.show_pane_permissions = function(){
-    dn.g_settings.set('pane', 'pane_permissions');
-    dn.g_settings.set('pane_open', 'true')
-    css_animation(dn.el.the_widget, 'shake', function(){}, dn.error_delay_ms);
-}
 
+dn.show_user_info = function(a){
+    dn.user_info = a.result;
+    dn.el.user_name.textContent = a.result.name;
+}
 
 // ############################
 // Sharing stuff
@@ -272,7 +252,6 @@ dn.show_newline_status = function(statusStr){
 // Open stuff
 // ############################
 
-dn.new_window_content = "<html><head><script>"
 dn.open_button_click = function(){
     gapi.load('picker', function(){
         var view = new google.picker.View(google.picker.ViewId.DOCS);
@@ -569,9 +548,9 @@ dn.set_drive_link_to_folder = function(){
 // Settings stuff
 // ############################
 
-dn.get_settings_from_cloud = function() {
-  gapi.drive.realtime.loadAppDataDocument(
-  function(doc) {
+
+dn.show_app_data_document = function(doc){
+
     var old_temp_g_settings = dn.g_settings;
     dn.g_settings = doc.getModel().getRoot();
     dn.g_clipboard = dn.g_settings.get('clipboard');
@@ -603,16 +582,12 @@ dn.get_settings_from_cloud = function() {
         dn.g_settings.set('pane_open', 'true');
         dn.g_settings.set('lastDNVersionUsed', dn.version_str);
     }
-  },
-  null,
-  function(resp){
-        console.log("g_settings error");
-        console.dir(arguments);
-        if ((resp.type && resp.type == "token_refresh_required") || resp.error.code == 401) //not sure if it has an error.code field but it does seem to have a type field
-            dn.reauth(function(){console.log("reauthed triggered by g_settings")}); //no real callback here, I think the realtime api somehow disovers that we're back in buisiness
-    })
 
+    dn.status.realtime_settings = 1;
 }
+
+
+
 
 dn.load_default_settings = function(){
   //Lets show the user either the defualt settings or the 
@@ -1307,7 +1282,7 @@ dn.do_save = function (){
 dn.save_done = function(resp){
     if(resp.error){
         if(resp.error.code == 401){
-            dn.reauth(dn.do_save); //will make use of dn.the_file.data_to_save and generation_to_save once auth is done.
+            dn.reauth_auto(dn.do_save); //will make use of dn.the_file.data_to_save and generation_to_save once auth is done.
         }else{
             var failures = []
             if(this.body && this.body == dn.the_file.generation_to_save.body){
@@ -1574,54 +1549,8 @@ dn.get_scroll_line = function(){
 // ############################
 
 
-dn.load_file = function(flag){
-    //we assume that we only ever load one fileid per page load
-    var file_id = dn.the_file.file_id; 
 
-    dn.show_status();
-
-    /*TODO dn.reauth */
-    
-    dn.status.file_meta = 0;
-    var promise_get_meta = Promise.resolve(
-        gapi.client.request({
-            'path': '/drive/v3/files/' + file_id,
-            'params':{'fields': 'name,mimeType,description,parents,capabilities,fileExtension,shared'}}))
-        .then(dn.load_file_got_meta_data, function(err){
-            dn.show_error(err.result.error.message);
-            dn.status.file_meta = -1;
-            dn.show_status();
-            throw err;
-        })
-
-    dn.status.file_body = 0;
-    var promise_get_body = Promise.resolve(
-        gapi.client.request({
-            'path': '/drive/v3/files/' + file_id,
-            'params':{'alt': 'media'}
-        }))            
-        .then(dn.load_file_got_file_body, function(err){
-            dn.show_error(err.result.error.message);
-            dn.status.file_body = -1;
-            dn.show_status();
-            throw err;
-        });
-
-    
-    dn.pr_the_file = Promise.all([promise_get_meta, promise_get_body])
-    .then(function(){ 
-        //success
-    }, function(){
-        // failure
-        document.title = "Drive Notepad";
-        dn.g_settings.set('pane', 'pane_help');
-        dn.g_settings.set('pane_open', true);
-        
-    })
-    
-}
-
-dn.load_file_got_meta_data = function(resp) {
+dn.show_file_meta = function(resp) {
     if (resp.error)
         throw Error(resp.error);
     dn.the_file.title = resp.result.name;
@@ -1640,8 +1569,7 @@ dn.load_file_got_meta_data = function(resp) {
     dn.show_status();
 } 
 
-dn.load_file_got_file_body = function(resp){
-    dn.show_status();
+dn.show_file_body = function(resp){
     dn.setting_session_value = true;
     dn.editor.session.setValue(resp.body);
     dn.setting_session_value = false;
@@ -1878,6 +1806,57 @@ dn.dropped_file_read = function(e){
 // Page ready stuff
 // ############################
 
+dn.debug_screw_up_auth = function(){
+    gapi.auth.setToken("");//this_is_no_longer_valid");
+    return true;
+}
+
+dn.request_user_info = function(){
+    // returns thenable
+    return gapi.client.request({'path' : 'userinfo/v2/me?fields=name'})
+}
+
+dn.request_file_meta = function(){
+    // returns thenable
+    dn.status.file_meta = 0;
+    dn.show_status();
+    return gapi.client.request({
+        'path': '/drive/v3/files/' + dn.the_file.file_id,
+        'params':{'fields': 'name,mimeType,description,parents,capabilities,fileExtension,shared'}});
+}
+
+dn.request_file_body = function(){
+    // returns thenable
+    dn.status.file_body = 0;
+    dn.show_status();
+    return gapi.client.request({
+        'path': '/drive/v3/files/' + dn.the_file.file_id,
+        'params':{'alt': 'media'}});
+}
+
+dn.request_app_data_document = function(){
+    return new Promise(function(succ, fail){
+
+        // we want one error handler for loading, and one for subsequent errors, but the API doesn't
+        // distinguish between the two, so it's up to us to do so....
+        dn.app_data_realtime_error = function(err){
+            if(dn.status.realtime_settings < 1){
+                fail(err);
+            }else{
+                if(err.type === "token_refresh_required"){
+                    dn.pr_auth.reject(err);
+                } else {
+                    console.dir(err);
+                    dn.show_error("" + err);
+                }
+            }
+        }
+
+        gapi.drive.realtime.loadAppDataDocument(succ, null, dn.app_data_realtime_error);
+        // the null argument is an omptional function for handling the initialization
+        // the first time the document is loaded;
+    });
+}
 
 dn.document_ready = function(e){
 
@@ -2045,7 +2024,7 @@ dn.document_ready = function(e){
 
     // pane permissions :::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.el.pane_permissions = document.getElementById('pane_permissions');
-    document.getElementById('button_auth').addEventListener('click', dn.launch_popup);
+    document.getElementById('button_auth').addEventListener('click', dn.reauth_manual);
 
     // pane help ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.el.pane_help = document.getElementById('pane_help');
@@ -2170,12 +2149,90 @@ dn.document_ready = function(e){
         dn.create_file();
     }
 
-    // hook onto the Promise-like things defined inline at top of html head
-    dn.pr_auth.then(dn.authentication_done); 
-    Promise.all([dn.pr_auth, dn.pr_realtime_loaded])
-           .then(dn.get_settings_from_cloud);
-
     dn.show_status(); 
+
+    // The auth promise can be rejected and resolved multiple times during the lifetime of the app.
+    // These two handlers will always be called for those events.
+    dn.pr_auth.on_error(dn.handle_auth_error); 
+    dn.pr_auth.on_success(function(){
+        if(dn.g_settings.get('pane', 'pane_permissions'))
+            dn.g_settings.set('pane', 'pane_help');
+        dn.status.popup_active = 0;
+        dn.status.authentication = 1;
+        dn.show_status(); 
+    })
+
+    // get user info...
+    until_success(function(succ, fail){
+        Promise.resolve(dn.pr_auth)
+               .then(dn.request_user_info)
+               .then(dn.show_user_info)
+               .then(succ, fail);
+    }, dn.pr_auth.reject.bind(dn.pr_auth))
+    .then(function(){
+        console.log('succeeded getting user info.')
+    })
+
+    if(dn.the_file.file_id){
+
+        // meta data...
+        var pr_meta = until_success(function(succ, fail){
+            Promise.resolve(dn.pr_auth)
+                   .then(dn.request_file_meta)
+                   .then(dn.show_file_meta)
+                   .catch(function(err){
+                        if(!err) throw err; // auth error, until_success will handle it, TODO: catch other flavours of auth error
+                        // meta-data specific error, which we will rebrand as a "success"
+                        dn.show_error(err.result.error.message);
+                        dn.status.file_meta = -1;
+                        dn.show_status();
+                        return 'bad_meta'
+                   }).then(succ, fail);
+        }, dn.pr_auth.reject.bind(dn.pr_auth));
+
+        // body...
+        var pr_body = until_success(function(succ, fail){
+            Promise.resolve(dn.pr_auth)
+                   /*.then(dn.debug_screw_up_auth)*/
+                   .then(dn.request_file_body)
+                   .then(dn.show_file_body)
+                    .catch(function(err){
+                        if(!err) throw err; // auth error, until_success will handle it, TODO: catch other flavours of auth error
+                        // body specific error, which we will rebrand as a "success"
+                        dn.show_error(err.result.error.message);
+                        dn.status.file_body = -1;
+                        dn.show_status();
+                        return 'bad_body'
+                   }).then(succ, fail);
+        }, dn.pr_auth.reject.bind(dn.pr_auth));
+
+        // load meta data and body...
+        Promise.all([pr_meta, pr_body])
+            .then(function(vals){
+                if(vals[0] == 'bad_meta' || vals[1] == 'bad_body')
+                    throw "did not load file"
+                return true;
+            }).then(function(){
+                console.log("succeeded loading file body and metadata.")
+            }, function(){
+                document.title = "Drive Notepad";
+                dn.g_settings.set('pane', 'pane_help');
+                dn.g_settings.set('pane_open', true);
+            });
+    }
+    
+    // load settings...
+    until_success(function(succ, fail){ 
+        Promise.all([dn.pr_auth, dn.pr_realtime_loaded])
+               .then(dn.request_app_data_document)
+               .then(dn.show_app_data_document)
+               .then(succ, fail)
+    }, dn.pr_auth.reject.bind(dn.pr_auth))
+    .then(function(){
+        console.log('succeeded loading settings');
+    });
+    
+    
 }
 
 
@@ -2185,3 +2242,4 @@ else
     document.addEventListener('DOMContentLoaded', dn.document_ready);
 
 
+    

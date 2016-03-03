@@ -43,37 +43,113 @@
         }
         return m;
     }
-    var DelayedPromise = function(){
-        // a promise-like object which can be resolved by calling
-        // .resolve at any point after construction, with the 'then' callback
-        // called as soon as both resolution and callback registration have
-        // both occured. Supports muliple then's being registerd.
-        this._success_callback = [];
-        this._has_resolved = false;
+    /* 
+    SpecialPromise: a *variation* on the concept of a promise.  Explanation by example:
+
+    var failure_count = 0;
+    var sp = new SpecialPromise();
+    sp.on_error(function(e){
+        failure_count++;
+        console.log("Func A.  Failed err=" + e);
+        setTimeout(function(){
+            if(failure_count < 3) 
+                sp.reject(43 + failure_count); //simulate some errors with incrementing error number
+            else
+                sp.resolve(42);
+        }, 500)
+    });
+    sp.on_success(function(v){ console.log("Func B. Success: " + v);});
+    sp.then(function(v){ console.log("Func C. Success: " + v); });
+    sp.then(function(v){ console.log("Func D. Success: " + v); });
+    sp.resolve(41);
+    sp.then(function(v){ console.log("Func E. Success: " + v) });
+    sp.reject(43);
+    sp.then(function(v){ console.log("Func F. Success: " + v) });
+    setTimeout(function(){
+        console.log("registering Func G.")
+        sp.then(function(v){ console.log("Func G. Success: " + v) });
+    }, 5000);
+
+    Gives output:
+        Func B. Success: 41
+        Func C. Success: 41
+        Func D. Success: 41
+        Func E. Success: 41
+        Func A. Failed err=43
+        <500ms pause>
+        Func A. Failed err=44
+        <500ms pause>
+        Func A. Failed err=45
+        <500ms pause>
+        Func B. Success: 42
+        Func F. Success: 42
+        <3500ms pause>
+        Registering Func G.
+        Fun G. Success: 42
+    */
+    var SpecialPromise = function(){
+        this._success_callbacks = []; // registered with .then, these are only called once each
+        this._success_handler = undefined; // registered with on_success, called with every .resolve
+        this._error_handler = undefined; // registered with on_error, called with every .reject and when errors occur in _success_handler
+        this._state = 0; // 1 = resolved; 0=currently unresolved, with all errors already handled; -1=error not yet handled
         this._value;
         return this;
     }
-    DelayedPromise.prototype.then = function(succ){
-        if(this._has_resolved)
-            succ(this._value);
-        else
-            this._success_callback.push(succ);
+    SpecialPromise.prototype.on_error = function(handler){
+        if(this._state == -1){
+            this._state = 0;
+            handler(this._value);
+        } else {
+            this._error_handler = handler;        
+        }
     }
-    DelayedPromise.prototype.resolve = function(val){
-        this._has_resolved = true;
+    SpecialPromise.prototype.on_success = function(handler){
+        if(this._state == 1){
+            handler(this._value);
+        } else {
+            this._success_handler = handler;        
+        }
+    }
+    SpecialPromise.prototype.then = function(succ){
+        if(!succ)
+            throw("SpecialPromise.then only accepts success");
+        if(this._state === 1)
+            succ(this._value);
+        else 
+            this._success_callbacks.push(succ);
+    }
+    SpecialPromise.prototype.resolve = function(val){
+        if(this._success_handler){
+            try{
+                this._success_handler(val);
+            } catch(e){
+                this.reject(e);
+                return;
+            }
+        }
+        this._state = 1;
         this._value = val;
-        for(var ii=0; ii<this._success_callback.length; ii++)
-            this._success_callback[ii](val);
+        while(this._success_callbacks.length)
+            this._success_callbacks.shift()(val);
+    }
+    SpecialPromise.prototype.reject = function(err){
+        this._value = err;
+        if(this._error_handler !== undefined){
+            this._state = 0;
+            this._error_handler(err);
+        }else{
+            this._state = -1;
+        }
     }
 
-    dn.pr_auth = new DelayedPromise();
-    dn.pr_realtime_loaded = new DelayedPromise();
+    dn.pr_auth = new SpecialPromise();
+    dn.pr_realtime_loaded = new SpecialPromise();
 
     function gapi_loaded() {
         Promise.resolve(gapi.auth.authorize(dn.auth_map(true)))
-            .then(dn.pr_auth.resolve.bind(dn.pr_auth));
-        Promise.resolve(gapi.load('drive-realtime'))
-            .then(dn.pr_realtime_loaded.resolve.bind(dn.pr_realtime_loaded));
+            .then(dn.pr_auth.resolve.bind(dn.pr_auth),
+                  dn.pr_auth.reject.bind(dn.pr_auth));
+        gapi.load('drive-realtime', dn.pr_realtime_loaded.resolve.bind(dn.pr_realtime_loaded));
     } 
     </script>
     <script type="text/javascript" src="https://apis.google.com/js/client.js?onload=gapi_loaded"></script>
