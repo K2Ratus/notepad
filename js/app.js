@@ -1993,13 +1993,11 @@ dn.document_ready = function(e){
     dn.el.menu_general_settings = document.getElementById('menu_general_settings');
     dn.el.widget_menu.addEventListener('mousedown', stop_propagation);
     dn.menu_icon_from_pane_id = {}
-    var els = dn.el.widget_menu.getElementsByClassName('widget_menu_wrapper');
+    var els = dn.el.widget_menu.getElementsByClassName('widget_menu_icon');
     for(var ii=0; ii<els.length; ii++){
         els[ii].addEventListener("mousedown", prevent_default);
         els[ii].title = dn.menu_id_to_caption[els[ii].id];
-        els[ii].innerHTML = "<div class='widget_menu_icon' id='icon_" + els[ii].id + "'></div>";
-        var el_icon = els[ii].getElementsByClassName('widget_menu_icon')[0];
-        dn.menu_icon_from_pane_id['pane_' + els[ii].id.substr(5)] = el_icon;
+        dn.menu_icon_from_pane_id['pane_' + els[ii].id.substr(5)] = els[ii];
     }
 
      // pane file ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::

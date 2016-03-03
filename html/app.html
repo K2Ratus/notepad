@@ -85,22 +85,22 @@
 </head>
 
 <body class="noselect">
-    <div id="the_widget" class="noselect"> 
+    <div id="the_widget" class="the_widget noselect"> 
         <div id="widget_pending" class="widget_pending" style="display:none;">
             <div class="widget_pending_inner"></div>
         </div>
 
-        <div id="widget_text">ex nihilo omnia</div>
+        <div class="widget_text" id="widget_text">ex nihilo omnia</div>
 
-        <div id='widget_menu'>
-            <div class='widget_menu_wrapper' id='menu_file'></div>
-            <div class='widget_menu_wrapper' id='menu_find'></div>
-            <div class='widget_menu_wrapper' id='menu_open'></div>
-            <div class='widget_menu_wrapper' id='menu_general_settings'></div>
-            <div class='widget_menu_wrapper' id='menu_help'></div>
+        <div id='widget_menu' class='widget_menu'>
+            <div class='widget_menu_icon icon_menu_file' id='menu_file'></div>
+            <div class='widget_menu_icon icon_menu_find' id='menu_find'></div>
+            <div class='widget_menu_icon icon_menu_open' id='menu_open'></div>
+            <div class='widget_menu_icon icon_menu_general_settings' id='menu_general_settings'></div>
+            <div class='widget_menu_icon icon_menu_help' id='menu_help'></div>
         </div>
 
-        <div id="widget_content"> 
+        <div class="widget_content" id="widget_content"> 
             <div class='widget_pane' id='pane_file' style="display: none;">
                 <div class='pane_item details_file_title clickable'>
                     <div class='details_file_title_text' data-info='title' id='details_file_title_text' title="click to edit"></div>
@@ -141,10 +141,10 @@
                 </div>
                 <div class='widget_pane_bottom_before'></div>
                 <div class='widget_pane_bottom'>
-                    <div class='button icon' id='button_save' title='save file'></div>
-                    <div class='button icon' id='button_print' title='print...'></div>
-                    <div class='button icon' id='button_share' title="file share settings..."></div>
-                    <div class='button icon' id='button_history' title="history of changes..."></div>
+                    <div class='button icon button_save' id='button_save' title='save file'></div>
+                    <div class='button icon button_print' id='button_print' title='print...'></div>
+                    <div class='button icon button_share' id='button_share' title="file share settings..."></div>
+                    <div class='button icon button_history' id='button_history' title="history of changes..."></div>
                 </div>
             </div>
 
@@ -197,8 +197,8 @@
                 </div>
                 <div class='widget_pane_bottom_before'></div>
                 <div class='widget_pane_bottom'>
-                    <div class='button icon' id='button_clear_clipboard' title="clear clipboard history"></div>
-                    <div class='button icon' id='button_clear_find_replace' title="clear find/replace history"></div>
+                    <div class='button icon button_clear_clipboard' id='button_clear_clipboard' title="clear clipboard history"></div>
+                    <div class='button icon button_clear_find_replace' id='button_clear_find_replace' title="clear find/replace history"></div>
                 </div>
             </div>
 
@@ -293,12 +293,12 @@
 
         </div>
 
-        <div id="widget_error">
-            <div id="widget_error_mark">&#x2718;</div><div id="widget_error_text">Javascript disabled</div>
+        <div class="widget_error" id="widget_error">
+            <div class="widget_error_mark">&#x2718;</div><div class="widget_error_text" id="widget_error_text">Javascript disabled</div>
         </div>
 
     </div>
 
-    <div id="the_editor"> </div>
+    <div class="the_editor" id="the_editor"> </div>
 </body>
 </html>
