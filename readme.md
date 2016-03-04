@@ -19,6 +19,8 @@ All the interesting cloud-based stuff goes through the google javascript client 
 
 Most of the custom interactivity of the application takes palce within the widget and roughly sticks to an MVC framework, with the model maintained by the realtime `AppDataDocument` from the Google Drive Realtime API. Prior to the realtime document loading, a simplified stand-in is used that has (hopefully) the same behaviour as the full API, minus the cloud-iness, but with the addition of localStorage for impersonal settings.
 
+Occasionally chrome mistakenly caches source maps. If that happens, the easiest thing to do is go into the minified js file and add a query string to the source map url (which is specified in a special comment at the end).  Normally you won't need to do this, but it's annoying when it does happen.
+
 ### Making async API requests
 
 I have tried to wrap most requests in ES6 `Promises`, or variations on that.  An important promise-like object is `dn.pr_auth`, this is a `SpecialPromise` isntance, which can be `resolved` and `rejected` multiple times. As with regular promises, whenever it is resolved the callbacks registered with `.then(success)` are triggered, with each being triggered exactly once, even if `dn.pr_auth` is resolved multiple times.  And, as with regular promises, if `dn.pr_auth` has already been resolved at the moment that the `.then(success)` is registered, it will be triggered immediately.  Finally, the `dn.pr_auth` has two special event listeners: `on_error` and `on_success`, these are called every time the authentication process fails or is successful (respectively).
@@ -39,4 +41,16 @@ until_success(function(succ, fail){
 })
 ```
 
-In this code, `dn.show_user_info` is called once the API request on the line above succeeds, which in turn is only called when the auth token is available. If the auth token becomes available but is then mysteriously invalidated, the API request will be made and will fail.  This will cause that "iteration" of the `until_success` `Promise` to fail, invoking `dn.pr_auth.reject`, which calls its `on_error` handler, which in turn will issue a new authentication request.  In the meantime, `until_sucess` will have begun the next "iteration", and will have "stalled", waiting for the authentication to resolve.  As soon as the authentication is available again the request will be reissued.  This looping will continue until the request suceeds. 
+In this code, `dn.show_user_info` is called once the API request on the line above succeeds, which in turn is only called when the auth token is available. If the auth token becomes available but is then mysteriously invalidated, the API request will be made and will fail.  This will cause that "iteration" of the `until_success` `Promise` to fail, invoking `dn.pr_auth.reject`, which calls its `on_error` handler, which in turn *may* issue a new authentication request - see discussion in next paragraph.  In the meantime, `until_sucess` will have begun the next "iteration", and will have "stalled", waiting for the authentication to resolve.  As soon as the authentication is available again the request will be reissued.  This looping will continue until the request suceeds.
+
+There are several ways the task can fail, it could be that the user needs to manually log in, or it could be the token has become invalid somehow and needs to be refreshed, or it could be some other "legitimate" error, such as the request being stupid.  Since the `until_success` will not resolve until success is delivered, you must "rebrand" all possible "legitimate" errors as a success, you do this by inserting the following into the promise chain:
+
+ ```javascript
+ .catch(function(err){
+ 	if(dn.is_auth_error(err)) throw err;
+ 	return "that's a dumb request you made"; // this is now treated as success 
+ })
+```
+
+If non-auth errors are not caught, then the `dn.pr_auth.on_error` will display the error to the user and not attempt any reauthentication.  This means the `until_succes` will stall indefinitely, waiting in vain for `dn.pr_auth` to resolve.  To guard against the possibility of issuing excessive numbers of automatic reauth requests there is an roughly exponential backoff process, which in the limit will only issue a request once per minute.  Note however that this backoff is specific to the automatic reauthentication, not to requests in general.
+

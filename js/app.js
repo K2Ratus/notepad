@@ -94,52 +94,6 @@ dn.el = dn.el || {};
 ################################################################################################################## */
 
 
-
-
-
-// ############################
-// Auth stuff
-// ############################
-
-
-dn.handle_auth_error = function(err){
-    // this is the error handler for dn.pr_auth
-
-    dn.status.authorization = -1;
-    dn.status.popup_active = 0;
-    dn.show_status();
-    if(err && err.type && err.type === "token_refresh_required")
-        dn.reauth_auto();
-    else if(err)
-        dn.show_error(err.result.error.message);
-    else{
-        // user has to click button to trigger reauth-manual
-        dn.g_settings.set('pane', 'pane_permissions');
-        dn.g_settings.set('pane_open', 'true')
-        css_animation(dn.el.the_widget, 'shake', function(){}, dn.error_delay_ms);
-    }
-}
-
-dn.reauth_auto = function(){ 
-    dn.status.authorization = 0;
-    dn.show_status();
-    gapi.auth.authorize(dn.auth_map(true))
-        .then(dn.pr_auth.resolve.bind(dn.pr_auth),
-              dn.pr_auth.reject.bind(dn.pr_auth));
-}
-
-dn.reauth_manual = function(){
-    // if this succeeds it will trigger dn.pr_auth.resolve, which will call 
-    // any pending (and future) success callbacks.
-    dn.status.popup_active = 1;
-    dn.status.authorization = 0;
-    dn.show_status();    
-    gapi.auth.authorize(dn.auth_map(false))
-        .then(dn.pr_auth.resolve.bind(dn.pr_auth),
-              dn.pr_auth.reject.bind(dn.pr_auth));
-}
-
-
 dn.show_user_info = function(a){
     dn.user_info = a.result;
     dn.el.user_name.textContent = a.result.name;
@@ -318,15 +272,35 @@ dn.show_help_inner = function(inner_pane){
     }
 }
 
+dn.toggle_permission = function(state){
+    var el = dn.el.pane_permissions;
+    if(state){
+        if(!dn.status.permissions_showing){
+            dn.status.permissions_showing = 1;
+            el.style.display = '';
+            dn.g_settings.set('pane', 'pane_help');
+            dn.g_settings.set('pane_open', true);
+            css_animation(dn.el.the_widget, 'shake', function(){}, dn.error_delay_ms);
+        }
+    } else {
+        dn.status.permissions_showing = 0;
+        el.style.display = 'none';
+    }
+}
+
 dn.show_pane = function(id){
+    if(id === "pane_permissions")
+        return dn.toggle_permission(true);
+
     var el = document.getElementById(id);
 
     // el can be undefined/null to hide everything
-    for(var ii=0; ii < dn.el.widget_content.children.length; ii++)if(dn.el.widget_content.children[ii] !== el){
-        dn.el.widget_content.children[ii].style.display = 'none';
-        var el_icon = dn.menu_icon_from_pane_id[dn.el.widget_content.children[ii].id];
-        if(el_icon)
-            el_icon.classList.remove('icon_selected');
+    for(var ii=0; ii < dn.el.widget_content.children.length; ii++)
+        if(dn.el.widget_content.children[ii] !== el && dn.el.widget_content.children[ii] !== dn.el.pane_permissions){
+            dn.el.widget_content.children[ii].style.display = 'none';
+            var el_icon = dn.menu_icon_from_pane_id[dn.el.widget_content.children[ii].id];
+            if(el_icon)
+                el_icon.classList.remove('icon_selected');
     }
 
     if(el){
@@ -1806,57 +1780,7 @@ dn.dropped_file_read = function(e){
 // Page ready stuff
 // ############################
 
-dn.debug_screw_up_auth = function(){
-    gapi.auth.setToken("");//this_is_no_longer_valid");
-    return true;
-}
 
-dn.request_user_info = function(){
-    // returns thenable
-    return gapi.client.request({'path' : 'userinfo/v2/me?fields=name'})
-}
-
-dn.request_file_meta = function(){
-    // returns thenable
-    dn.status.file_meta = 0;
-    dn.show_status();
-    return gapi.client.request({
-        'path': '/drive/v3/files/' + dn.the_file.file_id,
-        'params':{'fields': 'name,mimeType,description,parents,capabilities,fileExtension,shared'}});
-}
-
-dn.request_file_body = function(){
-    // returns thenable
-    dn.status.file_body = 0;
-    dn.show_status();
-    return gapi.client.request({
-        'path': '/drive/v3/files/' + dn.the_file.file_id,
-        'params':{'alt': 'media'}});
-}
-
-dn.request_app_data_document = function(){
-    return new Promise(function(succ, fail){
-
-        // we want one error handler for loading, and one for subsequent errors, but the API doesn't
-        // distinguish between the two, so it's up to us to do so....
-        dn.app_data_realtime_error = function(err){
-            if(dn.status.realtime_settings < 1){
-                fail(err);
-            }else{
-                if(err.type === "token_refresh_required"){
-                    dn.pr_auth.reject(err);
-                } else {
-                    console.dir(err);
-                    dn.show_error("" + err);
-                }
-            }
-        }
-
-        gapi.drive.realtime.loadAppDataDocument(succ, null, dn.app_data_realtime_error);
-        // the null argument is an omptional function for handling the initialization
-        // the first time the document is loaded;
-    });
-}
 
 dn.document_ready = function(e){
 
@@ -2155,9 +2079,12 @@ dn.document_ready = function(e){
     // These two handlers will always be called for those events.
     dn.pr_auth.on_error(dn.handle_auth_error); 
     dn.pr_auth.on_success(function(){
-        if(dn.g_settings.get('pane', 'pane_permissions'))
-            dn.g_settings.set('pane', 'pane_help');
+        // reset some things, could be no-ops...
+        dn.reauth_auto_delay = 0;
+        dn.toggle_permission(false);
         dn.status.popup_active = 0;
+
+        // and show the good news...
         dn.status.authentication = 1;
         dn.show_status(); 
     })
@@ -2181,7 +2108,7 @@ dn.document_ready = function(e){
                    .then(dn.request_file_meta)
                    .then(dn.show_file_meta)
                    .catch(function(err){
-                        if(!err) throw err; // auth error, until_success will handle it, TODO: catch other flavours of auth error
+                        if(dn.is_auth_error(err)) throw err; // auth error, until_success will handle it
                         // meta-data specific error, which we will rebrand as a "success"
                         dn.show_error(err.result.error.message);
                         dn.status.file_meta = -1;
@@ -2193,11 +2120,10 @@ dn.document_ready = function(e){
         // body...
         var pr_body = until_success(function(succ, fail){
             Promise.resolve(dn.pr_auth)
-                   /*.then(dn.debug_screw_up_auth)*/
                    .then(dn.request_file_body)
                    .then(dn.show_file_body)
                     .catch(function(err){
-                        if(!err) throw err; // auth error, until_success will handle it, TODO: catch other flavours of auth error
+                        if(dn.is_auth_error(err)) throw err; // auth error, until_success will handle it
                         // body specific error, which we will rebrand as a "success"
                         dn.show_error(err.result.error.message);
                         dn.status.file_body = -1;

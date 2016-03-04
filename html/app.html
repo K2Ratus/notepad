@@ -178,6 +178,16 @@
         </div>
 
         <div class="widget_content" id="widget_content"> 
+            <div class='widget_pane' style='display:none;' id='pane_permissions'>
+                <div class='button_wrapper auth_button_wrapper'>
+                    <div class='button auth_button' id='button_auth' title="sign in to Google and/or grant permissions to Drive Notepad">Autherize...</div>
+                </div>
+                <!--Click the button above to launch a popup window and login to your Google account and/or grant permisions to this app.<br><br>
+                This step will not normally be required when you use the app.<br><br>If you do not see a popup window when you click the button you may
+                need to disable your popup blocker and reload the page.-->
+            </div>
+
+
             <div class='widget_pane' id='pane_file' style="display: none;">
                 <div class='pane_item details_file_title clickable'>
                     <div class='details_file_title_text' data-info='title' id='details_file_title_text' title="click to edit"></div>
@@ -351,15 +361,6 @@
                         <a class='button' id='opener_button_d' href='?state={"action":"create","folderId":"","ext":""}' target="_blank">a new tab</a>
                     </div><br>
                 </div>
-            </div>
-
-            <div class='widget_pane' style='display:none;' id='pane_permissions'>
-                <br><div class='button_wrapper'>
-                    <div class='button' id='button_auth'>Autherize...</div>
-                </div><br><br>
-                Click the button above to launch a popup window and login to your Google account and/or grant permisions to this app.<br><br>
-                This step will not normally be required when you use the app.<br><br>If you do not see a popup window when you click the button you may
-                need to disable your popup blocker and reload the page.
             </div>
 
             <div class='widget_pane' style='display:none;' id='pane_clipboard'>
