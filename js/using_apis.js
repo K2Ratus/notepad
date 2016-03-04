@@ -108,6 +108,76 @@ dn.request_file_body = function(){
         'params':{'alt': 'media'}});
 }
 
+dn.make_multipart_boundary = function(){
+    //for MIME protocol, require a boundary that doesn't exist in the message content.
+    //we could check explicitly, but this is essentially guaranteed to be fine:
+    // e.g. "13860126288389.206091766245663"
+    return (new Date).getTime() + "" + Math.random()*10;
+}
+
+
+dn.request_save = function(parts){
+    // this is a factory function for building a function-of-no-args-that-returns-a-thenable
+    // note the save process is complicated and should only be done via dn.save in save.js
+    var has_body = parts.body !== undefined;
+    var meta = {properties: {}};
+    var has_meta = false;
+    if(parts.title !== undefined){
+        has_meta = true;
+        meta['name'] = parts.title;
+    }
+    if(parts.description !== undefined){
+        has_meta = true;
+        meta['description'] = parts.description;
+    }
+    if(parts.syntax !== undefined){
+        has_meta = true;
+        meta.properties['aceMode'] = parts.syntax;
+    }
+    if(parts.newline !== undefined){
+        has_meta = true;
+        meta.properties['newline'] = parts.newline;
+    }
+    if(parts.tabs !== undefined){
+        has_meta = true;
+        meta.properties['tabs'] = parts.tabs;
+    }
+    var is_multipart = has_body && has_meta;
+    var params = {'fields': 'version'};
+    if(has_body)
+        params['uploadType'] = is_multipart ? 'multipart' : 'media';
+
+    var headers = {}
+    var boundary = dn.make_multipart_boundary();
+    if(is_multipart){
+        request_body = "--" + boundary
+                      + "\nContent-Type: application/json; charset=UTF-8\n" 
+                      + JSON.stringify(meta) 
+                      + "\n--" + boundary
+                      + "\nContent-Type: text/plain" // TODO: see if this matters, and if so get it right 
+                      + parts.body
+                      + "\n--" + boundary + "--" ;
+        headers['Content-Type'] = 'multipart/related; boundary="' + boundary+'"';
+        // TODO: check if we need to add the content length ourselves
+        // Content-Length: number_of_bytes_in_entire_request_body
+    }else if(has_body){
+        request_body = parts.body;
+    } else {
+        request_body = JSON.stringify(meta);
+    }
+
+    return function(){
+        return gapi.client.request({
+                'path': (has_body ? '/upload' : '') + '/drive/v3/files/' + dn.the_file.file_id,
+                'method': 'PATCH',
+                'params' : params,
+                'headers' : headers,
+                'body' : request_body
+        });
+    }
+
+}
+
 dn.request_app_data_document = function(){
     return new Promise(function(succ, fail){
 

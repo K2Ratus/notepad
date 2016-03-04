@@ -99,7 +99,7 @@ dn.make_keyboard_shortcuts = function(){
         "find","findprevious","findnext","replace","jumptomatching","sortlines","selecttomatching","gotoline"]);
 
     //then add new commands on to the document using keymaster.js...
-    key('command+s, ctrl+s,  ctrl+alt+s,  command+alt+s', dn.save_content);
+    key('command+s, ctrl+s,  ctrl+alt+s,  command+alt+s', dn.do_save);
     key('command+p, ctrl+p,  ctrl+alt+p,  command+alt+p', dn.do_print);
     key('command+o, ctrl+o,  ctrl+alt+o,  command+alt+o', dn.do_open);
     key('command+n, ctrl+n,  ctrl+alt+n,  command+alt+n', dn.do_new);

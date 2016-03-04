@@ -15,13 +15,20 @@ dn.status = {
     // 0: get action in progress
     // -1: failed
     //  1: success
-    file_body: 0, 
-    file_meta: 0, 
+    file_body: 0, //for getting, not saving
+    file_meta: 0, //for getting, not saving
     file_sharing: 0, // after launching the sharing dialog this is set to -1
     authentication: 0,
     popup_active: 0, // 0 or 1, i.e. true or false
     local_settings: 0,
-    realtime_settings: 0
+    realtime_settings: 0,
+
+    // 1: success/no save active, 
+    // 0: in progress
+    // -1: failure, and abandonded further attempts (never used)
+    save_body: 1, 
+    save_title: 1,
+    save_other: 1
 }
 
 dn.the_file = {
@@ -452,17 +459,10 @@ dn.toggle_widget = function(state){
 }
 
 dn.show_status = function(){
-    // TODO: new file, drag-drop from disk, pristing/saving, modify props, readonly/sharing info
+    // TODO: new file, drag-drop from disk
     var s = ''
-    if(dn.status.authentication != 1){
-        // auth in progress or failed
-        if(dn.status.authorization == -1)
-            s = "Authorization required...";
-        else if(dn.status.popup_active)
-            s = "Login/authenticate with popup...";
-        else
-            s = "Authenticating...";
-    } else if (dn.the_file.file_id){
+
+    if (dn.the_file.file_id){
         // a file is/will be loaded...
         if (dn.status.file_meta === 1 && dn.status.file_body === 1){
             s = dn.the_file.title;
@@ -475,6 +475,14 @@ dn.show_status = function(){
                 extra.push("sharing status unknown");
             if(!dn.the_file.is_pristine)
                 extra.push("unsaved changes");
+            if(dn.status.save_body == 0){
+                extra.push("saving document"); // this means that *at least* the body is being saved, possibly more
+            } else {
+                if(dn.status.save_title == 0)
+                    extra.push("updating title");
+                if(dn.status.save_other == 0)
+                    extra.push("updating file properties")
+            } 
             if(extra.length)
                 s += "\n[" + extra.join(', ') + "]"; 
         }else if(dn.status.file_meta === 0 && dn.status.file_body === 0)
@@ -496,7 +504,24 @@ dn.show_status = function(){
         s = "ex nihilo omnia...";
     }
 
+    if(dn.status.authentication != 1){
+        // auth in progress or failed
+        if (s)
+            s += "\n";
+        if(dn.status.authorization == -1)
+            s += "Authorization required...";
+        else if(dn.status.popup_active)
+            s += "Login/authenticate with popup...";
+        else
+            s += "Authenticating...";
+    }
+
     text_multi(dn.el.widget_text, s, true);
+
+    if(dn.status.save_body == 0 || dn.status.save_title == 0 || dn.status.save_other == 0)
+        dn.el.widget_pending.style.display = '';
+    else
+        dn.el.widget_pending.style.display = 'none';
 }
 
 dn.show_error = function(message){
@@ -1091,7 +1116,7 @@ dn.create_file_details_tool = function(){
     });
 
     // File action buttons stuff
-    dn.el.button_save.addEventListener('click', dn.save_content);
+    dn.el.button_save.addEventListener('click', dn.do_save);
     dn.el.button_print.addEventListener('click', dn.do_print);
     dn.el.button_share.addEventListener('click', dn.do_share);
     dn.el.button_history.addEventListener('click', dn.start_revisions_worker);
@@ -1201,6 +1226,8 @@ dn.show_description = function(){
 // Save stuff
 // ############################
 
+
+/*
 dn.save_content = function(){
     if(dn.the_file.is_brand_new){
         dn.save_new_file(); 
@@ -1218,15 +1245,19 @@ dn.save_content = function(){
     dn.show_file_title(); //includes a showstatus calls
     dn.do_save();
     return false;
-}
+}*/
 
-dn.do_save = function (){
-    
+dn.do_save = function (e){
+    e.preventDefault(); //needed for when called as shortcut
+
     if(dn.the_file.is_read_only){
         dn.show_error("Cannot save read-only file.");
-        return false;
+        return;
     }
-    
+
+    dn.save({body: dn.editor.getSession().getValue()});
+
+    /*
     if(!(dn.the_file.data_to_save.body || dn.the_file.data_to_save.title || dn.the_file.data_to_save.description)){
         dn.show_error("No changes since last save.");
         return false;
@@ -1250,9 +1281,9 @@ dn.do_save = function (){
         }
     }
     dn.save_file(dn.the_file.file_id, meta, body, $.proxy(dn.save_done,gens))
-    return false;
+    */
 }
-
+/*
 dn.save_done = function(resp){
     if(resp.error){
         if(resp.error.code == 401){
@@ -1332,13 +1363,7 @@ dn.save_file = function (fileId, fileMetadata, fileText, callback) {
     request.execute(callback);
 }
 
-dn.make_boundary = function(){
-    //for MIME protocol, require a boundary that doesn't exist in the message content.
-    //we could check explicitly, but this is essentially guaranteed to be fine:
-    // e.g. "13860126288389.206091766245663"
-    return (new Date).getTime() + "" + Math.random()*10;
-}
-
+*/
 // ############################
 // Clipboard stuff
 // ############################
