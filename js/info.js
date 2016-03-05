@@ -139,12 +139,6 @@ find_goto: false,
 find_replace: false
 }
 
-dn.default_custom_props = {
-newline: "detect",
-tabs: "detect",
-aceMode: "detect"
-};
-
 dn.impersonal_settings_keys = [
 "wordWrap",
 "wordWrapAt",

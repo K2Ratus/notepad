@@ -76,8 +76,7 @@ dn.SaveRequest = function(parts){
 
     var self = this;
     this._pr = until_success(function(succ, fail){
-        return Promise.resolve(dn.pr_auth)
-                      .then(dn.pr_file_loaded.chained.bind(dn.pr_file_loaded))
+        return Promise.all([dn.pr_auth, dn.pr_file_loaded])
                       .then(self._throw_if_not_desired.bind(self))
                       .then(dn.request_save(self._parts))
                       .then(self._on_completion.bind(self))

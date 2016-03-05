@@ -1,6 +1,23 @@
 "use strict";
 
-dn.do_print = function(){
+dn.do_print = (function(){
+
+
+ var line_to_html = function (n){
+    var printLayer = Object.create(ace.require('ace/layer/text').Text.prototype); 
+    var tokens  = dn.editor.getSession().getTokens(n);
+    var html = [];
+    var screenColumn = 0;
+    for (var i = 0; i < tokens.length; i++) {
+       var token = tokens[i];
+       var value = token.value.replace(/\t/g,'   ');//TODO:deal with tabs properly
+       if(value)
+           printLayer.$renderToken(html, 0, token, value);
+    }
+    return html.join('').replace(/&#160;/g,' ');
+}
+
+return function(){
     var content = dn.editor.session.doc.getAllLines();
     var html = Array(content.length);
 
@@ -22,16 +39,5 @@ dn.do_print = function(){
     return false;
 }
 
-dn.line_to_html = function (n){
-    var printLayer = Object.create(ace.require('ace/layer/text').Text.prototype); 
-    var tokens  = dn.editor.getSession().getTokens(n);
-    var html = [];
-    var screenColumn = 0;
-    for (var i = 0; i < tokens.length; i++) {
-       var token = tokens[i];
-       var value = token.value.replace(/\t/g,'   ');//TODO:deal with tabs properly
-       if(value)
-           printLayer.$renderToken(html, 0, token, value);
-    }
-    return html.join('').replace(/&#160;/g,' ');
-}
+
+})()

@@ -30,31 +30,13 @@ dn.status = {
     // -1: failure, and abandonded further attempts (never used)
     save_body: 1, 
     save_title: 1,
-    save_other: 1
+    save_other: 1,
+
+    unsaved_changes: 0 // 1 true, 0 false
 }
 
-dn.the_file = {
-    file_id: null,
-    folder_id: null,
-    title: null,
-    description: '',
-    ext: '',
-    loaded_mime_type: '',
-    new_line_detected: 'none', //'windows', 'unix','mixed', or 'none'
-    tab_detected: {val: 'none'},
-    is_pristine: true, //true while the document has no unsaved changes (set to true when we request the save not when we get confirmation, but if there is a save error it will be reverted to false).
-    mime_type: '',
-    is_saving: false,
-    data_to_save: {body: null, title: null, description: null}, //holds the values until confirmation of success for each
-    generation_to_save: {body: 0, title: 0, description: 0},//when saves return they check their this.description etc. against here and clear data_to_save if they match
-    is_read_only: false,
-    is_shared: false,
-    is_brand_new: false, // true from the point of creating a new document till the point we get confirmation of a successful save
-    is_reading_file_object: false, //this is used on drag and drop,
-    custom_props: {}, //these are the props potentially stored on the file using the custom properties API
-    custom_prop_exists: {}, //each of the custom props that actually exsits for the file will have an entry in this obj, with the key being the property and the value being true.
-    saving_title_count: 0 //tracks the number of active save request with just the title.  Whatever the resp, this number is decremented,
-};
+dn.the_file = new dn.FileModel();
+
 dn.change_line_history = [];
 dn.last_change = null;
 dn.change_line_classes =(function(rootStr,trueN,factor){
@@ -69,145 +51,18 @@ dn.change_line_classes_rm =(function(rootStr,trueN,factor){
         x.push(rootStr + i);
     return x;
 })('recent_line_rm',8,5)
+
+
 dn.el = dn.el || {};
-
-/* ################################################################################################################
-
-    [Some Notes on settings in Drive Notepad]
-
-    There are two kinds of settings: per-user settings and per-file settings.
-    
-    The user settings are stored in dn.g_settings. When the page is loaded this is a fake Google Realtime model, 
-    which uses a mixture of default values and values read from localStorage.  At some point after authenticating 
-    the g_settings will become the true Google Realtime model. Whenever a value in g_settings is changed
-     dn.setting_changed is called with the appropriate paramaters, this is true right from when the page loads, 
-     i.e. the first set of values trigger the SettingsChanged, but after that only modifications will trigger a change
-      (regardless of whether g_settings is the true model or not).  Use the .set() and .get() methods on the dn.g_settings.
-    
-    The per-file settings are stored in dn.the_file.custom_props.  When the page is loaded they are initialised with 
-    default values.  Then, if we have opened an existing file, at some point they will be updated with the true values. 
-     These settings are *not* a realtime model, rather they are Custom Properties (there's an API for it).  Again, as
-      with the per-user settings, whenever the file settings are changed they trigger a call to PropertyUpdated.  Note
-       that since this is not backed by a realtime model we won't get changes on the server push to the browser, only
-        local changes will be observed.  The per-file settings are shared across anyone who has read and/or write access 
-        to the file in question. Note that if the default value is chosen the setting value is simply removed from the file.
-          Use the dn.set_property() function to set values and read values straight from the dn.the_file.custom_props object.
-    
-    For each key "Something" in customProps there is a function dn.apply_something_choice() which will read the per-user 
-    and/or the per-file settings (as appropriate) and use the combined result to apply the chosen setting to the editor, 
-    additionally the function will render the file settings tab and/or the general settings tab. As part of this function 
-    there will likely be a call to dn.detect_something, which will run some fairly simple heuristic over the current file.
-      [TODO: may want to cache this, as it can end up getting called several times during loading and possibly elsewhere.] 
-      [TODO: may want to have an ApplySomethingChoice for all settings not just those that are covered by customProps.]
-
-################################################################################################################## */
-
 
 dn.show_user_info = function(a){
     dn.user_info = a.result;
     dn.el.user_name.textContent = a.result.name;
 }
 
-// ############################
-// Sharing stuff
-// ############################
 
-dn.do_share = function(){
-    if(!dn.the_file.file_id){
-        dn.show_error("You cannot view/modify the sharing settings until you have saved the file.")
-        return false;
-    }
-    dn.status.file_sharing = -1; //TODO: see SO question about no callback for share dialog...how are we supposed to know when it's closed and what happened?
-    dn.the_file.is_shared = 0;
-    dn.show_status();
-
-    if(dn.el.share_dialog){
-        dn.do_share_sub();
-    } else {
-        gapi.load('drive-share', function(){
-            dn.el.share_dialog = new gapi.drive.share.ShareClient(dn.client_id);
-            dn.do_share_sub();
-        });
-    }
-
-}
-
-dn.do_share_sub = function(){
-    dn.el.share_dialog.setItemIds([dn.the_file.file_id]);
-    dn.el.share_dialog.setOAuthToken(gapi.auth.getToken().access_token);
-    dn.el.share_dialog.showSettingsDialog();
-}
-
-// ############################
-// Newline stuff
-// ############################
-
-dn.detect_new_line = function(str){
-    var first_n = str.indexOf("\n");
-    if(first_n == -1)
-        return dn.show_newline_status("none");
-
-    var has_rn = str.indexOf("\r\n") != -1;
-    var has_solo_n = str.match(/[^\r]\n/) ? true : false;
-    
-    if(has_rn && !has_solo_n)
-        return  dn.the_file.new_line_detected = dn.show_newline_status("windows");
-    if(has_solo_n && !has_rn)
-        return  dn.the_file.new_line_detected = dn.show_newline_status("unix")
-    
-    return  dn.the_file.new_line_detected = dn.show_newline_status("mixed");
-}
-
-dn.apply_newline_choice = function(str){
-    var newlineDefault = dn.g_settings.get('newLineDefault');
-    
-    if(newlineDefault == "windows"){
-        dn.el.newline_menu_windows.classList.add('selected')
-        dn.el.newline_menu_unix.classList.remove('selected');
-    }else{//newlineDefault should be unix
-        dn.el.newline_menu_unix.classList.add('selected')
-        dn.el.newline_menu_windows.classList.remove('selected');
-    }             
-                
-   if(typeof str == "string")
-       dn.detect_new_line(str); //Note that it only makes sense to detect new line on downloaded content
-   
-   dn.show_newline_status(dn.the_file.new_line_detected); //if default changes after load or we have a new file we need this.
-   
-    dn.el.file_newline_detect.classList.remove('selected');
-    dn.el.file_newline_windows.classList.remove('selected');
-    dn.el.file_newline_unix.classList.remove('selected');
-   if(dn.the_file.custom_props.newline == "detect"){
-        if(dn.the_file.new_line_detected == "windows" || dn.the_file.new_line_detected == "unix")
-            dn.editor.session.setNewLineMode(dn.the_file.new_line_detected);
-        else
-            dn.editor.session.setNewLineMode(newlineDefault);    
-        dn.el.file_newline_detect.classList.add('selected');
-    }else{
-        dn.editor.session.setNewLineMode(dn.the_file.custom_props.newline);
-            if(dn.the_file.custom_props.newline == "windows")
-                dn.el.file_newline_windows.classList.add('selected');
-            else
-                dn.el.file_newline_unix.classList.add('selected');            
-    }    
-}
-
-dn.show_newline_status = function(statusStr){
-    var str;
-    switch(statusStr){
-        case 'none':
-            str =  "no newlines detected, default is " + dn.g_settings.get("newLineDefault") + "-like";
-            break;
-        case 'mixed':
-            str = "mixture of newlines detected, default is " + dn.g_settings.get("newLineDefault") + "-like";
-            break;
-        default:
-            str = "detected " + statusStr + "-like newlines";
-    }
-    
-    dn.el.file_newline_info.textContent = "(" + str +")";
-    
-    return statusStr;
+dn.set_editor_newline = function(){
+    dn.editor.session.setNewLineMode(dn.the_file.properties_chosen.newline);
 }
 
 
@@ -475,7 +330,7 @@ dn.show_status = function(){
             extra.push("shared");
         if(dn.status.file_sharing == -1)
             extra.push("sharing status unknown");
-        if(!dn.the_file.is_pristine)
+        if(dn.status.unsaved_changes)
             extra.push("unsaved changes");
         if(dn.status.save_body == 0){
             extra.push("saving document"); // this means that *at least* the body is being saved, possibly more
@@ -543,6 +398,7 @@ dn.set_drive_link_to_folder = function(){
                 : 'https://drive.google.com';
     for(var ii=0; ii<els.length; ii++)
         els[ii].href = href;
+    // TODO: set new links to have this folder too
 }
 
 
@@ -689,14 +545,16 @@ dn.settings_changed = function(e){
                 }
                 break;
             case "newLineDefault":
-                dn.apply_newline_choice();
+                if(dn.the_file.loaded_body)
+                    dn.the_file.compute_newline();
                 break;
             case "historyRemovedIsExpanded":
                 dn.revision_setis_expaned(new_value);
                 break;
             case "softTabN":
-            case "tabIsHard":          
-                dn.apply_tab_choice(); 
+            case "tabIsHard":        
+                if(dn.the_file.loaded_body)
+                    dn.the_file.compute_newline();
                 break;
             case 'pane_open':
                 dn.toggle_widget(new_value)
@@ -769,268 +627,37 @@ dn.font_size_increment_click = function(){
 }
 
 
+dn.save_scroll_line = function(){
+    dn.patch_property(dn.the_file.file_id, 
+                    "ScrollToLine",
+                    dn.get_scroll_line(),
+                    'PUBLIC',null);
+}
 
-// ############################
-// Tab stuff
-// ############################
-// Note that there is a whitespace extension for ace but it doesn't look that mature and we actually have slightly different requirements here.
-
-dn.detect_tab = function(str){    
-    dn.the_file.tab_detected = (function(){ //no need to use a self-executing function here, just lazy coding....
-        //This function returns an object with a field "val" that takes one of the folling values:
-        // none: no indents detected at all
-        // mixture: no strong bias in favour of spaces or tabs
-        // tab: defintely tabs
-        // spaces: definitely space. In this case extra fields are provied....
-        //   n: number of spaces
-        //   isDefault: true if the default nSpaces value was used as part of the decision making process
-        //   threshold: this takes one of three values:
-        //          strong: the largest n over threshold was used
-        //          weak: no n was over the strong threshold, but the default n was over the weak threshold
-        //          failed: no idea what n is, so just use default
-    
-        var lines = dn.editor.session.getLines(0, 1000);    
-        var indents = lines.map(function(str){
-                        return str.match(/^\s*/)[0];
-                      });
-        indents = indents.filter(function(str){return str !== '';});
-        
-        if(!indents.length)
-            return dn.show_tab_status({val: "none"});
-            
-        //TODO: if first thousand lines happen to have few indents it may be worth checking further down.
-        
-        var stats = indents.reduce(function(stats,str){
-           if(str.indexOf('\t') > -1)
-              if(str.indexOf(' ') > -1)
-                stats.nWithMixture++;
-              else
-                stats.nWithOnlyTabs++;
-           else
-               stats.spaceHist[str.length] = (stats.spaceHist[str.length] || 0) + 1;   
-            return stats;
-        },{nWithOnlyTabs: 0,spaceHist: [],nWithMixture: 0});
-            
-        stats.nSamp = indents.length;
-        stats.nWithOnlySpaces = stats.nSamp - stats.nWithMixture - stats.nWithOnlyTabs;
-        
-        console.dir(stats);
-            
-        if(stats.nWithOnlyTabs/stats.nSamp >= dn.detect_tabs_tabs_frac)
-            return dn.show_tab_status({val: "tab"});
-    
-        if(stats.nWithOnlySpaces/stats.nSamp < dn.detect_tabs_spaces_frac)
-            return dn.show_tab_status({val: "mixture"});
-    
-        stats.spaceModHist = [];
-        var s;
-        for(s=dn.min_soft_tab_n;s<=dn.max_soft_tab_n;s++){
-            var m = 0;    
-            for(var i=s;i<stats.spaceHist.length;i+=s)
-                m += stats.spaceHist[i] !== undefined ? stats.spaceHist[i] : 0;
-            stats.spaceModHist[s] = m;
-        }
-        
-        for(s=dn.max_soft_tab_n;s>=dn.min_soft_tab_n;s--)
-            if(stats.spaceModHist[s]/stats.nWithOnlySpaces > dn.detect_tabs_n_spaces_frac)
-                break;
-                
-        if(s < dn.min_soft_tab_n){
-            // nothing was over threshold, but rather than give up lets use a weaker threshold on the default space count
-            var defaultNSpaces = dn.g_settings.get('softTabN');    
-            if(stats.spaceModHist[defaultNSpaces]/stats.nWithOnlySpaces > dn.detect_tabs_n_spaces_frac_for_default)
-                return dn.show_tab_status({val: 'spaces', n: defaultNSpaces, isDefault: true, threshold: "weak"});
-            else
-                return dn.show_tab_status({val: "spaces", n: defaultNSpaces, isDefault: true, threshold: "failed"});
-        }else{
-            // s is the index of the last element in the spaceModHist array which is over threshold
-                return dn.show_tab_status({val: "spaces", n: s, isDefault: false, threshold: "strong"});
-        }
-    })();
+dn.get_scroll_line = function(){
+    return  dn.editor.getSession().screenToDocumentPosition(dn.editor.renderer.getScrollTopRow(),0).row;
 }
 
 
-dn.show_tab_status = function(d){
-    var str;
-    var defaultStr = "";
-    if(dn.g_settings.get("tabIsHard"))
-        defaultStr = "hard tabs";
-    else
-        defaultStr = dn.g_settings.get("softTabN") + " spaces";
-    
-    switch(d.val){
-        case 'none':
-            str = "no indentations detected, default is " + defaultStr;
-            break;
-        case 'mixture':
-            str = "detected mixture of tabs, default is " + defaultStr;
-            break;
-        case 'tab':
-            str = "hard tab indentation detected";
-            break;
-        case "spaces":
-            switch(d.threshold){
-                case 'strong':
-                    str = "detected soft-tabs of " + d.n + " spaces";
-                    break;
-                case 'weak':
-                    str = "detected close match to default of " + d.n + " spaces";
-                    break;
-                case 'failed':
-                    str = "detected soft-tabs, assuming default " + d.n + " spaces";
-                    break;
-            }
-    }
-    
-    dn.el.file_tab_info.textContent = "(" + str +")";
-    return d;
-}
+dn.set_editor_tabs = function(){
+    var val = dn.the_file.properties_chosen.tabs;
 
-dn.apply_tab_choice = function(){
-    var defaultTabIsHard = dn.g_settings.get('tabIsHard');
-    var defaultSoftTabN = dn.g_settings.get('softTabN');               
-                
-    var d;
-    var isHard;
-    var nSpaces;
-    var isDetected;
-    
-    dn.detect_tab();   
-    if(dn.the_file.custom_props.tabs == "detect"){
-        d = dn.the_file.tab_detected;             
-        isDetected = true
-    }else{
-        try{
-            d = JSON.parse(dn.the_file.custom_props.tabs);
-        }catch(err){
-            d = {val: "none"};
-        }
-    }
-    switch(d.val){
-        case 'none':
-        case 'mixture':
-            isHard = defaultTabIsHard;
-            nSpaces = defaultSoftTabN;
-            break;
-        case 'tab':
-            isHard = true;
-            nSpaces = d.n || defaultSoftTabN;
-            break;
-        case 'spaces':
-            isHard = false;
-            nSpaces = d.n;
-    }
-    
-    
-    if(isHard){
+    if(val.val === "hard"){
         dn.editor.session.setUseSoftTabs(false);
     }else{
         dn.editor.session.setUseSoftTabs(true);
-        dn.editor.session.setTabSize(nSpaces);
-    }
-    
-    dn.el.tab_soft_text.textContent = defaultSoftTabN;
-    if(defaultTabIsHard){
-        dn.el.tab_hard.classList.add('selected');
-        dn.el.tab_soft.classList.remove('selected');
-    }else{
-        dn.el.tab_soft.classList.add('selected');
-        dn.el.tab_hard.classList.remove('selected');
-    }
-    
-    
-    dn.el.file_tab_detect.classList.remove('selected');
-    dn.el.file_tab_hard.classList.remove('selected');
-    dn.el.file_tab_soft.classList.remove('selected');
-    if(isDetected){
-        dn.el.file_tab_detect.classList.add('selected');
-        dn.el.file_tab_soft_text.textContent = nSpaces;
-    }else{
-        if(d.val == "tab")
-            dn.el.file_tab_hard.classList.add('selected');
-        else
-            dn.el.file_tab_soft.classList.add('selected');
-        dn.el.file_tab_soft_text.textContent = nSpaces;
-    }     
-
-
-}
-
-dn.set_file_tabs_to_soft_or_hard = function(val,delta){
-    var f = dn.the_file;
-    var current = f.custom_props.tabs;
-    if(current == "detect"){
-        current = f.tab_detected;
-        if(current.val == 'none' || current.val == "mixture")
-            current = { val: dn.g_settings.get('tabIsHard') ? "tab" : "spaces",
-                        n: dn.g_settings.get('softTabN')};
-    }else{
-        try{
-            current = JSON.parse(current);
-        }catch(err){
-            console.log("JSON.parse failed in SetFileTabsToSoftOrHard with current=" + current)
-            return;
-        }
-    }
-    var newT = {val: val, n: current.n + delta};
-    dn.set_property("tabs",JSON.stringify(newT));
-}
-// ############################
-// Syntax stuff
-// ############################
-
-dn.show_syntax_status = function(d){
-    var str = "detected " + d.syntax + " from file extension";
-    //TODO: if we improve upon DetectSyntax will need to add stuff here
-    dn.el.file_ace_mode_info.textContent = "(" + str + ")";
-    return d.syntax;
-}
-dn.detect_syntax = function(){
-    //TODO: improve upon this
-    var title = dn.the_file.title || "untitled.txt";
-    var mode  = require("ace/ext/modelist").getModeForPath(title);
-    dn.the_file.syntax_detected = mode.caption;
-    dn.show_syntax_status({syntax: dn.the_file.syntax_detected});
-    dn.the_file.syntax_detected = mode;
-}
-
-dn.apply_syntax_choice = function(){
-    dn.detect_syntax();
-    if(dn.the_file.custom_props["aceMode"] == "detect"){
-        dn.set_syntax(dn.the_file.syntax_detected);
-        dn.el.file_ace_mode_detect.classList.add('selected');
-        dn.syntax_drop_down.SetSelected(false);
-    }else{
-        dn.set_syntax(dn.the_file.custom_props["aceMode"])
-        dn.el.file_ace_mode_detect.classList.remove('selected');
-        dn.syntax_drop_down.SetSelected(true);
+        dn.editor.session.setTabSize(val.n);
     }
 }
 
-dn.set_syntax = function(val){
-    var modesArray = require("ace/ext/modelist").modes;
-    var mode;
-    var ind;
-    
-    if(typeof val == "number"){
-        //val is index into mdoes array
-        mode = modesArray[val].mode;
-        ind = val;
-    }else if(modesArray.indexOf(val) > -1){
-        //val is an element of the modelist array
-        mode = val.mode;
-        ind = modesArray.indexOf(val);
-    }else{
-        //val is caption of mode in modes array
-        for(ind=0;ind<modesArray.length;ind++)if(modesArray[ind].caption == val){
-            mode = modesArray[ind].mode;
-            break;
-        }    
-    }
-    
-    if(dn.syntax_drop_down)
-        dn.syntax_drop_down.SetInd(ind,true);
-    dn.editor.getSession().setMode(mode);
+dn.set_editor_syntax = function(mode_str){
+    var modes_array = require("ace/ext/modelist").modes;
+
+    for(var ii=0; ii<modes_array.length;ii++)if(modes_array[ii].caption === mode_str){
+        dn.editor.getSession().setMode(modes_array[ii].mode);
+        return;
+    }    
+    dn.show_error("unrecognised syntax mode requested");
 }
 
 dn.create_theme_menu = function(){
@@ -1045,328 +672,7 @@ dn.create_theme_menu = function(){
     return theme_drop_down;
 }
 
-dn.create_syntax_menu = function(){
-    var modes = require("ace/ext/modelist").modes;
-    
-    var syntax_drop_down = new DropDown(modes.map(function(m){return m.caption;}));
-    
-    syntax_drop_down.addEventListener("click", dn.read_only_bail);
-    
-    syntax_drop_down.addEventListener("click",function(){
-        dn.set_property("aceMode",syntax_drop_down.GetVal());
-    })
-    syntax_drop_down.addEventListener("change",function(){
-        dn.set_property("aceMode",syntax_drop_down.GetVal());
-    })
-    syntax_drop_down.addEventListener("blur",function(){
-       dn.focus_editor();
-    })
-    return syntax_drop_down;
-}
 
-// ############################
-// File details stuff
-// ############################
-dn.read_only_bail = function(e){
-    if(dn.the_file.is_read_only){
-        dn.show_error("The file is read-only, so you cannot change its properties.");
-        e.stopImmediatePropagation();
-       dn.focus_editor();
-    }
-}
-dn.create_file_details_tool = function(){
-    var els = [dn.el.details_title_text,
-               dn.el.details_description_text,
-               dn.el.file_newline_detect,
-               dn.el.file_newline_windows,
-               dn.el.file_newline_unix,
-               dn.el.file_tab_detect,
-               dn.el.file_tab_soft,
-               dn.el.file_tab_hard,
-               dn.el.file_ace_mode_detect];
-    for(var ii=0; ii< els.length; ii++)
-        els[ii].addEventListener("click",dn.read_only_bail); //If file is read only, ReadOnlyBail will prevent the click handlers below from running.
-        
-    //Title change stuff
-    dn.el.details_title_text.addEventListener('click', function(){                
-            dn.el.details_title_text.style.display = 'none';
-            dn.el.details_title_input.style.display = '';
-            dn.el.details_title_input.focus();
-            dn.el.details_title_input.select();
-    });
-    dn.el.details_title_input.addEventListener("blur", function(){
-            dn.el.details_title_input.style.display = 'none';
-            dn.el.details_title_text.style.display = '';
-            var new_val = dn.el.details_title_input.value;
-            if(new_val == dn.the_file.title)
-                return;
-            dn.the_file.title = new_val
-            dn.show_file_title(); //includes showStatus
-            dn.apply_syntax_choice();
-            dn.save_file_title();
-           dn.focus_editor();
-    });
-    dn.el.details_title_input.addEventListener('keyup', function(e){
-            if(e.which == WHICH.ENTER)
-                dn.el.details_title_input.trigger('blur');
-    });
-    dn.el.details_title_input.addEventListener('keydown', function(e){
-        if(e.which == WHICH.ESC){
-            dn.el.details_title_input.value = dn.the_file.title;
-            dn.el.details_title_input.trigger('blur');
-            dn.ignore_escape = true; //stops ToggleWidget
-        }
-    });
-
-    // File action buttons stuff
-    dn.el.button_save.addEventListener('click', dn.do_save);
-    dn.el.button_print.addEventListener('click', dn.do_print);
-    dn.el.button_share.addEventListener('click', dn.do_share);
-    dn.el.button_history.addEventListener('click', dn.start_revisions_worker);
-
-    // Description stuff
-    dn.el.details_description_text.addEventListener('click', function(){            
-            dn.el.details_description_text.style.display = 'none';
-            dn.el.details_description_input.style.display = '';
-            dn.el.details_description_input.focus();
-    });
-    dn.el.details_description_input.addEventListener("blur", function(){
-            dn.el.details_description_input.style.display = 'none';
-            dn.el.details_description_text.style.display = '';
-            var new_val = dn.el.details_description_input.value;
-            if(dn.the_file.description === new_val)
-                return;
-            dn.the_file.description = new_val;
-            dn.show_description();
-            dn.save_file_description();
-           dn.focus_editor();
-    });
-    dn.el.details_description_input.addEventListener('keydown',function(e){
-            if(e.which == WHICH.ESC){
-                dn.el.details_description_input.value = dn.the_file.description;
-                dn.el.details_description_input.trigger('blur');
-                dn.ignore_escape = true;
-            }
-    });
-        
-    // File custom props stuff
-    dn.el.file_newline_detect.addEventListener('click', function(){
-         dn.set_property("newline","detect");
-        dn.focus_editor();      
-    });
-    dn.el.file_newline_windows.addEventListener('click', function(){
-         dn.set_property("newline","windows");
-        dn.focus_editor();
-        });
-    dn.el.file_newline_unix.addEventListener('click', function(){
-         dn.set_property("newline","unix");
-        dn.focus_editor();
-        });
-    dn.el.file_tab_detect.classList.add('selected');
-    dn.el.file_tab_detect.addEventListener('click', function(){
-        dn.set_property("tabs","detect");
-       dn.focus_editor();
-    });
-    dn.el.file_tab_soft.addEventListener('click', function(){
-        dn.set_file_tabs_to_soft_or_hard("spaces",0);
-       dn.focus_editor();
-    });
-    document.getElementById('file_tab_soft_dec').addEventListener('click', function(){
-        dn.set_file_tabs_to_soft_or_hard("spaces",-1);
-       dn.focus_editor();
-    });
-    document.getElementById('file_tab_soft_inc').addEventListener('click', function(){
-        dn.set_file_tabs_to_soft_or_hard("spaces",+1);
-       dn.focus_editor();
-    })
-    dn.el.file_tab_hard.addEventListener('click', function(){
-        dn.set_file_tabs_to_soft_or_hard("tab",0);
-       dn.focus_editor();
-    });
-    dn.el.file_ace_mode_detect.addEventListener('click', function(){
-       dn.set_property("aceMode","detect"); 
-    });
-}
-
-dn.save_file_description = function(){
-    if(dn.the_file.is_brand_new){
-        dn.save_new_file(); 
-        return;
-    }
-    
-    dn.save_file(dn.the_file.file_id, {description: dn.the_file.description}, undefined, 
-                $.proxy(dn.save_done,{description: ++dn.the_file.generation_to_save.description}))
-    dn.show_status();
-    return;
-    
-}
-
-dn.save_file_title = function(){
-    if(dn.the_file.is_brand_new){
-        dn.save_new_file(); 
-        return;
-    }
-    //TODO: mime-type IMPORTANT!
-
-    dn.save_file(dn.the_file.file_id, {title: dn.the_file.title}, undefined, 
-                $.proxy(dn.save_done,{title: ++dn.the_file.generation_to_save.title}))
-    dn.show_status();    
-}
-
-dn.show_file_title = function(){
-    dn.el.details_title_text.textContent = 'Title: ' + dn.the_file.title;
-    dn.el.details_title_input.value = dn.the_file.title;
-    document.title = (dn.the_file.is_pristine ? "" : "*") + dn.the_file.title;
-    dn.show_status();
-}
-
-dn.show_description = function(){
-    text_multi(dn.el.details_description_text, 'Description: ' + dn.the_file.description,true);
-    dn.el.details_description_input.value = dn.the_file.description;
-}
-
-// ############################
-// Save stuff
-// ############################
-
-
-/*
-dn.save_content = function(){
-    if(dn.the_file.is_brand_new){
-        dn.save_new_file(); 
-        return false;
-    }
-    
-    if(!dn.the_file.is_pristine){
-        dn.the_file.data_to_save.body = dn.editor.getSession().getValue();
-        dn.the_file.generation_to_save.body++;
-        dn.el.widget_pending.style.display = '';
-        dn.the_file.is_saving = true;
-        dn.the_file.is_pristine = true;
-    }
-    
-    dn.show_file_title(); //includes a showstatus calls
-    dn.do_save();
-    return false;
-}*/
-
-dn.do_save = function (e){
-    e.preventDefault(); //needed for when called as shortcut
-
-    if(dn.the_file.is_read_only){
-        dn.show_error("Cannot save read-only file.");
-        return;
-    }
-
-    dn.save({body: dn.editor.getSession().getValue()});
-
-    /*
-    if(!(dn.the_file.data_to_save.body || dn.the_file.data_to_save.title || dn.the_file.data_to_save.description)){
-        dn.show_error("No changes since last save.");
-        return false;
-    }
-
-    var gens = {};
-    var body, meta;
-    if(dn.the_file.data_to_save.body){
-        body = dn.the_file.data_to_save.body;
-        gens.body = dn.the_file.generation_to_save.body;
-    }
-    if(dn.the_file.data_to_save.title || dn.the_file.data_to_save.description){
-        meta = {};
-        if(dn.the_file.data_to_save.title){
-            meta.title = dn.the_file.data_to_save.title;
-            gens.title = dn.the_file.generation_to_save.title;
-        }
-        if(dn.the_file.data_to_save.description){
-            meta.description = dn.the_file.data_to_save.description; 
-            gens.description = dn.the_file.generation_to_save.description;
-        }
-    }
-    dn.save_file(dn.the_file.file_id, meta, body, $.proxy(dn.save_done,gens))
-    */
-}
-/*
-dn.save_done = function(resp){
-    if(resp.error){
-        if(resp.error.code == 401){
-            dn.reauth_auto(dn.do_save); //will make use of dn.the_file.data_to_save and generation_to_save once auth is done.
-        }else{
-            var failures = []
-            if(this.body && this.body == dn.the_file.generation_to_save.body){
-                failures.push("body");
-                dn.the_file.is_saving = false;
-                dn.the_file.is_pristine = false;
-                dn.show_file_title();
-                dn.el.widget_pending.style.display = 'none';
-                dn.the_file.data_to_save.body = null;
-            }
-            if(this.title && this.title == dn.the_file.generation_to_save.title)
-                failures.push("title");
-            if(this.description && this.description == dn.the_file.generation_to_save.description)
-                failures.push("description");
-            
-            if(failures.length){//it's possible that all parts of the save request have since been superceded, so we can ignore this failure
-                dn.show_error("Failed to save " +  oxford_comma(failures) + ". Error #" + resp.error.code + (resp.error.message? "\n" + resp.error.message : ""));
-                console.dir(resp);
-            }            
-        }
-    }else{//success...
-        if(this.body && this.body == dn.the_file.generation_to_save.body){
-            dn.the_file.is_saving = false;
-            dn.el.widget_pending.style.display = 'none';
-            dn.the_file.ext = resp.fileExtension;
-            dn.g_settings.set('ext',resp.fileExtension);
-            dn.the_file.data_to_save.body = null;
-            
-            if(dn.the_file.is_brand_new)
-                dn.saved_new_file(resp); 
-        }
-        if(this.title && this.title == dn.the_file.generation_to_save.title){
-            dn.the_file.data_to_save.title = null;
-        }
-        if(this.description && this.description == dn.the_file.generation_to_save.description){
-            dn.the_file.data_to_save.description = null;
-        }
-
-    }
-    dn.show_status();
-}
-
-dn.save_file = function (fileId, fileMetadata, fileText, callback) {
-    //if fileId is null then a new file is created (can set fileMetadata.parentNodes = [parentFolderId])
-    //fileMetadata or fileText can be null.
-    //See https://developers.google.com/drive/v2/reference/files/insert - Request Body for valid metaData.
-
-    //build a multipart message body
-    var boundary = dn.make_boundary();
-    var delimiter = "\r\n--" + boundary + "\r\n";
-    var close_delim = "\r\n--" + boundary + "--";
-
-    var messageBody = delimiter +
-                'Content-Type: application/json\r\n' +
-                '\r\n' + JSON.stringify(fileMetadata ? fileMetadata : {}); //note than in the multipart message upload you must provide some json metadata, even if it's empty.
-
-    if(fileText){ 
-        messageBody += delimiter +
-                'Content-Type: application/octet-stream\r\n' +
-                'Content-Transfer-Encoding: base64\r\n' +
-                '\r\n' + btoa(unescape(encodeURIComponent(fileText))); //javascript strings are utf16 encoded, but btoa only accespts ASCII, somehow the two extra functions here smooth over this problem and produce the expected result at the server end.
-    }
-    messageBody += close_delim;
-
-    var request = gapi.client.request({
-        path: '/upload/drive/v2/files/' + (fileId ? fileId : ""),
-        method: (fileId? 'PUT' : 'POST'),
-        params: {'uploadType': 'multipart'},
-        headers: {'Content-Type': 'multipart/mixed; boundary="' + boundary + '"'} ,
-        body:   messageBody}
-        );
-
-    request.execute(callback);
-}
-
-*/
 // ############################
 // Clipboard stuff
 // ############################
@@ -1451,66 +757,6 @@ dn.create_clipboard_tool = function(){
 
 
 // ############################
-// New file stuff
-// ############################
-
-dn.do_new = function(){
-    //TODO: this could actually just be a link, updated in settingschanged-ext
-    var base = window.location.href.match(/^https?:\/\/[\w-.]*\/\w*/)[0];
-    window.open(base + "?state=" + JSON.stringify({
-                action: "create",
-                folderId: dn.the_file.folder_id ? dn.the_file.folder_id : '',
-                ext: dn.g_settings.get('ext')}),"_blank");
-    return false;
-}
-
-dn.create_new_tool = function(){
-    dn.el.menu_new.addEventListener('click', dn.do_new);
-}
-
-dn.create_file = function(){
-    dn.apply_syntax_choice();
-    dn.the_file.is_brand_new = true;
-    dn.show_file_title();
-    dn.show_description();
-    dn.apply_newline_choice();
-    dn.apply_tab_choice();
-    dn.g_settings.set("pane","pane_file");  
-}
-
-dn.guess_mime_type = function(){
-    // we set the mimeType on new files, it's too complicated to try and guess it otherwise (at least for now)
-    if(dn.the_file.loaded_mime_type)
-        return dn.the_file.loaded_mime_type;
-    var plain = "text/plain";
-    var ext = dn.the_file.title.match(/\.[0-9a-z]+$/i);
-
-    if(!ext)
-        return plain;
-    else
-        ext = ext[0].substr(1);
-    
-    return (ext in dn.ext_to_mime_type)? dn.ext_to_mime_type[ext] : plain;
-
-}
-
-
-// ############################
-// Scrolling stuff
-// ############################
-
-dn.save_scroll_line = function(){
-    dn.patch_property(dn.the_file.file_id, 
-                    "ScrollToLine",
-                    dn.get_scroll_line(),
-                    'PUBLIC',null);
-}
-
-dn.get_scroll_line = function(){
-    return  dn.editor.getSession().screenToDocumentPosition(dn.editor.renderer.getScrollTopRow(),0).row;
-}
-
-// ############################
 // Load stuff
 // ############################
 
@@ -1521,18 +767,20 @@ dn.show_file_meta = function(resp) {
     if (resp.error)
         throw Error(resp.error);
     dn.the_file.file_id = resp.result.id;
-    dn.the_file.title = resp.result.name;
-    dn.the_file.description = resp.result.description || '';
-    dn.show_description();
-    dn.the_file.ext = resp.result.fileExtension
-    dn.the_file.is_read_only = !resp.result.capabilities.canEdit;
-    dn.the_file.is_shared = resp.result.shared; 
-    dn.the_file.loaded_mime_type = resp.result.mimeType;
+    dn.the_file.set({title: resp.result.name,
+                     description: resp.result.description || '',
+                     is_read_only: !resp.result.capabilities.canEdit,
+                     is_shared: resp.result.shared});
+    if(resp.result.properties.aceMode !== undefined)
+        dn.the_file.set({syntax: resp.result.properties.aceMode})
+    if(resp.result.properties.newline !== undefined)
+        dn.the_file.set({newline: resp.result.properties.newline})
+    // TODO: set tabs
     if(resp.result.parents && resp.result.parents.length){
         dn.the_file.folder_id = resp.result.parents[0];
         dn.set_drive_link_to_folder();
     }
-    dn.show_file_title();
+
     // set the url to match the file
     history.replaceState({}, dn.the_file.title, '//' + location.host + location.pathname + "?"
              + "state=" + JSON.stringify({action: "open", ids: [dn.the_file.file_id]}));
@@ -1545,11 +793,9 @@ dn.show_file_meta = function(resp) {
 
 dn.show_file_body = function(resp){
     dn.setting_session_value = true;
+    dn.the_file.loaded_body = resp.body; //this gets used for newline and tab detection, i.e. we don't want the editor to mangle it in any way
     dn.editor.session.setValue(resp.body);
     dn.setting_session_value = false;
-    dn.apply_newline_choice(resp.body);
-    dn.apply_syntax_choice();
-    dn.apply_tab_choice(); 
     dn.status.file_body = 1;
     dn.show_status();
 }
@@ -1565,8 +811,8 @@ dn.on_change = function(e){
     if(!e.start || !e.end || dn.setting_session_value)
         return;
         
-    if(dn.the_file.is_pristine){
-        dn.the_file.is_pristine = false;
+    if(!dn.status.unsaved_changes){
+        dn.status.unsaved_changes = true;
         dn.show_file_title();
         dn.show_status();
     }
@@ -1638,93 +884,10 @@ dn.on_change = function(e){
 } 
 
 dn.query_unload = function(){
-    if(!dn.the_file.is_pristine)
+    if(dn.status.unsaved_changes)
         return "If you leave the page now you will loose the unsaved " + (dn.the_file.is_brand_new ? "new " : "changes to ") + "file '" + dn.the_file.title + "'."
 }
 
-
-// ############################
-// Properties stuff
-// ############################
-dn.property_updated = function(propKey,new_val){
-    console.log("[file custom property]  " + propKey + ": " + new_val);
-    switch(propKey){
-        case "newline":
-            dn.apply_newline_choice();
-            break;
-        case "tabs":            
-            dn.apply_tab_choice();
-            break;
-        case "aceMode":
-            dn.apply_syntax_choice();
-            break;
-    }
-    
-}
-
-dn.load_default_properties = function(){
-    for(var k in dn.default_custom_props)
-        dn.set_property(k,dn.default_custom_props[k]);
-}
-
-dn.get_properties_from_cloud = function() {    
-    // TODO:
-    /*
-    gapi.client.drive.properties.list({
-    'fileId': dn.the_file.file_id
-    }).execute(dn.got_all_file_properties);*/
-}
-
-dn.got_all_file_properties = function(resp){
-    if(resp.items){
-        dn.the_file.custom_prop_exists = {};
-        for(var i=0;i<resp.items.length;i++){
-            dn.the_file.custom_props[resp.items[i].key] = resp.items[i].value;
-            dn.the_file.custom_prop_exists[resp.items[i].key] = true;
-            dn.property_updated(resp.items[i].key,resp.items[i].value);
-        }
-    }
-}
-
-dn.save_all_file_properties = function(){
-    //To be used after creating a file, in order to set any of the props which had been modified before saving it
-    for(var k in dn.the_file.custom_props)
-        dn.set_property(k,dn.the_file.custom_props[k]);    
-}
-
-dn.set_property = function(prop_name,new_val){
-
-    var oldVal = dn.the_file.custom_props[prop_name]; 
-    dn.the_file.custom_props[prop_name] = new_val;
-    if(oldVal !== new_val)
-        dn.property_updated(prop_name,new_val);
-
-    if(!(gapi && gapi.drive && dn.the_file.file_id))
-        return;
-
-    var dummyCallback = function(){}; //TODO: may want to do some error handling or something
-    
-    if(dn.default_custom_props[prop_name] == new_val){ //note that this is true in particular when SetProperty is called within LoadDefaultProperties
-        if(dn.the_file.custom_prop_exists[prop_name]){
-             dn.the_file.custom_prop_exists[prop_name] = false;
-             gapi.client.drive.properties.delete({ //DELTE the property, which does exist, but is no longer required because the value has been set to the default
-                fileId: dn.the_file.file_id, propertyKey: prop_name, visibility: 'PUBLIC'
-                }).execute(dummyCallback);
-        }
-        //if the property doesn't exist and it's just been set to the default then we don't need to do anything.
-    }else{            
-        if(dn.the_file.custom_prop_exists[prop_name] && oldVal !== new_val){
-            gapi.client.drive.properties.patch({ //PATCH the property, which already exists
-            fileId: dn.the_file.file_id, propertyKey: prop_name, visibility: 'PUBLIC', resource: {'value': new_val}
-            }).execute(dummyCallback);
-        }else{
-            dn.the_file.custom_prop_exists[prop_name] = true; //INSERT the property, because it doesn't yet exist, we may be coming via dn.save_all_file_properties() above
-            gapi.client.drive.properties.insert({
-            'fileId': dn.the_file.file_id, 'resource': {key: prop_name, value: new_val, visibility: 'PUBLIC'}
-            }).execute(dummyCallback)
-        }
-    }
-}
 
 
 // ############################
@@ -1736,7 +899,7 @@ dn.document_drag_over = function (evt) {
     evt = evt.originalEvent;
     evt.stopPropagation();
     evt.preventDefault();
-    if(!(dn.the_file.is_brand_new && dn.the_file.is_pristine)){
+    if(!(dn.the_file.is_brand_new && !dn.status.unsaved_changes)){
         evt.dataTransfer.dropEffect = 'none';
         if(dn.can_show_drag_drop_error){
             dn.show_error("File drag-drop is only permitted when the Drive Notpad page is displaying a new and unmodified file.")
@@ -1749,7 +912,7 @@ dn.document_drag_over = function (evt) {
 }
     
 dn.document_drop_file = function(evt){
-     if(!(dn.the_file.is_brand_new && dn.the_file.is_pristine))
+     if(!(dn.the_file.is_brand_new && !dn.status.unsaved_changes))
         return;
         
    evt = evt.originalEvent;
@@ -1838,29 +1001,7 @@ dn.document_ready = function(e){
 
      // pane file ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.el.pane_file = document.getElementById('pane_file');
-    dn.el.details_title_input  = document.getElementById('details_file_title_input');
-    dn.el.details_title_text = document.getElementById('details_file_title_text');
-    dn.el.details_description_input  = document.getElementById('details_file_description_input');
-    dn.el.details_description_text = document.getElementById('details_file_description_text');    
-    dn.el.file_ace_mode_choose = document.getElementById('file_ace_mode_choose')
-    dn.el.file_ace_mode_detect = document.getElementById('file_ace_mode_detect');
-    dn.el.file_ace_mode_info = document.getElementById('file_ace_mode_info');
-    dn.el.file_newline_detect = document.getElementById('file_newline_detect');
-    dn.el.file_newline_windows = document.getElementById('file_newline_windows');
-    dn.el.file_newline_unix = document.getElementById('file_newline_unix');
-    dn.el.file_newline_info = document.getElementById('file_newline_info');
-    dn.el.file_tab_detect = document.getElementById('file_tab_detect');
-    dn.el.file_tab_hard = document.getElementById('file_tab_hard');
-    dn.el.file_tab_soft = document.getElementById('file_tab_soft');
-    dn.el.file_tab_soft_text = document.getElementById('file_tab_soft_text');
-    dn.el.file_tab_info = document.getElementById('file_tab_info');
-    dn.el.button_save = document.getElementById('button_save');
-    dn.el.button_print = document.getElementById('button_print');
-    dn.el.button_share = document.getElementById('button_share');
-    dn.el.button_history = document.getElementById('button_history');     
-    dn.syntax_drop_down = dn.create_syntax_menu();   // TODO: tidy up
-    dn.el.file_ace_mode_choose.appendChild(dn.syntax_drop_down.el);
-    dn.create_file_details_tool();
+    dn.file_pane.on_document_ready();
     dn.el.menu_file.addEventListener('click', function(){
         dn.g_settings.set('pane', 'pane_file');
     })
@@ -2044,7 +1185,6 @@ dn.document_ready = function(e){
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.make_keyboard_shortcuts();
     dn.load_default_settings();
-    dn.load_default_properties();    
     document.addEventListener('contextmenu', prevent_default);
     document.addEventListener('dragover', dn.document_drag_over);
     document.addEventListener('drop', dn.document_drop_file);
@@ -2067,6 +1207,11 @@ dn.document_ready = function(e){
     }
 
     dn.pr_file_loaded = new SpecialPromise();
+
+    dn.the_file.addEventListener("change", function(e){
+        if(e.property === "title")
+            document.title = (dn.status.unsaved_changes ? "*" : "") + dn.the_file.title;
+    });
 
     // The auth promise can be rejected and resolved multiple times during the lifetime of the app.
     // These two handlers will always be called for those events.
@@ -2131,19 +1276,22 @@ dn.document_ready = function(e){
         Promise.all([pr_meta, pr_body])
             .then(function(vals){
                 if(vals[0] === 'bad' || vals[1] === 'bad') throw "bad"
-                console.log("succeeded loading file body and metadata.")
+                console.log("succeeded loading file body and metadata.");
+                dn.the_file.set({is_loaded: true});
                 dn.pr_file_loaded.resolve();    
                 dn.show_status();
-            }).catch(function(){
+            }).catch(function(err){
                 document.title = "Drive Notepad";
                 dn.g_settings.set('pane', 'pane_help');
                 dn.g_settings.set('pane_open', true);
+                console.dir(err);
             });
 
     } else {
         // create new file :::::::::::::::::::::::::::::::::::::::::::::::::::
         dn.status.file_new = 0;
         dn.show_status();
+        dn.the_file.set({title: "untitled.txt", is_loaded: true}); // there's nothing to load for this model
 
         until_success(function(succ, fail){
             Promise.resolve(dn.pr_auth)
@@ -2162,10 +1310,11 @@ dn.document_ready = function(e){
                 console.log("suceeded creating file")
                 dn.g_settings.set('pane', 'pane_file');
                 dn.pr_file_loaded.resolve();
-            }).catch(function(){
+            }).catch(function(err){
                 document.title = "Drive Notepad";
                 dn.g_settings.set('pane', 'pane_help');
                 dn.g_settings.set('pane_open', true);
+                console.dir(err);
             });
     }
     
@@ -2188,6 +1337,3 @@ if (document.readyState != 'loading')
     dn.document_ready();
 else
     document.addEventListener('DOMContentLoaded', dn.document_ready);
-
-
-    

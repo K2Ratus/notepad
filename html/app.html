@@ -138,11 +138,6 @@
             this._state = -1;
         }
     }
-    SpecialPromise.prototype.chained = function(){
-        // this is for used as:
-        // something.then(sp.chained.bind(sp))
-        return Promise.resolve(this);
-    }
     dn.pr_auth = new SpecialPromise();
     dn.pr_realtime_loaded = new SpecialPromise();
 

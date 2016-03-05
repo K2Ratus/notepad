@@ -99,7 +99,7 @@ dn.request_file_meta = function(){
     // returns thenable
     return gapi.client.request({
         'path': '/drive/v3/files/' + dn.the_file.file_id,
-        'params':{'fields': 'id,name,mimeType,description,parents,capabilities,fileExtension,shared'}});
+        'params':{'fields': 'id,name,mimeType,description,parents,capabilities,fileExtension,shared,properties'}});
 }
 
 dn.request_file_body = function(){

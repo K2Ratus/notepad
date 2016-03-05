@@ -99,15 +99,15 @@ dn.make_keyboard_shortcuts = function(){
         "find","findprevious","findnext","replace","jumptomatching","sortlines","selecttomatching","gotoline"]);
 
     //then add new commands on to the document using keymaster.js...
-    key('command+s, ctrl+s,  ctrl+alt+s,  command+alt+s', dn.do_save);
-    key('command+p, ctrl+p,  ctrl+alt+p,  command+alt+p', dn.do_print);
+    key('command+s, ctrl+s,  ctrl+alt+s,  command+alt+s', dn.file_pane.on_save_shorcut);
+    key('command+p, ctrl+p,  ctrl+alt+p,  command+alt+p', dn.file_pane.do_print_shorcut);
     key('command+o, ctrl+o,  ctrl+alt+o,  command+alt+o', dn.do_open);
     key('command+n, ctrl+n,  ctrl+alt+n,  command+alt+n', dn.do_new);
     key('command+l, ctrl+l,  ctrl+alt+l,  command+alt+l', dn.find_goto_shortcut_used);
     key('command+f, ctrl+f,  ctrl+alt+f,  command+alt+f', dn.find_shortcut_used); 
     key('command+r, ctrl+r,  ctrl+alt+r,  command+alt+r' + 
        ', command+g, ctrl+g,  ctrl+alt+g,  command+alt+g', dn.show_replace_shortcut_used);
-    key('command+h, ctrl+h,  ctrl+alt+h,  command+alt+h', dn.start_revisions_worker);
+    key('command+h, ctrl+h,  ctrl+alt+h,  command+alt+h', dn.file_pane.start_revisions_worker);
     key('esc', dn.esc_pressed);
     key.filter = function(){return 1;}
 
