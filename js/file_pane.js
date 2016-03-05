@@ -20,7 +20,7 @@ var read_only_bail = function(e){
     e.preventDefault(); // probably redundant here
 }
 
-var on_title_begin_edit =function(e){  
+var on_title_begin_edit = function(e){  
     if(dn.the_file.is_read_only)
         return dn.read_only_bail(e);  
     el.title_text.style.display = 'none';
@@ -29,16 +29,14 @@ var on_title_begin_edit =function(e){
     el.title_input.select();
 }
 
-var on_title_keyup = function(e){
-    if(e.which === WHICH.ENTER)
-        dn.focus_editor(); // calls blur
-}
-
 var on_title_keydown = function(e){
     if(e.which == WHICH.ESC){
         el.title_input.value = dn.the_file.title;
         e.stopPropagation();
         dn.focus_editor();
+    }else if(e.which === WHICH.ENTER){
+        e.preventDefault();
+        dn.focus_editor(); // calls blur
     }
 }
 
@@ -51,16 +49,14 @@ var on_description_begin_edit =function(e){
     el.description_input.select();
 }
 
-var on_description_keyup = function(e){
-    if(e.which === WHICH.ENTER)
-        dn.focus_editor(); // calls blur
-}
-
 var on_description_keydown = function(e){
     if(e.which == WHICH.ESC){
         el.description_input.value = dn.the_file.description;
         e.stopPropagation();
         dn.focus_editor();
+    } else if(e.which === WHICH.ENTER  && !e.ctrlKey && !e.shiftKey){
+        e.preventDefault();
+        dn.focus_editor(); // calls blur
     }
 }
 
@@ -97,7 +93,7 @@ var on_description_end_edit = function(){
     el.description_input.style.display = 'none';
     el.description_text.style.display = '';
     var new_val = el.description_input.value;
-    dn.set({description: new_val});    
+    dn.the_file.set({description: new_val});    
     dn.save({description: new_val});
     dn.focus_editor();
 }
@@ -121,17 +117,13 @@ var on_newline_click = function(e){
     dn.save({newline: val});
 }
 
-var on_syntax_click = function(e){
-    if(dn.the_file.properties.syntax === "detect")
-        return;
-    dn.save({syntax: "detect"});
+var on_syntax_detect_click = function(e){
     dn.the_file.set({syntax: "detect"});
+    dn.save({syntax: "detect"});
 }
 
 var on_syntax_dropdown_click = function(e){
     var val =  syntax_drop_down.GetVal();
-    if(dn.the_file.properties.syntax === val)
-        return;
     dn.save({syntax: val}); 
     dn.the_file.set({syntax: val});
 }
@@ -150,19 +142,19 @@ var on_tab_click = function(e){
     else if(e.currentTarget === el.tab_hard)
         val = 0;
 
-    dn.save({tabs: val});
     dn.the_file.set({tabs: val});
+    dn.save({tabs: val});
 }
 
 // view functions ::::::::::::::::::::::::::::::::::
 
 var render_title = function(){
-    el.title_text.textContent = 'Title: ' + dn.the_file.title;
+    el.title_text_inner.textContent = dn.the_file.title;
     el.title_input.value = dn.the_file.title;
 }
 
 var render_description = function(){
-    text_multi(el.description_text, 'Description: ' + dn.the_file.description,true);
+    text_multi(el.description_text_inner, dn.the_file.description, true);
     el.description_input.value = dn.the_file.description;
 }
 
@@ -181,7 +173,7 @@ var render_newline = function(){
 }
 
 var render_syntax = function(){
-    syntax_drop_down.SetInd(syntax_drop_down.IndexOf(dn.the_file.properties_chosen.syntax))
+    syntax_drop_down.SetInd(syntax_drop_down.IndexOf(dn.the_file.properties_chosen.syntax), true);
     if(dn.the_file.properties.syntax === "detect"){
         el.ace_mode_detect.classList.add('selected');
         syntax_drop_down.SetSelected(false);
@@ -215,8 +207,10 @@ var syntax_drop_down;
 var on_document_ready = function(){
     el.title_input  = document.getElementById('details_file_title_input');
     el.title_text = document.getElementById('details_file_title_text');
+    el.title_text_inner = document.getElementById('details_file_title_text_inner');
     el.description_input  = document.getElementById('details_file_description_input');
     el.description_text = document.getElementById('details_file_description_text');    
+    el.description_text_inner = document.getElementById('details_file_description_text_inner');    
     el.ace_mode_choose = document.getElementById('file_ace_mode_choose')
     el.ace_mode_detect = document.getElementById('file_ace_mode_detect');
     el.ace_mode_info = document.getElementById('file_ace_mode_info');
@@ -240,12 +234,10 @@ var on_document_ready = function(){
 
     el.title_text.addEventListener('click', on_title_begin_edit) 
     el.title_input.addEventListener("blur", on_title_end_edit); 
-    el.title_input.addEventListener('keyup', on_title_keyup);
     el.title_input.addEventListener('keydown', on_title_keydown);
 
     el.description_text.addEventListener('click', on_description_begin_edit) 
     el.description_input.addEventListener("blur", on_description_end_edit); 
-    el.description_input.addEventListener('keyup', on_description_keyup);
     el.description_input.addEventListener('keydown', on_description_keydown);
 
     // File custom props stuff, make use of currentTarget to identify src
@@ -260,7 +252,7 @@ var on_document_ready = function(){
     el.tab_soft_dec.addEventListener('click', on_tab_click);
     el.tab_soft.addEventListener('click', on_tab_click); // propagation is stopped if inc or dec are clicked rather than the base button
 
-    el.ace_mode_detect.addEventListener('click', on_syntax_click);    
+    el.ace_mode_detect.addEventListener('click', on_syntax_detect_click);    
     var modes = require("ace/ext/modelist").modes;    
     syntax_drop_down = new DropDown(modes.map(function(m){return m.caption;}));
     el.ace_mode_choose.appendChild(syntax_drop_down.el);  

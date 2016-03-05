@@ -178,30 +178,31 @@
                 <div class='button_wrapper auth_button_wrapper'>
                     <div class='button auth_button' id='button_auth' title="sign in to Google and/or grant permissions to Drive Notepad">Autherize...</div>
                 </div>
-                <!--Click the button above to launch a popup window and login to your Google account and/or grant permisions to this app.<br><br>
-                This step will not normally be required when you use the app.<br><br>If you do not see a popup window when you click the button you may
-                need to disable your popup blocker and reload the page.-->
             </div>
 
 
             <div class='widget_pane' id='pane_file' style="display: none;">
-                <div class='pane_item details_file_title clickable'>
-                    <div class='details_file_title_text' data-info='title' id='details_file_title_text' title="click to edit"></div>
+                <div class='pane_item clickable'>
+                    <div class='details_file_title_text' id='details_file_title_text' title="click to edit">
+                        Title: <span class="editable_text" id='details_file_title_text_inner'></span>
+                    </div>
                     <input type='text' placeholder='title' class='details_file_title_input' id='details_file_title_input' style='display:none;'/>
                 </div>
-                <div class='pane_item details_file_description clickable'>
-                    <div class='details_file_description_text' data-info='description' id='details_file_description_text' title="click to edit"></div>
+                <div class='pane_item  clickable'>
+                    <div class='details_file_description_text' id='details_file_description_text' title="click to edit">
+                        Description: <span class="editable_text" id='details_file_description_text_inner'></span>
+                    </div>
                     <textarea placeholder='description' class='details_file_description_input' id='details_file_description_input' style='display:none;'></textarea>
                 </div>
                 <div class='pane_spacer'></div>
-                <div class='pane_item details_file_ace_mode'>
+                <div class='pane_item'>
                     Syntax:
                     <div class='button inline_button' id='file_ace_mode_detect'>detect</div>
                     <div class='button inline_button dropdown_button' id='file_ace_mode_choose'></div>
                     <div class='file_info' id='file_ace_mode_info'></div>
                 </div>
                 <div class='pane_spacer'></div>
-                <div class='pane_item details_file_newline'>
+                <div class='pane_item'>
                     Newline:
                     <div class='button inline_button' id='file_newline_detect'>detect</div>
                     <div class='button inline_button' id='file_newline_windows'>windows</div>
@@ -209,7 +210,7 @@
                     <div class='file_info' id='file_newline_info'></div>
                 </div>
                 <div class='pane_spacer'></div>
-                <div class='pane_item details_file_tab'>
+                <div class='pane_item'>
                     Tabs:
                     <div class='button inline_button' id='file_tab_detect'>detect</div>
                     <div class='button inline_button' id='file_tab_hard'>hard</div>

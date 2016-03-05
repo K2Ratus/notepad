@@ -47,6 +47,12 @@ dn.FileModel.prototype.set = function(obj){
     if(obj.title && obj.title !== this.title){
         this.title = obj.title;
         this.trigger("change",{property: 'title'})
+        if(this.is_loaded)
+            this.compute_syntax(); // will trigger 
+    }
+    if(obj.description && obj.description !== this.description){
+        this.description = obj.description;
+        this.trigger("change",{property: 'description'})
     }
     if(obj.is_read_only && obj.is_read_only !== this.is_read_only){
         this.is_read_only = obj.is_read_only;

@@ -96,7 +96,8 @@ dn.SaveRequest.prototype._throw_if_not_desired = function(){
 
 dn.SaveRequest.prototype._on_error = function(err){
     if(dn.is_auth_error(err)) throw err; // will cause until_success to try again
-    this._error = err;
+    if(err !== "not desired")
+        this._error = err; // an actual error, record it
     return "error"; //convert to success, and stop trying
 }
 

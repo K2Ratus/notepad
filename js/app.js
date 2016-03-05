@@ -62,6 +62,7 @@ dn.show_user_info = function(a){
 
 
 dn.set_editor_newline = function(){
+    // view for dn.the_file model
     dn.editor.session.setNewLineMode(dn.the_file.properties_chosen.newline);
 }
 
@@ -640,6 +641,7 @@ dn.get_scroll_line = function(){
 
 
 dn.set_editor_tabs = function(){
+    // view for dn.the_file model
     var val = dn.the_file.properties_chosen.tabs;
 
     if(val.val === "hard"){
@@ -650,7 +652,9 @@ dn.set_editor_tabs = function(){
     }
 }
 
-dn.set_editor_syntax = function(mode_str){
+dn.set_editor_syntax = function(){
+    // view for dn.the_file model
+    var mode_str = dn.the_file.properties_chosen.syntax;
     var modes_array = require("ace/ext/modelist").modes;
 
     for(var ii=0; ii<modes_array.length;ii++)if(modes_array[ii].caption === mode_str){
@@ -771,11 +775,13 @@ dn.show_file_meta = function(resp) {
                      description: resp.result.description || '',
                      is_read_only: !resp.result.capabilities.canEdit,
                      is_shared: resp.result.shared});
-    if(resp.result.properties.aceMode !== undefined)
-        dn.the_file.set({syntax: resp.result.properties.aceMode})
-    if(resp.result.properties.newline !== undefined)
-        dn.the_file.set({newline: resp.result.properties.newline})
-    // TODO: set tabs
+    if(resp.result.properties){
+        if(resp.result.properties.aceMode !== undefined)
+            dn.the_file.set({syntax: resp.result.properties.aceMode})
+        if(resp.result.properties.newline !== undefined)
+            dn.the_file.set({newline: resp.result.properties.newline})
+        // TODO: set tabs
+    }
     if(resp.result.parents && resp.result.parents.length){
         dn.the_file.folder_id = resp.result.parents[0];
         dn.set_drive_link_to_folder();
@@ -813,7 +819,7 @@ dn.on_change = function(e){
         
     if(!dn.status.unsaved_changes){
         dn.status.unsaved_changes = true;
-        dn.show_file_title();
+        dn.render_document_title();
         dn.show_status();
     }
 
@@ -944,6 +950,9 @@ dn.dropped_file_read = function(e){
 // ############################
 
 
+dn.render_document_title = function(){
+    document.title = (dn.status.unsaved_changes ? "*" : "") + dn.the_file.title;
+};
 
 dn.document_ready = function(e){
 
@@ -963,6 +972,9 @@ dn.document_ready = function(e){
         e.stopPropagation();
     });
     var els = dn.el.widget_content.getElementsByTagName('input');
+    for(var ii=0; ii<els.length; ii++)
+        els[ii].addEventListener('mousedown', stop_propagation); // prevents propagation to preventDefault, installed above.
+    var els = dn.el.widget_content.getElementsByTagName('textarea');
     for(var ii=0; ii<els.length; ii++)
         els[ii].addEventListener('mousedown', stop_propagation); // prevents propagation to preventDefault, installed above.
 
@@ -1209,8 +1221,23 @@ dn.document_ready = function(e){
     dn.pr_file_loaded = new SpecialPromise();
 
     dn.the_file.addEventListener("change", function(e){
-        if(e.property === "title")
-            document.title = (dn.status.unsaved_changes ? "*" : "") + dn.the_file.title;
+        switch(e.property){
+            case "title":
+            dn.render_document_title();
+            break;
+
+            case "syntax":
+            dn.set_editor_syntax();
+            break;
+
+            case "newline":
+            dn.set_editor_newline();
+            break;
+
+            case "tabs":
+            dn.set_editor_tabs();
+            break;
+        }            
     });
 
     // The auth promise can be rejected and resolved multiple times during the lifetime of the app.

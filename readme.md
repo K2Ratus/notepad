@@ -21,6 +21,12 @@ Most of the custom interactivity of the application takes palce within the widge
 
 Occasionally chrome mistakenly caches source maps. If that happens, the easiest thing to do is go into the minified js file and add a query string to the source map url (which is specified in a special comment at the end).  Normally you won't need to do this, but it's annoying when it does happen.
 
+
+### Introduction
+
+When the page is loaded we either (try and) create a new document, or (try and) load an existing file.  Only one file can ever be loaded, if you need to load/create a new file you have to refresh the page.  This makes life a little simpler.
+
+
 ### Making async API requests
 
 I have tried to wrap most requests in ES6 `Promises`, or variations on that.  An important promise-like object is `dn.pr_auth`, this is a `SpecialPromise` isntance, which can be `resolved` and `rejected` multiple times. As with regular promises, whenever it is resolved the callbacks registered with `.then(success)` are triggered, with each being triggered exactly once, even if `dn.pr_auth` is resolved multiple times.  And, as with regular promises, if `dn.pr_auth` has already been resolved at the moment that the `.then(success)` is registered, it will be triggered immediately.  Finally, the `dn.pr_auth` has two special event listeners: `on_error` and `on_success`, these are called every time the authentication process fails or is successful (respectively).
@@ -54,3 +60,12 @@ There are several ways the task can fail, it could be that the user needs to man
 
 If non-auth errors are not caught, then the `dn.pr_auth.on_error` will display the error to the user and not attempt any reauthentication.  This means the `until_succes` will stall indefinitely, waiting in vain for `dn.pr_auth` to resolve.  To guard against the possibility of issuing excessive numbers of automatic reauth requests there is an roughly exponential backoff process, which in the limit will only issue a request once per minute.  Note however that this backoff is specific to the automatic reauthentication, not to requests in general.
 
+Another important `Pomise`-like thing is `dn.pr_file_loaded`, this simply gets resolved soon after the page loads, when either an existing file is loaded or a new file is created.  If neither of those things ever succeed then this is never settled.  The fact that this is a promise, allows us to put it in the save chain, and th e user can then actually issue save requests before the file is loaded, which is vaugely helpful when creating new files.
+
+### Model-View-Controllers
+
+There are (at least) two separate MVC systems at play in the app, one for the file's metadata and one for the application's setttings.
+
+`dn.the_file` is an instance of `dn.FileModel`, and `dn.file_pane` is a module/closure thing which implements a view and controller for this model.  There are also a few view hooks in the main `app.js`, e.g. setting the title on the document, and applying syntax choice to the editor etc.  For simplicity, saving (of metadata) is handled by the controllers in `dn.file_pane`, it's just easier to tie the saving action to user actions rather than arbitrary updates on the model.
+
+`dn.g_settings` is a Google Realtime API `Model`, or a very simple mock that behaves enough like it to do what we need.
