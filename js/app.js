@@ -412,6 +412,17 @@ dn.show_app_data_document = function(doc){
 
     var old_temp_g_settings = dn.g_settings;
     dn.g_settings = doc.getModel().getRoot();
+
+    // some settings we want to override the cloud values with changes we made locally,
+    // other settings may have been missing in the cloud entirely.
+    console.log("Transfering to realtime model for settings.")
+    old_temp_g_settings.transfer_all_listeners(dn.g_settings);
+    var existing_cloud_keys = dn.g_settings.keys();
+    for(var s in dn.default_settings)
+        if(s in old_temp_g_settings.get_keeps() || existing_cloud_keys.indexOf(s) == -1)
+            dn.g_settings.set(s, old_temp_g_settings.get(s));
+
+    // TODO: check these history things are right
     dn.g_clipboard = dn.g_settings.get('clipboard');
     if(!dn.g_clipboard){
         dn.g_settings.set('clipboard', doc.getModel().createList());
@@ -422,17 +433,6 @@ dn.show_app_data_document = function(doc){
         dn.g_settings.set('findHistory', doc.getModel().createList());
         dn.g_find_history = dn.g_settings.get('findHistory');
     }
-    
-    var existingKeys = dn.g_settings.keys();
-    dn.g_settings.addEventListener(gapi.drive.realtime.EventType.VALUE_CHANGED, dn.settings_changed);
-    console.log('Applying settings from cloud...')
-    for(var s in dn.default_settings)
-        if(s in old_temp_g_settings.getKeeps())
-            dn.g_settings.set(s,old_temp_g_settings.get(s));
-        else if(existingKeys.indexOf(s) == -1)
-            dn.g_settings.set(s,dn.default_settings[s]);
-        else if(JSON.stringify(old_temp_g_settings.get(s)) !== JSON.stringify(dn.g_settings.get(s)))
-            dn.settings_changed({property:s, newValue:dn.g_settings.get(s)});// the gapi doesn't automatically trigger this on load
     
     //Check lastDNVersionUsed at this point - by default it's blank, but could also have an out-of-date value
     if(dn.g_settings.get('lastDNVersionUsed') != dn.version_str){
@@ -447,34 +447,49 @@ dn.show_app_data_document = function(doc){
 
 
 
+dn.g_settings = (function(){ //mock realtime model to be used until the real model is initialised
+    var ob = {};
+    var keeps = {};
+    var change_listeners = [];
+    return {
+           get: function(k){
+            return ob[k]
+        }, set: function(k,v){
+            if(ob[k] === v) return;
+            ob[k] = v;
+            for(var ii=0;ii<change_listeners.length;ii++)
+                change_listeners[ii]({property: k, newValue: v});
+        }, keep: function(k){
+            keeps[k] = true
+        }, get_keeps: function(){
+            return keeps;
+        }, addEventListener: function(flag, callback){
+            if(flag !== "VALUE_CHANGED") throw "only VALUE_CHANGED"
+                change_listeners.push(callback);
+        }, transfer_all_listeners: function(real_model){
+            // issue changes due to differences in the real and mock models
+            for(var k in ob)if(ob.hasOwnProperty(k) && !keeps[k])
+                if(JSON.stringify(ob[k]) !== JSON.stringify(real_model.get(k)))
+                    this.set(k, real_model.get(k)); // will call listeners
+            // and then register the listeners on the new model
+            while(change_listeners.length)
+                real_model.addEventListener(gapi.drive.realtime.EventType.VALUE_CHANGED, change_listeners.shift());
+        }
+    };                          
+})();
 
 dn.load_default_settings = function(){
   //Lets show the user either the defualt settings or the 
   //ones last used on this browser (restricted to impersonal settings only)
 
-  dn.g_settings = (function(){ //mock realtime model to be used until the real model is initialised
-      var ob = {};
-      var keeps = {}
-      return {get: function(k){return ob[k]}, 
-              set: function(k,v){
-                if(ob[k] === v)
-                    return;
-                ob[k] = v;
-                dn.settings_changed({property: k, newValue: v});
-                },
-              keep: function(k){keeps[k] = true},
-              getKeeps: function(){return keeps;}};
-                                 
-  })();
-
   dn.status.local_settings = 0;
   try{
     console.log('Loading default/localStorage settings...');
     for(var s in dn.default_settings)
-    if(dn.impersonal_settings_keys.indexOf(s) == -1 || !localStorage || !localStorage["g_settings_" +s])
-        dn.g_settings.set(s,dn.default_settings[s]);
-    else
-        dn.g_settings.set(s,JSON.parse(localStorage["g_settings_" + s]));
+        if(dn.impersonal_settings_keys.indexOf(s) == -1 || !localStorage || !localStorage["g_settings_" +s])
+            dn.g_settings.set(s, dn.default_settings[s]);
+        else
+            dn.g_settings.set(s, JSON.parse(localStorage["g_settings_" + s]));
   }catch(err){
       if(localStorage) 
         localStorage.clear();
@@ -496,11 +511,9 @@ dn.settings_changed = function(e){
                     break;
             case "theme":
                 dn.editor.setTheme('ace/theme/' + new_value);
-                dn.theme_drop_down.SetInd(dn.theme_drop_down.IndexOf(new_value), true);
                 break;
             case "fontSize":
                 var scrollLine = dn.get_scroll_line();
-                dn.el.font_size_text.textContent = new_value.toFixed(1);
                 dn.editor.setFontSize(new_value + 'em')    
                 dn.editor.scrollToLine(scrollLine);
                 break;
@@ -509,23 +522,9 @@ dn.settings_changed = function(e){
                 var scrollLine = dn.get_scroll_line();
                 s.setUseWrapMode(new_value[0]);
                 s.setWrapLimitRange(new_value[1],new_value[2]);
-                 dn.editor.scrollToLine(scrollLine);
-                if(!new_value[0])
-                    dn.el.word_wrap_off.classList.add('selected');
-                else
-                    dn.el.word_wrap_off.classList.remove('selected');
-                if(new_value[0] && !new_value[1])
-                    dn.el.word_wrap_edge.classList.add('selected');
-                else
-                    dn.el.word_wrap_edge.classList.remove('selected');
-                if(new_value[0] && new_value[1])
-                    dn.el.word_wrap_at.classList.add('selected');
-                else
-                    dn.el.word_wrap_at.classList.remove('selected');
-
+                dn.editor.scrollToLine(scrollLine);
                 break;
             case "wordWrapAt":
-                dn.el.word_wrap_at_text.textContent = new_value;
                 var curWrap = dn.g_settings.get('wordWrap');
                 if(curWrap[1] && curWrap[1] != new_value)
                     dn.g_settings.set('wordWrap',[1,new_value,new_value]);
@@ -533,16 +532,11 @@ dn.settings_changed = function(e){
                 break;
             case "showGutterHistory":
                 var s = dn.editor.getSession(); 
-                if(new_value){
-                    dn.el.gutter_history_show.classList.add('selected')
-                    dn.el.gutter_history_hide.classList.remove('selected');
-                }else{
+                if(!new_value){
                     var h = dn.change_line_history;
                     for(var i=0;i<h.length;i++)if(h[i])
                         s.removeGutterDecoration(i,h[i]<0 ? dn.change_line_classes_rm[-h[i]] : dn.change_line_classes[h[i]]);
                     dn.change_line_history = []; 
-                    dn.el.gutter_history_hide.classList.add('selected')
-                    dn.el.gutter_history_show.classList.remove('selected');
                 }
                 break;
             case "newLineDefault":
@@ -607,74 +601,10 @@ dn.settings_changed = function(e){
     }
 }
 
-
-
-// ############################
-// Font size stuff
-// ############################
-
-dn.font_size_decrement_click = function(){
-    var font_size = dn.g_settings.get('fontSize');
-    font_size -= dn.font_size_increment;
-    font_size = font_size  < dn.min_font_size ? dn.min_font_size: font_size;
-    dn.g_settings.set('fontSize', font_size);
-}
-
-dn.font_size_increment_click = function(){
-    var font_size = dn.g_settings.get('fontSize');
-    font_size += dn.font_size_increment;
-    font_size = font_size  > dn.max_font_size ? dn.max_font_size:font_size;
-    dn.g_settings.set('fontSize', font_size);
-}
-
-
-dn.save_scroll_line = function(){
-    dn.patch_property(dn.the_file.file_id, 
-                    "ScrollToLine",
-                    dn.get_scroll_line(),
-                    'PUBLIC',null);
-}
-
 dn.get_scroll_line = function(){
     return  dn.editor.getSession().screenToDocumentPosition(dn.editor.renderer.getScrollTopRow(),0).row;
 }
 
-
-dn.set_editor_tabs = function(){
-    // view for dn.the_file model
-    var val = dn.the_file.properties_chosen.tabs;
-
-    if(val.val === "hard"){
-        dn.editor.session.setUseSoftTabs(false);
-    }else{
-        dn.editor.session.setUseSoftTabs(true);
-        dn.editor.session.setTabSize(val.n);
-    }
-}
-
-dn.set_editor_syntax = function(){
-    // view for dn.the_file model
-    var mode_str = dn.the_file.properties_chosen.syntax;
-    var modes_array = require("ace/ext/modelist").modes;
-
-    for(var ii=0; ii<modes_array.length;ii++)if(modes_array[ii].caption === mode_str){
-        dn.editor.getSession().setMode(modes_array[ii].mode);
-        return;
-    }    
-    dn.show_error("unrecognised syntax mode requested");
-}
-
-dn.create_theme_menu = function(){
-    var themes = require('ace/ext/themelist');
-    var theme_drop_down = new DropDown(Object.keys(themes.themesByName));
-    theme_drop_down.addEventListener("change",function(){
-        dn.g_settings.set("theme",theme_drop_down.GetVal());
-    })
-    theme_drop_down.addEventListener("blur",function(){
-       dn.focus_editor();
-    })
-    return theme_drop_down;
-}
 
 
 // ############################
@@ -749,15 +679,6 @@ dn.on_copy = function(text){
         dn.g_clipboard.remove(0);
 }
 
-dn.create_clipboard_tool = function(){
-    dn.el.pane_clipboard = document.getElementById('pane_clipboard');
-    dn.el.button_clear_clipboard.addEventListener('click', function(){
-            dn.g_clipboard.clear();
-    });
-    dn.el.button_clear_find_replace.addEventListener('click', function(){
-            dn.g_find_history.clear();
-    });
-}
 
 
 // ############################
@@ -894,6 +815,30 @@ dn.query_unload = function(){
         return "If you leave the page now you will loose the unsaved " + (dn.the_file.is_brand_new ? "new " : "changes to ") + "file '" + dn.the_file.title + "'."
 }
 
+dn.set_editor_tabs = function(){
+    // view for dn.the_file model
+    var val = dn.the_file.properties_chosen.tabs;
+
+    if(val.val === "hard"){
+        dn.editor.session.setUseSoftTabs(false);
+    }else{
+        dn.editor.session.setUseSoftTabs(true);
+        dn.editor.session.setTabSize(val.n);
+    }
+}
+
+dn.set_editor_syntax = function(){
+    // view for dn.the_file model
+    var mode_str = dn.the_file.properties_chosen.syntax;
+    var modes_array = require("ace/ext/modelist").modes;
+
+    for(var ii=0; ii<modes_array.length;ii++)if(modes_array[ii].caption === mode_str){
+        dn.editor.getSession().setMode(modes_array[ii].mode);
+        return;
+    }    
+    dn.show_error("unrecognised syntax mode requested");
+}
+
 
 
 // ############################
@@ -1011,6 +956,8 @@ dn.document_ready = function(e){
         dn.menu_icon_from_pane_id['pane_' + els[ii].id.substr(5)] = els[ii];
     }
 
+    dn.el.pane_clipboard = document.getElementById('pane_clipboard');
+
      // pane file ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.el.pane_file = document.getElementById('pane_file');
     dn.file_pane.on_document_ready();
@@ -1020,81 +967,7 @@ dn.document_ready = function(e){
 
      // pane general settings :::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.el.pane_general_settings = document.getElementById('pane_general_settings');
-    dn.el.theme_chooser = document.getElementById('theme_chooser')
-    dn.el.widget_sub_general_box = document.getElementById('sub_general_box')
-    dn.el.button_clear_clipboard = document.getElementById("button_clear_clipboard");
-    dn.el.button_clear_find_replace = document.getElementById("button_clear_find_replace");
-    dn.el.gutter_history_show = document.getElementById('gutter_history_show');
-    dn.el.gutter_history_hide = document.getElementById('gutter_history_hide');
-    dn.el.word_wrap_off = document.getElementById('word_wrap_off');
-    dn.el.word_wrap_at = document.getElementById('word_wrap_at');
-    dn.el.word_wrap_edge = document.getElementById('word_wrap_edge');
-    dn.el.font_size_decrement = document.getElementById('font_size_decrement');
-    dn.el.font_size_increment = document.getElementById('font_size_increment');
-    dn.el.font_size_text = document.getElementById('font_size_text');
-    dn.el.tab_hard = document.getElementById('tab_hard');
-    dn.el.tab_soft = document.getElementById('tab_soft');
-    dn.el.newline_menu_windows = document.getElementById('newline_menu_windows');
-    dn.el.newline_menu_unix = document.getElementById('newline_menu_unix');
-    dn.el.tab_soft_text = document.getElementById('tab_soft_text');
-    dn.el.tab_soft_dec = document.getElementById('tab_soft_dec');
-    dn.el.tab_soft_inc = document.getElementById('tab_soft_inc');
-    dn.el.word_wrap_at_text = document.getElementById('word_wrap_at_text');
-    dn.el.word_wrap_at_dec = document.getElementById('word_wrap_at_dec');
-    dn.el.word_wrap_at_inc = document.getElementById('word_wrap_at_inc');
-    dn.theme_drop_down = dn.create_theme_menu()  // TODO: tidy this up
-    dn.el.theme_chooser.appendChild(dn.theme_drop_down.el);
-    dn.el.newline_menu_windows.addEventListener('click', function(){
-        dn.g_settings.set('newLineDefault', 'windows');
-    });
-    dn.el.newline_menu_unix.addEventListener('click', function(){
-        dn.g_settings.set('newLineDefault', 'unix');
-    });
-    dn.el.tab_hard.addEventListener('click', function(){
-        dn.g_settings.set('tabIsHard', 1)
-    });
-    dn.el.tab_soft.addEventListener('click', function(){
-        dn.g_settings.set('tabIsHard', 0);
-    });
-    dn.el.tab_soft_dec.addEventListener('click', function(){
-        var at = dn.g_settings.get('softTabN') - 1;
-        at = at < dn.min_soft_tab_n ? dn.min_soft_tab_n : at;
-        dn.g_settings.set('softTabN',at);
-    });
-    dn.el.tab_soft_dec.addEventListener('click', function(){
-        var at = dn.g_settings.get('softTabN') + 1;
-        at = at > dn.max_soft_tab_n ? dn.max_soft_tab_n : at;
-        dn.g_settings.set('softTabN',at);
-    });
-    dn.el.font_size_decrement.addEventListener('click', dn.font_size_decrement_click);
-    dn.el.font_size_increment.addEventListener('click', dn.font_size_increment_click);    
-    dn.el.word_wrap_off.addEventListener('click', function(){
-        dn.g_settings.set('wordWrap',[0,0,0])
-    });
-    dn.el.word_wrap_at.addEventListener('click', function(){
-        var at = dn.g_settings.get('wordWrapAt');
-        dn.g_settings.set('wordWrap',[1,at,at]);
-    });
-    dn.el.word_wrap_at_dec.addEventListener('click', function(){
-        var at = dn.g_settings.get('wordWrapAt') - dn.wrap_at_increment;
-        at = at < dn.min_wrap_at ? dn.min_wrap_at : at;
-        dn.g_settings.set('wordWrapAt',at);
-    });
-    dn.el.word_wrap_at_inc.addEventListener('click', function(){
-        var at = dn.g_settings.get('wordWrapAt') + dn.wrap_at_increment;
-        at = at > dn.max_wrap_at ? dn.max_wrap_at : at;
-        dn.g_settings.set('wordWrapAt',at);
-    });
-    dn.el.word_wrap_edge.addEventListener('click', function(){
-        dn.g_settings.set('wordWrap',[1,null,null])
-    });
-    dn.el.gutter_history_show.addEventListener('click', function(){
-        dn.g_settings.set('showGutterHistory',1);
-    });
-    dn.el.gutter_history_hide.addEventListener('click', function(){
-        dn.g_settings.set('showGutterHistory',0);
-    });
-    dn.create_clipboard_tool();
+    dn.settings_pane.on_document_ready();
     dn.el.menu_general_settings.addEventListener('click', function(){
         dn.g_settings.set('pane', 'pane_general_settings');
     })
@@ -1194,6 +1067,9 @@ dn.document_ready = function(e){
     });
     dn.el.opener_button_a.addEventListener('click', dn.open_button_click);
 
+
+    dn.g_settings.addEventListener("VALUE_CHANGED", dn.settings_changed);
+    
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.make_keyboard_shortcuts();
     dn.load_default_settings();

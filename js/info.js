@@ -148,6 +148,7 @@ dn.impersonal_settings_keys = [
 "historyRemovedIsExpanded",
 "tabIsHard",
 "softTabN",
+"newLineDefault",
 "widgetSub",
 "theme",
 "pane",

@@ -24,7 +24,7 @@ Occasionally chrome mistakenly caches source maps. If that happens, the easiest 
 
 ### Introduction
 
-When the page is loaded we either (try and) create a new document, or (try and) load an existing file.  Only one file can ever be loaded, if you need to load/create a new file you have to refresh the page.  This makes life a little simpler.
+When the page is loaded we either (try to) create a new document, or (try to) load an existing file.  Only one file can ever be loaded, if you need to load/create a new file you have to refresh the page.  This makes life a little simpler.
 
 
 ### Making async API requests
@@ -60,12 +60,40 @@ There are several ways the task can fail, it could be that the user needs to man
 
 If non-auth errors are not caught, then the `dn.pr_auth.on_error` will display the error to the user and not attempt any reauthentication.  This means the `until_succes` will stall indefinitely, waiting in vain for `dn.pr_auth` to resolve.  To guard against the possibility of issuing excessive numbers of automatic reauth requests there is an roughly exponential backoff process, which in the limit will only issue a request once per minute.  Note however that this backoff is specific to the automatic reauthentication, not to requests in general.
 
-Another important `Pomise`-like thing is `dn.pr_file_loaded`, this simply gets resolved soon after the page loads, when either an existing file is loaded or a new file is created.  If neither of those things ever succeed then this is never settled.  The fact that this is a promise, allows us to put it in the save chain, and th e user can then actually issue save requests before the file is loaded, which is vaugely helpful when creating new files.
+Another important `Pomise`-like thing is `dn.pr_file_loaded`, this simply gets resolved soon after the page loads, when either an existing file is loaded or a new file is created.  If neither of those things ever succeed then this is never settled.  The fact that this is a promise, allows us to put it in the save chain, and the user can then actually issue save requests before the file is loaded, which is vaugely helpful when creating new files.
 
 ### Model-View-Controllers
 
 There are (at least) two separate MVC systems at play in the app, one for the file's metadata and one for the application's setttings.
 
-`dn.the_file` is an instance of `dn.FileModel`, and `dn.file_pane` is a module/closure thing which implements a view and controller for this model.  There are also a few view hooks in the main `app.js`, e.g. setting the title on the document, and applying syntax choice to the editor etc.  For simplicity, saving (of metadata) is handled by the controllers in `dn.file_pane`, it's just easier to tie the saving action to user actions rather than arbitrary updates on the model.
+`dn.the_file` is an instance of `dn.FileModel`, and `dn.file_pane` is a module/closure thing which implements a view and controller for this model.  There are also a few view hooks in the main `app.js`, e.g. setting the title on the document, and applying syntax choice to the editor etc.  For simplicity, saving (of metadata) is handled by the controllers in `dn.file_pane`, it's just easier to tie the saving action to user actions rather than arbitrary updates on the model.  You can listen for changes on `dn.the_file` with `.addEventListener("change", <callback>)`.
 
-`dn.g_settings` is a Google Realtime API `Model`, or a very simple mock that behaves enough like it to do what we need.
+`dn.g_settings` is a Google Realtime API `Model`, or a very simple mock that behaves enough like it to do what we need.  `dn.settings_pane` implements a controller and view for some of this, and `app.js` is a controller for the rest (widget position and state etc.), and viewer of all of it.
+
+
+### Saving
+
+The saving system allows for the user to issue multiple requets in quick succession, so that multiple requests are pending at the same time.  As the requests return, we check the server's version number to check that they were resolved in the correct order. If anything ended up out of order then we issue a correction save until the order is as we wanted it to be.  The things that can be saved are the file body, and the various pieces of metadata shown in the file pane.  A single request can contain one or more of these elements. We track the server's version number for each element separately, so we can make minimal corrections as needed.
+
+Note that if there are other users/devices saving at the same time as the current user then there is no guarantee that they will see the same order of changes. The only guarantee is that if user X makes change A and then change B, then it once user X receives confirmation of saving being completed, we know the server will defintiely not hold the value of change A.  It may hold the value from some other user or it may hold the change B. Also note that rather than simply holding value A then value B, it may have held value B, then A, then B', with B' identical to B but issued in a later "correction" request.
+
+### Find/replace
+
+It took a while to sort out focus/blur behaviour.  In the end it is now relatively neat and hopefully simple to get your head around.
+
+`dn.g_settings.set('pane', 'pane_find')` and `dn.g_settings.set('pane_open', true)` do not mess with the focus themselves. 
+Any code that uses that must explicitly decide whether or not it wants to focus on the input for search/goto (a choice
+which is made based on the flag `dn.g_settings.get('find_goto')`).
+
+Calling  `dn.g_settings.set('find_goto', bool)`, also does not mess with the focus, it just renders the inactive version of goto/search.
+
+We basically have the same setup for goto and for search, with goto having a less meaty implementation, so it's easier to start by looking at that.
+
+When the input gets the focus, the goto/search operation is performed, when the input is blurred it sets the info text to "inactive". 
+ If the blur events is moving the focus to null, then at the end of the blur event we redirect the focus to the editor.
+
+There are special functions for producing exactly the right focus behaviour when pressing Esc (with focus on the editor) and pressing 
+Ctrl-F/Crtl-L.
+
+
+*/
