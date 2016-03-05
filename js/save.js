@@ -72,10 +72,12 @@ dn.SaveRequest = function(parts){
     this._tracker = new dn.SaveTracker(); // hold local and remote version numbers
     this._tracker.local = ++dn.save_local_version_counter;
     this._is_settled = false;
+    this._error = undefined;
 
     var self = this;
     this._pr = until_success(function(succ, fail){
         return Promise.resolve(dn.pr_auth)
+                      .then(dn.pr_file_loaded.chained.bind(dn.pr_file_loaded))
                       .then(self._throw_if_not_desired.bind(self))
                       .then(dn.request_save(self._parts))
                       .then(self._on_completion.bind(self))
@@ -95,7 +97,8 @@ dn.SaveRequest.prototype._throw_if_not_desired = function(){
 
 dn.SaveRequest.prototype._on_error = function(err){
     if(dn.is_auth_error(err)) throw err; // will cause until_success to try again
-    return "" + err; //convert to success, and stop trying
+    this._error = err;
+    return "error"; //convert to success, and stop trying
 }
 
 dn.SaveRequest.prototype._on_completion = function(res){
@@ -116,6 +119,24 @@ dn.SaveRequest.prototype._on_finally = function(){
     // called when the until_success deems that success has occured
     // but that means the request was a legitimate failure, or canaceled,
     // though at this point we don't care what happened exactly.
+
+    if(this._error !== undefined){
+        dn.show_error("Saving failed. File in unknown state on server. See developer console.");
+        console.dir(this._error);
+        // abandon all requests, but note they may still continue executing
+        while(dn.save_pending_requests.length)
+            dn.save_pending_requests.pop()._desired = false;
+        // and reset out records to be totally "naive"
+        dn.save_server_state = {};
+        dn.save_local_state = {};
+        
+        // show that we're no longer trying to save...
+        dn.status.save_body = 1;
+        dn.status.save_title = 1;
+        dn.status.save_other = 1;
+        dn.show_status();
+        return;
+    }
 
     // remove from the list of pending requests
     this._is_settled = true;

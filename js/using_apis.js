@@ -24,7 +24,7 @@ dn.is_auth_error = function(err){
         return 1;
     if(err.status === 404)
         return 0;
-    if(err.result && err.result.error && err.result.code === -1)//network error
+    if(err.result && err.result.error && err.result.error.code === -1)//network error
         return 1;
     console.log("WHAT IS THIS ERROR?....")
     console.dir(err);
@@ -39,11 +39,16 @@ dn.handle_auth_error = function(err){
     dn.show_status();
     var err_type = dn.is_auth_error(err);
 
-    if(err_type === 0)
-        dn.show_error(err.result.error.message);
-    else if(err_type == 1)
+    if(err_type === 0){
+        if(err.result && err.result.error && err.result.error.message !== undefined){
+            dn.show_error(err.result.error.message);
+        } else {
+            dn.show_error("Error. See developer console for details.")
+            console.dir(err);
+        }
+    }else if(err_type == 1){
         dn.reauth_auto();
-    else{
+    }else{
         // user has to click button to trigger reauth-manual
         dn.toggle_permission(true);
     }
@@ -92,17 +97,13 @@ dn.request_user_info = function(){
 
 dn.request_file_meta = function(){
     // returns thenable
-    dn.status.file_meta = 0;
-    dn.show_status();
     return gapi.client.request({
         'path': '/drive/v3/files/' + dn.the_file.file_id,
-        'params':{'fields': 'name,mimeType,description,parents,capabilities,fileExtension,shared'}});
+        'params':{'fields': 'id,name,mimeType,description,parents,capabilities,fileExtension,shared'}});
 }
 
 dn.request_file_body = function(){
     // returns thenable
-    dn.status.file_body = 0;
-    dn.show_status();
     return gapi.client.request({
         'path': '/drive/v3/files/' + dn.the_file.file_id,
         'params':{'alt': 'media'}});
@@ -115,6 +116,20 @@ dn.make_multipart_boundary = function(){
     return (new Date).getTime() + "" + Math.random()*10;
 }
 
+dn.request_new = function(folderId){
+    // this is a factory function for building a function-of-no-args-that-returns-a-thenable
+    var meta = {name: 'untitled.txt'};
+    if(folderId !== undefined)
+        meta['parents'] = [folderId];
+    return function(){
+       return gapi.client.request({
+                'path': '/drive/v3/files/',
+                'method': 'POST',
+                'params' : {'fields': 'id,name,mimeType,description,parents,capabilities,fileExtension,shared'},
+                'body' : JSON.stringify(meta)
+        });
+    };
+}
 
 dn.request_save = function(parts){
     // this is a factory function for building a function-of-no-args-that-returns-a-thenable
@@ -148,8 +163,8 @@ dn.request_save = function(parts){
         params['uploadType'] = is_multipart ? 'multipart' : 'media';
 
     var headers = {}
-    var boundary = dn.make_multipart_boundary();
     if(is_multipart){
+        var boundary = dn.make_multipart_boundary();
         request_body = "--" + boundary
                       + "\nContent-Type: application/json; charset=UTF-8\n" 
                       + JSON.stringify(meta) 

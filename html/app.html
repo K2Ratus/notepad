@@ -104,15 +104,12 @@
         }
     }
     SpecialPromise.prototype.on_success = function(handler){
-        if(this._state == 1){
+        if(this._state == 1)
             handler(this._value);
-        } else {
+        else
             this._success_handler = handler;        
-        }
     }
     SpecialPromise.prototype.then = function(succ){
-        if(!succ)
-            throw("SpecialPromise.then only accepts success");
         if(this._state === 1)
             succ(this._value);
         else 
@@ -141,7 +138,11 @@
             this._state = -1;
         }
     }
-
+    SpecialPromise.prototype.chained = function(){
+        // this is for used as:
+        // something.then(sp.chained.bind(sp))
+        return Promise.resolve(this);
+    }
     dn.pr_auth = new SpecialPromise();
     dn.pr_realtime_loaded = new SpecialPromise();
 

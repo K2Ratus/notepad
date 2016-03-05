@@ -12,16 +12,18 @@ dn.can_show_drag_drop_error = true;
 dn.is_showing_history = false;
 
 dn.status = {
-    // 0: get action in progress
-    // -1: failed
-    //  1: success
-    file_body: 0, //for getting, not saving
-    file_meta: 0, //for getting, not saving
-    file_sharing: 0, // after launching the sharing dialog this is set to -1
-    authentication: 0,
+
+    file_body: 1, // 0 while getting, 1 when done or irrelevant, -1 if failed
+    file_meta: 1, // 0 while getting, 1 when done or irrelevant, -1 if failed
+    file_new: 1, // 0 while creating a new file, 1 when done or irrelevant, -1 if failed
+
+    file_sharing: 0, // after launching the sharing dialog this is set to -1 for everafter
+
+    authentication: 0, // 0 while authenticating, 1 when done
+
     popup_active: 0, // 0 or 1, i.e. true or false
-    local_settings: 0,
-    realtime_settings: 0,
+    local_settings: 0, // 1 when local settings have been loaded
+    realtime_settings: 0, // 1 when realtime settings have been loaded
 
     // 1: success/no save active, 
     // 0: in progress
@@ -459,50 +461,51 @@ dn.toggle_widget = function(state){
 }
 
 dn.show_status = function(){
-    // TODO: new file, drag-drop from disk
+    // TODO: drag-drop from disk
     var s = ''
 
-    if (dn.the_file.file_id){
-        // a file is/will be loaded...
-        if (dn.status.file_meta === 1 && dn.status.file_body === 1){
-            s = dn.the_file.title;
-            var extra = [];
-            if(dn.the_file.is_read_only)
-                extra.push("read-only");
-            if(dn.the_file.is_shared)
-                extra.push("shared");
-            if(dn.status.file_sharing == -1)
-                extra.push("sharing status unknown");
-            if(!dn.the_file.is_pristine)
-                extra.push("unsaved changes");
-            if(dn.status.save_body == 0){
-                extra.push("saving document"); // this means that *at least* the body is being saved, possibly more
-            } else {
-                if(dn.status.save_title == 0)
-                    extra.push("updating title");
-                if(dn.status.save_other == 0)
-                    extra.push("updating file properties")
-            } 
-            if(extra.length)
-                s += "\n[" + extra.join(', ') + "]"; 
-        }else if(dn.status.file_meta === 0 && dn.status.file_body === 0)
-            s = "Loading file:\n" + dn.the_file.file_id;
-        else if(dn.status.file_meta === 1 && dn.status.file_body === 0)
-            s = "Loading " + (dn.the_file.is_read_only? 'read-only ' : '' ) + 
-                    "file:\n" + dn.the_file.title;
-        else if(dn.status.file_meta === 0 && dn.status.file_body === 1)
-            s = "Loading metadata for file:\n" + dn.the_file.file_id;
-        else if(dn.status.file_meta === 1) // and -1
-            s = "Failed to download " + (dn.the_file.is_read_only? 'read-only ' : '' )
-                    +  "file:\n" + dn.the_file.title;
-        else if(dn.status.file_body === 1) // and -1
-            s = "Failed to download metadata for file:\n" + dn.the_file.file_id;
-        else // both -1
-            s = "Failed to load file:\n" + dn.the_file.file_id;
-    } else {
-        // no file to load
-        s = "ex nihilo omnia...";
-    }
+    if (dn.status.file_new === 1 && dn.status.file_meta === 1 && dn.status.file_body === 1){
+        s = dn.the_file.title;
+        var extra = [];
+        if(dn.the_file.is_brand_new)
+            extra.push("ex nihilo omnia...");
+        if(dn.the_file.is_read_only)
+            extra.push("read-only");
+        if(dn.the_file.is_shared)
+            extra.push("shared");
+        if(dn.status.file_sharing == -1)
+            extra.push("sharing status unknown");
+        if(!dn.the_file.is_pristine)
+            extra.push("unsaved changes");
+        if(dn.status.save_body == 0){
+            extra.push("saving document"); // this means that *at least* the body is being saved, possibly more
+        } else {
+            if(dn.status.save_title == 0)
+                extra.push("updating title");
+            if(dn.status.save_other == 0)
+                extra.push("updating file properties")
+        } 
+        if(extra.length)
+            s += "\n[" + extra.join(', ') + "]"; 
+    }else if(dn.status.file_new === 0)
+        s = "Creating new file";
+    else if(dn.status.file_new === -1)
+        s = "Failed to create new file";
+    else if(dn.status.file_meta === 0 && dn.status.file_body === 0)
+        s = "Loading file:\n" + dn.the_file.file_id;
+    else if(dn.status.file_meta === 1 && dn.status.file_body === 0)
+        s = "Loading " + (dn.the_file.is_read_only? 'read-only ' : '' ) + 
+                "file:\n" + dn.the_file.title;
+    else if(dn.status.file_meta === 0 && dn.status.file_body === 1)
+        s = "Loading metadata for file:\n" + dn.the_file.file_id;
+    else if(dn.status.file_meta === 1) // and -1
+        s = "Failed to download " + (dn.the_file.is_read_only? 'read-only ' : '' )
+                +  "file:\n" + dn.the_file.title;
+    else if(dn.status.file_body === 1) // and -1
+        s = "Failed to download metadata for file:\n" + dn.the_file.file_id;
+    else // file_body and file_meta both -1
+        s = "Failed to load file:\n" + dn.the_file.file_id;
+    
 
     if(dn.status.authentication != 1){
         // auth in progress or failed
@@ -1491,42 +1494,6 @@ dn.guess_mime_type = function(){
 
 }
 
-dn.save_new_file = function(){
-    var f = dn.the_file;
-    if(f.is_saving){
-        dn.show_error("File is being created. Please wait.");
-        return false;
-    }
-    var meta = {title: f.title, 
-                description: f.description,
-                mimeType: dn.guess_mime_type()};
-    var parentId = f.folderId;
-    if(parentId) 
-        meta.parentNodes =[{id:[parentId]}];
-    f.data_to_save.body = dn.editor.getSession().getValue();
-    f.data_to_save.title = meta.title;
-    f.data_to_save.description = meta.description;
-    var gens = {title: ++f.generation_to_save.title, description: ++f.generation_to_save.description,body: ++f.generation_to_save.body};
-    f.is_saving = true;
-    f.is_pristine = true;
-    dn.show_file_title();
-    dn.el.widget_pending.style.display = '';
-    dn.show_status();
-    dn.save_file(null, meta, f.data_to_save.body, $.proxy(dn.save_done,gens));
-}
-
-dn.saved_new_file = function(resp){
-    dn.the_file.is_brand_new = false;
-    dn.the_file.file_id = resp.id;
-    dn.the_file.is_shared = resp.shared;
-    dn.status.file_sharing = 1;
-    dn.the_file.ext = resp.fileExtension;
-    history.replaceState({},dn.the_file.title,
-            window.location.href.match(/^https?:\/\/[\w-.]*\/\w*/)[0] +
-                "?state={\"action\":\"open\",\"ids\":[\"" + dn.the_file.file_id + "\"]}");
-    dn.set_drive_link_to_folder();
-    dn.save_all_file_properties();
-}
 
 // ############################
 // Scrolling stuff
@@ -1550,8 +1517,10 @@ dn.get_scroll_line = function(){
 
 
 dn.show_file_meta = function(resp) {
+    // this is called both by file loading and by creation of new file
     if (resp.error)
         throw Error(resp.error);
+    dn.the_file.file_id = resp.result.id;
     dn.the_file.title = resp.result.name;
     dn.the_file.description = resp.result.description || '';
     dn.show_description();
@@ -1563,8 +1532,14 @@ dn.show_file_meta = function(resp) {
         dn.the_file.folder_id = resp.result.parents[0];
         dn.set_drive_link_to_folder();
     }
-    dn.show_file_title(); //includes a showStatus call
-    dn.status.file_meta = 1;
+    dn.show_file_title();
+    // set the url to match the file
+    history.replaceState({}, dn.the_file.title, '//' + location.host + location.pathname + "?"
+             + "state=" + JSON.stringify({action: "open", ids: [dn.the_file.file_id]}));
+
+    //whether we were creating a new file or loading meta for existing, neither is still in progress 
+    dn.status.file_meta = 1; 
+    dn.status.file_new = 1;
     dn.show_status();
 } 
 
@@ -2076,29 +2051,22 @@ dn.document_ready = function(e){
     window.addEventListener('resize', dn.widget_apply_anchor);
     window.onbeforeunload = dn.query_unload;
 
-    //work out what caused the page to load
+    //work out whether a fileid was specified in page load, and if not, whether a folderid was.
     var params = window_location_to_params_object(); 
+    var new_in_folder = undefined;
     if(params['state']){
-        var state = {};
         try{
-            state = JSON.parse(params['state']);    
+            var state = JSON.parse(params['state']); 
+            if(state.action && state.action == "open" && state.ids && state.ids.length > 0)
+               dn.the_file.file_id = state.ids[0];
+            else
+               new_in_folder = state.folderId; //could be undefiend
         }catch(e){
-            dn.show_error("Bad URL params:\n" + params['state']);
+            dn.show_error("Bad URL params, creating a new file.");
         }
-        if(state.action && state.action == "open" && state.ids && state.ids.length > 0){
-            dn.the_file.file_id = state.ids[0];
-        }else if(state.action && state.action == "create"){
-            dn.the_file.title = "untitled." + (state.ext ? state.ext : dn.g_settings.get('ext'));
-            if(state.folderId)
-                dn.the_file.folder_id = state.folderId;
-            dn.create_file(); //will use the specified title and folderId
-        }
-    }else{
-        dn.the_file.title = "untitled." + dn.g_settings.get('ext');
-        dn.create_file();
     }
 
-    dn.show_status(); 
+    dn.pr_file_loaded = new SpecialPromise();
 
     // The auth promise can be rejected and resolved multiple times during the lifetime of the app.
     // These two handlers will always be called for those events.
@@ -2124,8 +2092,12 @@ dn.document_ready = function(e){
     .then(function(){
         console.log('succeeded getting user info.')
     })
-
+    
     if(dn.the_file.file_id){
+        // load existing file :::::::::::::::::::::::::::::::::::::::::::::::::::
+        dn.status.file_meta = 0;
+        dn.status.file_body = 0;
+        dn.show_status();
 
         // meta data...
         var pr_meta = until_success(function(succ, fail){
@@ -2133,12 +2105,11 @@ dn.document_ready = function(e){
                    .then(dn.request_file_meta)
                    .then(dn.show_file_meta)
                    .catch(function(err){
-                        if(dn.is_auth_error(err)) throw err; // auth error, until_success will handle it
-                        // meta-data specific error, which we will rebrand as a "success"
+                        if(dn.is_auth_error(err)) throw err; // until_success will handle these errors and retry
                         dn.show_error(err.result.error.message);
                         dn.status.file_meta = -1;
                         dn.show_status();
-                        return 'bad_meta'
+                        return 'bad' // a form of success
                    }).then(succ, fail);
         }, dn.pr_auth.reject.bind(dn.pr_auth));
 
@@ -2147,32 +2118,58 @@ dn.document_ready = function(e){
             Promise.resolve(dn.pr_auth)
                    .then(dn.request_file_body)
                    .then(dn.show_file_body)
-                    .catch(function(err){
-                        if(dn.is_auth_error(err)) throw err; // auth error, until_success will handle it
-                        // body specific error, which we will rebrand as a "success"
+                   .catch(function(err){
+                        if(dn.is_auth_error(err)) throw err;  // until_success will handle these errors and retry
                         dn.show_error(err.result.error.message);
                         dn.status.file_body = -1;
                         dn.show_status();
-                        return 'bad_body'
+                        return 'bad' // a form of success
                    }).then(succ, fail);
         }, dn.pr_auth.reject.bind(dn.pr_auth));
 
         // load meta data and body...
         Promise.all([pr_meta, pr_body])
             .then(function(vals){
-                if(vals[0] == 'bad_meta' || vals[1] == 'bad_body')
-                    throw "did not load file"
-                return true;
-            }).then(function(){
+                if(vals[0] === 'bad' || vals[1] === 'bad') throw "bad"
                 console.log("succeeded loading file body and metadata.")
-            }, function(){
+                dn.pr_file_loaded.resolve();    
+                dn.show_status();
+            }).catch(function(){
+                document.title = "Drive Notepad";
+                dn.g_settings.set('pane', 'pane_help');
+                dn.g_settings.set('pane_open', true);
+            });
+
+    } else {
+        // create new file :::::::::::::::::::::::::::::::::::::::::::::::::::
+        dn.status.file_new = 0;
+        dn.show_status();
+
+        until_success(function(succ, fail){
+            Promise.resolve(dn.pr_auth)
+                   .then(dn.request_new(new_in_folder))
+                   .then(dn.show_file_meta)
+                   .catch(function(err){
+                    if(dn.is_auth_error(err)) throw err; // auth error, until_success will handle it
+                    dn.show_error(err.result.error.message);
+                    dn.status.file_new = -1;
+                    dn.show_status();
+                    return "bad"
+                    }).then(succ, fail);
+            }, dn.pr_auth.reject.bind(dn.pr_auth))
+            .then(function(result){
+                if(result === "bad") throw "bad";
+                console.log("suceeded creating file")
+                dn.g_settings.set('pane', 'pane_file');
+                dn.pr_file_loaded.resolve();
+            }).catch(function(){
                 document.title = "Drive Notepad";
                 dn.g_settings.set('pane', 'pane_help');
                 dn.g_settings.set('pane_open', true);
             });
     }
     
-    // load settings...
+    // load cloud settings ::::::::::::::::::::::::::::::::::::::::::::::::
     until_success(function(succ, fail){ 
         Promise.all([dn.pr_auth, dn.pr_realtime_loaded])
                .then(dn.request_app_data_document)
