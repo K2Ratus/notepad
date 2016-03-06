@@ -2,9 +2,11 @@
 
 A webapp for editing text files in Google Drive, implemented entirely on the client-side.
 
-**The application is avaialble [live on github](https://drivenotepad.github.io/app/).**
+**If you want general information and help using Drive Notepad, please go to [the main website](https://drivenotepad.github.io/).**
 
-**If you want general information and help using Drive Notepad, please go to [the main website](https://drivenotepad.github.io/). This document is only meant as a development reference.**
+**The application is available [live on github](https://drivenotepad.github.io/app/).**
+
+This document is only meant as a development reference.
 
 ---
 

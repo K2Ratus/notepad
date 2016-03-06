@@ -67,56 +67,6 @@ dn.set_editor_newline = function(){
 }
 
 
-// ############################
-// Open stuff
-// ############################
-
-dn.open_button_click = function(){
-    gapi.load('picker', function(){
-        var view = new google.picker.View(google.picker.ViewId.DOCS);
-        try{
-            if(!dn.open_picker){
-                dn.open_picker = new google.picker.PickerBuilder()
-                .enableFeature(google.picker.Feature.NAV_HIDDEN)
-                .setAppId(dn.client_id) /* the drive scope requires explicit permission to open each file, and by providing the client_id here you get it for the chosen file */
-                .setOAuthToken(gapi.auth.getToken().access_token) /* this gives permission to open the picker..you can do it wtihout a user-specific access_token, but we have one so lets use it */
-                .addView(view)
-                .setCallback(dn.picker_callback)
-                .build();        
-                if(!dn.open_picker)
-                    throw "could not build picker";
-            }
-            dn.open_picker.setVisible(true);
-        } catch (e){
-            dn.show_error("" + e);
-        }
-    });
-
-}
-
-dn.picker_callback = function(data) {
-    if (data.action == google.picker.Action.PICKED) {
-        var file_id = data.docs[0].id;
-        var url = "?state=" + JSON.stringify({
-            action: "open",
-            userId: dn.url_user_id,
-            ids: [file_id]
-        });
-        window.location = url;
-    }else if(data.action == "cancel"){
-        if(dn.open_new_tab)
-            dn.open_new_tab.close();
-        dn.focus_editor();
-    }
-    dn.open_new_tab = undefined;
-}
-
-
-// ############################
-// Widget stuff
-// ############################
-
-
 dn.toggle_permission = function(state){
     var el = dn.el.pane_permissions;
     if(state){
@@ -790,61 +740,6 @@ dn.set_editor_syntax = function(){
 }
 
 
-
-// ############################
-// Drag-drop stuff
-// ############################
-//TODO: this may have a few bugs since it's not been tested for a while
-
-dn.document_drag_over = function (evt) {
-    evt = evt.originalEvent;
-    evt.stopPropagation();
-    evt.preventDefault();
-    if(!(dn.the_file.is_brand_new && !dn.status.unsaved_changes)){
-        evt.dataTransfer.dropEffect = 'none';
-        if(dn.can_show_drag_drop_error){
-            dn.show_error("File drag-drop is only permitted when the Drive Notpad page is displaying a new and unmodified file.")
-            dn.can_show_drag_drop_error = false; //wait at least dn.const.error_delay_ms until displaying the error again
-            setTimeout(function(){dn.can_show_drag_drop_error = true;},dn.const.error_delay_ms);
-        }
-        return;
-    }
-    evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
-}
-    
-dn.document_drop_file = function(evt){
-     if(!(dn.the_file.is_brand_new && !dn.status.unsaved_changes))
-        return;
-        
-   evt = evt.originalEvent;
-   evt.stopPropagation();
-   evt.preventDefault();
-   
-   var files = evt.dataTransfer.files;
-   if(files.length > 1){
-       dn.show_error("You cannot drag-drop multiple files onto the Drive Notepad page, only individual files.")
-   }
-   var file = files[0];
-   dn.the_file.title = file.name;
-   dn.create_file();
-   dn.the_file.isReading_file_object = true;   
-   dn.show_status();
-   var r = new FileReader();
-   r.onload = dn.dropped_file_read;
-   r.readAsText(file);      
-}
-
-dn.dropped_file_read = function(e){
-    dn.the_file.isReading_file_object = false;
-    dn.editor.getSession().setValue(e.target.result);
-    // Note we don't encolse the above in a dn.setting_session_value = true block so the change event will fire and set pristine to false and ShowStatus etc.
-}
-
-// ############################
-// Page ready stuff
-// ############################
-
-
 dn.render_document_title = function(){
     document.title = (dn.status.unsaved_changes ? "*" : "") + dn.the_file.title;
 };
@@ -907,33 +802,33 @@ dn.document_ready = function(e){
     }
 
     dn.el.pane_clipboard = document.getElementById('pane_clipboard');
+    dn.el.pane_permissions = document.getElementById('pane_permissions');
+    document.getElementById('button_auth').addEventListener('click', dn.reauth_manual);
 
-     // pane file ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    // widget panes ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+     // pane file 
     dn.el.pane_file = document.getElementById('pane_file');
     dn.file_pane.on_document_ready();
     dn.el.menu_file.addEventListener('click', function(){
         dn.g_settings.set('pane', 'pane_file');
     })
 
-     // pane general settings :::::::::::::::::::::::::::::::::::::::::::::::::::::
+     // pane general settings
     dn.el.pane_general_settings = document.getElementById('pane_general_settings');
     dn.settings_pane.on_document_ready();
     dn.el.menu_general_settings.addEventListener('click', function(){
         dn.g_settings.set('pane', 'pane_general_settings');
     })
 
-    // pane permissions :::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    dn.el.pane_permissions = document.getElementById('pane_permissions');
-    document.getElementById('button_auth').addEventListener('click', dn.reauth_manual);
-
-    // pane help ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    // pane help 
     dn.el.pane_help = document.getElementById('pane_help');
     dn.help_pane.on_document_ready();
     dn.el.menu_help.addEventListener('click', function(){
         dn.g_settings.set('pane', 'pane_help');
     })
 
-    // pane find ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::    
+    // pane find
     dn.el.pane_find = document.getElementById('pane_find');
     dn.find_pane.on_document_ready();
     dn.el.menu_find.addEventListener('click', function(){
@@ -941,23 +836,18 @@ dn.document_ready = function(e){
         dn.find_pane.focus_on_input();
     });
 
-    // pane open ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    // pane open
     dn.el.pane_open = document.getElementById('pane_open');
-    dn.el.opener_button_a = document.getElementById('opener_button_a');
+    dn.pane_open.on_document_ready();
     dn.el.menu_open.addEventListener('click', function(){    
         dn.g_settings.set('pane', 'pane_open');
     });
-    dn.el.opener_button_a.addEventListener('click', dn.open_button_click);
-
-
-    dn.g_settings.addEventListener("VALUE_CHANGED", dn.settings_changed);
     
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    dn.g_settings.addEventListener("VALUE_CHANGED", dn.settings_changed);
     dn.make_keyboard_shortcuts();
     dn.load_default_settings();
     document.addEventListener('contextmenu', prevent_default);
-    document.addEventListener('dragover', dn.document_drag_over);
-    document.addEventListener('drop', dn.document_drop_file);
     window.addEventListener('resize', dn.widget_apply_anchor);
     window.onbeforeunload = dn.query_unload;
 
