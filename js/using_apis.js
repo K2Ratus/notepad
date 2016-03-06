@@ -14,6 +14,16 @@
 
 */
 
+dn.filter_api_errors = function(err){
+    // this is designed for use in conjunction with until_success
+    if(dn.is_auth_error(err)){
+        dn.pr_auth.reject(err); //will trigger some kind of re-authnetication
+        return false; // continue with next attempt
+    }else{
+        throw err; // this is an unrecognised error
+    }
+}
+
 dn.is_auth_error = function(err){
     // returns 0 for non-auth errors, 1 for auto refresh and 2 for manual refresh
     if(!err)
@@ -26,9 +36,19 @@ dn.is_auth_error = function(err){
         return 0;
     if(err.result && err.result.error && err.result.error.code === -1)//network error
         return 1;
-    console.log("WHAT IS THIS ERROR?....")
-    console.dir(err);
     return 0;
+}
+
+dn.api_error_to_string = function(err){
+    if(!err)
+        return "Error.";
+    if(err.result && err.result.error && err.result.error.message !== undefined){
+        return "" + err.result.error.message;
+    } else {
+        console.log("Strangely structured error:")
+        console.dir(err);
+        return "Error. See developer console for details."
+    }
 }
 
 dn.handle_auth_error = function(err){
@@ -40,12 +60,7 @@ dn.handle_auth_error = function(err){
     var err_type = dn.is_auth_error(err);
 
     if(err_type === 0){
-        if(err.result && err.result.error && err.result.error.message !== undefined){
-            dn.show_error(err.result.error.message);
-        } else {
-            dn.show_error("Error. See developer console for details.")
-            console.dir(err);
-        }
+        dn.show_error(dn.api_error_to_string(err));
     }else if(err_type == 1){
         dn.reauth_auto();
     }else{

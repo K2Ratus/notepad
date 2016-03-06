@@ -860,8 +860,8 @@ dn.document_ready = function(e){
             var state = JSON.parse(params['state']); 
             if(state.action && state.action == "open" && state.ids && state.ids.length > 0)
                dn.the_file.file_id = state.ids[0];
-            else
-               new_in_folder = state.folderId; //could be undefiend
+            else if (state.folderId)
+               new_in_folder = state.folderId; // could be invalid nonsense
         }catch(e){
             dn.show_error("Bad URL params, creating a new file.");
         }
@@ -909,10 +909,14 @@ dn.document_ready = function(e){
                .then(dn.request_user_info)
                .then(dn.show_user_info)
                .then(succ, fail);
-    }, dn.pr_auth.reject.bind(dn.pr_auth))
+    }).before_retry(dn.filter_api_errors)
     .then(function(){
         console.log('succeeded getting user info.')
-    })
+    }).catch(function(err){
+        console.log("failed to load user info")
+        console.dir(err);
+        dn.show_error(dn.api_error_to_string(err));
+    });
     
     if(dn.the_file.file_id){
         // load existing file :::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -920,50 +924,52 @@ dn.document_ready = function(e){
         dn.status.file_body = 0;
         dn.show_status();
 
-        // meta data...
-        var pr_meta = until_success(function(succ, fail){
+        // metadata...
+        var pr_meta =
+        until_success(function(succ, fail){
             Promise.resolve(dn.pr_auth)
                    .then(dn.request_file_meta)
                    .then(dn.show_file_meta)
-                   .catch(function(err){
-                        if(dn.is_auth_error(err)) throw err; // until_success will handle these errors and retry
-                        dn.show_error(err.result.error.message);
-                        dn.status.file_meta = -1;
-                        dn.show_status();
-                        return 'bad' // a form of success
-                   }).then(succ, fail);
-        }, dn.pr_auth.reject.bind(dn.pr_auth));
+                   .then(succ, fail);
+        }).before_retry(dn.filter_api_errors)
+        .catch(function(err){
+            dn.status.file_meta = -1;
+            dn.show_status();
+            throw err;
+        });
 
         // body...
-        var pr_body = until_success(function(succ, fail){
+        var pr_body = 
+        until_success(function(succ, fail){
             Promise.resolve(dn.pr_auth)
                    .then(dn.request_file_body)
                    .then(dn.show_file_body)
-                   .catch(function(err){
-                        if(dn.is_auth_error(err)) throw err;  // until_success will handle these errors and retry
-                        dn.show_error(err.result.error.message);
-                        dn.status.file_body = -1;
-                        dn.show_status();
-                        return 'bad' // a form of success
-                   }).then(succ, fail);
-        }, dn.pr_auth.reject.bind(dn.pr_auth));
+                   .then(succ, fail);
+        }).before_retry(dn.filter_api_errors)
+        .catch(function(err){
+            dn.status.file_body = -1;
+            dn.show_status();
+            throw err;
+        });
 
-        // load meta data and body...
+        // wait for both meta data and body...
         Promise.all([pr_meta, pr_body])
             .then(function(vals){
-                if(vals[0] === 'bad' || vals[1] === 'bad') throw "bad"
                 console.log("succeeded loading file body and metadata.");
                 dn.the_file.set({is_loaded: true});
                 dn.pr_file_loaded.resolve();    
                 dn.show_status();
             }).catch(function(err){
+                console.log("failed to load file properly..");
+                console.dir(err);
+                dn.show_error(dn.api_error_to_string(err));
                 document.title = "Drive Notepad";
                 dn.g_settings.set('pane', 'pane_help');
                 dn.g_settings.set('pane_open', true);
-                console.dir(err);
             });
 
     } else {
+
         // create new file :::::::::::::::::::::::::::::::::::::::::::::::::::
         dn.status.file_new = 0;
         dn.show_status();
@@ -973,21 +979,19 @@ dn.document_ready = function(e){
             Promise.resolve(dn.pr_auth)
                    .then(dn.request_new(new_in_folder))
                    .then(dn.show_file_meta)
-                   .catch(function(err){
-                    if(dn.is_auth_error(err)) throw err; // auth error, until_success will handle it
-                    dn.show_error(err.result.error.message);
-                    dn.status.file_new = -1;
-                    dn.show_status();
-                    return "bad"
-                    }).then(succ, fail);
-            }, dn.pr_auth.reject.bind(dn.pr_auth))
+                   .then(succ, fail);
+            }).before_retry(dn.filter_api_errors)
             .then(function(result){
-                if(result === "bad") throw "bad";
                 console.log("suceeded creating file")
                 dn.g_settings.set('pane', 'pane_file');
                 dn.pr_file_loaded.resolve();
             }).catch(function(err){
+                console.log("failed to create new file");
+                console.dir(err);
+                dn.show_error(dn.api_error_to_string(err));
                 document.title = "Drive Notepad";
+                dn.status.file_new = -1;
+                dn.show_status();
                 dn.g_settings.set('pane', 'pane_help');
                 dn.g_settings.set('pane_open', true);
                 console.dir(err);
@@ -1000,12 +1004,14 @@ dn.document_ready = function(e){
                .then(dn.request_app_data_document)
                .then(dn.show_app_data_document)
                .then(succ, fail)
-    }, dn.pr_auth.reject.bind(dn.pr_auth))
+    }).before_retry(dn.filter_api_errors)
     .then(function(){
         console.log('succeeded loading settings');
+    }).catch(function(err){
+        console.log("failed to load realtime settings.")
+        console.dir(err);
+        dn.show_error(dn.api_error_to_string(err));
     });
-    
-    
 }
 
 

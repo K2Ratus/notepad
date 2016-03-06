@@ -71,17 +71,36 @@ var prevent_default_and_stop_propagation = function(e){
     e.preventDefault();
 }
 
-function until_success(executor, on_error){
-    // This was confusing to write, so when I finished I turned it into a S.O. answer:
-    //      http://stackoverflow.com/a/35782428/2399799
-    return new Promise(function(success){
+var until_success = function(executor){
+    /* This was confusing to write, so when I finished I turned it into an S.O. answer:
+          http://stackoverflow.com/a/35782428/2399799  
+       An explanation and proper example is given there.*/
+    
+    var before_retry = undefined;
+    var outer_executor = function(succeed, reject){
         var rejection_handler = function(err){
-            on_error(err);
-            return new Promise(executor).then(success, rejection_handler);
+            if(before_retry){
+                try {
+                    var pre_retry_result = before_retry(err);
+                    if(pre_retry_result)
+                        return succeed(pre_retry_result);
+                } catch (pre_retry_error){
+                    return reject(pre_retry_error);
+                }
+            }
+            return new Promise(executor).then(succeed, rejection_handler);                
         }
-        return new Promise(executor).then(success, rejection_handler);
-    });
+        return new Promise(executor).then(succeed, rejection_handler);
+    }
+
+    var outer_promise = new Promise(outer_executor);
+    outer_promise.before_retry = function(func){
+        before_retry = func;
+        return outer_promise;
+    }
+    return outer_promise;
 }
+
 
 
 

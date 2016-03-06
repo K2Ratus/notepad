@@ -48,7 +48,7 @@ A second model is `dn.the_file`, which is an instance of `dn.FileModel` (defined
 
 ### Making async API requests
 
-I have tried to wrap most requests in ES6 `Promises`, or variations on that.  An important promise-like object is `dn.pr_auth`, this is a `SpecialPromise` isntance, which can be `resolved` and `rejected` multiple times. As with regular promises, whenever it is resolved the callbacks registered with `.then(success)` are triggered, with each being triggered exactly once, even if `dn.pr_auth` is resolved multiple times.  And, as with regular promises, if `dn.pr_auth` has already been resolved at the moment that the `.then(success)` is registered, it will be triggered immediately.  Finally, the `dn.pr_auth` has two special event listeners: `on_error` and `on_success`, these are called every time the authentication process fails or is successful (respectively).
+I have tried to wrap most requests in ES6 `Promises`, or variations on that.  An important promise-like object is `dn.pr_auth`, this is a `SpecialPromise` instance, which can be `resolved` and `rejected` multiple times. As with regular promises, whenever it is resolved the callbacks registered with `.then(success)` are triggered, with each being triggered exactly once, even if `dn.pr_auth` is resolved multiple times.  And, as with regular promises, if `dn.pr_auth` has already been resolved at the moment that the `.then(success)` is registered, it will be triggered immediately.  Finally, the `dn.pr_auth` has two special event listeners: `on_error` and `on_success`, these are called every time the authentication process fails or is successful (respectively).
 
 This behaviour allows us to have actions that wait on the auth token being valid, but if an auth error occurs at a later date we can set the promise to invalid and begin the re-authentication process.  Any actions added after the failure point will await the resolution of the new promise. [The implementation could possibly have been written in terms of ES6 `Promises` rather than raw JS, but the JS implementation is fairly simple so has its merrits.]
 
@@ -60,28 +60,21 @@ until_success(function(succ, fail){
            .then(dn.request_user_info)
            .then(dn.show_user_info)
            .then(succ, fail);
-}, dn.pr_auth.reject.bind(dn.pr_auth))
+}).before_retry(dn.filter_api_errors)
 .then(function(){
     console.log('succeeded getting user info.')
-})
+}).catch(function(err){
+    console.log("failed to load user info")
+    console.dir(err);
+    dn.show_error(dn.api_error_to_string(err));
+});
 ```
 
-In this code, `dn.show_user_info` is called once the API request on the line above succeeds, which in turn is only called when the auth token is available. If the auth token becomes available but is then mysteriously invalidated, the API request will be made and will fail.  This will cause that "iteration" of the `until_success` `Promise` to fail, invoking `dn.pr_auth.reject`, which calls its `on_error` handler, which in turn *may* issue a new authentication request - see discussion in next paragraph.  In the meantime, `until_sucess` will have begun the next "iteration", and will have "stalled", waiting for the authentication to resolve.  As soon as the authentication is available again the request will be reissued.  This looping will continue until the request suceeds.
+In this code, `dn.show_user_info` is called once the API request on the line above succeeds, which in turn is only called when the auth token is available. If the auth token becomes available but is then mysteriously invalidated, the API request will be made and will fail.  This will cause that "iteration" of the `until_success` `Promise` to fail, invoking `dn.filter_api_errors`.  This handler will decide whether it is worth re-attempting the request, and if some form of re-authentication is neccessary it will start that process.  If the handler decides the error is "fatal", then the `until_success` "loop" exits with whatever the error was, and the `.catch` handler has to deal with it.  If and when the loop finally suceeds, the `.then` handler is called.
 
-There are several ways the task can fail, it could be that the user needs to manually log in, or it could be the token has become invalid somehow and needs to be refreshed, or it could be some other "legitimate" error, such as the request being stupid.  Since the `until_success` will not resolve until success is delivered, you must "rebrand" all possible "legitimate" errors as a success, you do this by inserting the following into the promise chain:
-
- ```javascript
- .catch(function(err){
- 	if(dn.is_auth_error(err)) throw err;
- 	return "that's a dumb request you made"; // this is now treated as success 
- })
-```
-
-If non-auth errors are not caught, then the `dn.pr_auth.on_error` will display the error to the user and not attempt any reauthentication.  This means the `until_succes` will stall indefinitely, waiting in vain for `dn.pr_auth` to resolve.  To guard against the possibility of issuing excessive numbers of automatic reauth requests there is an roughly exponential backoff process, which in the limit will only issue a request once per minute.  Note however that this backoff is specific to the automatic reauthentication, not to requests in general.
+Note how if the `dn.filter_api_errors` function decides it is worth reattempting the request, the next iteration of `until_sucess` will start "immediately", but will hang at `resolve(dn.pr_auth)` until authentication is achieved.  It could be that the user needs to manually log in, or it could be the token has become invalid somehow and needs to be refreshed, or it might be that some kind of non-auth transient network error has occured. To guard against the possibility of issuing excessive numbers of automatic reauth requests there is an roughly exponential backoff process, which in the limit will only issue a request once per minute.  Note however that this backoff is specific to the automatic reauthentication, not to the `until_success` machienery.
 
 Another important `Pomise`-like thing is `dn.pr_file_loaded`, this simply gets resolved soon after the page loads, when either an existing file is loaded or a new file is created.  If neither of those things ever succeed then this is never settled.  The fact that this is a promise, allows us to put it in the save chain, and the user can then actually issue save requests before the file is loaded, which is vaugely helpful when creating new files.
-
-
 
 
 ### Saving
