@@ -60,7 +60,7 @@ var create_pane_shortcuts = function(){
                    action + "</div><div class='shortcut_key'>" + dict[action].replace(",","<br>") +
                    "</div></div>");
     
-    // TODO: put shortcuts into element titles 
+    // TODO: put shortcuts into element titles, see menu_id_to_caption
     //for(var action in dn.tooltip_info)if(action in dict)
     //    dn.tooltip_info[action] += dict[action];
 	

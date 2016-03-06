@@ -66,6 +66,11 @@ var prevent_default = function(e){
     e.preventDefault();  
 }
 
+var prevent_default_and_stop_propagation = function(e){
+    e.stopPropagation();
+    e.preventDefault();
+}
+
 function until_success(executor, on_error){
     // This was confusing to write, so when I finished I turned it into a S.O. answer:
     //      http://stackoverflow.com/a/35782428/2399799

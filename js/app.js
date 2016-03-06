@@ -55,18 +55,6 @@ dn.change_line_classes_rm =(function(rootStr,trueN,factor){
 
 dn.el = dn.el || {};
 
-dn.show_user_info = function(a){
-    dn.user_info = a.result;
-    dn.help_pane.on_user_name_change(a.result.name);
-}
-
-
-dn.set_editor_newline = function(){
-    // view for dn.the_file model
-    dn.editor.session.setNewLineMode(dn.the_file.properties_chosen.newline);
-}
-
-
 dn.toggle_permission = function(state){
     var el = dn.el.pane_permissions;
     if(state){
@@ -114,6 +102,7 @@ dn.widget_mouse_down = function(e){
             off_top: -e.clientY,
             start_time: Date.now(),
             is_dragging: e.button !== 0};
+    e.preventDefault();
     document.addEventListener('mousemove', dn.document_mouse_move_widget);
     document.addEventListener('mouseup', dn.document_mouse_up_widget);
 }
@@ -320,22 +309,62 @@ dn.show_error = function(message){
     css_animation(dn.el.the_widget, 'shake', function(){
         dn.el.widget_error.style.display = 'none';
     }, dn.const.error_delay_ms);
-};
-
-dn.set_drive_link_to_folder = function(){
-    var els = document.getElementsByClassName('link_drive');
-    var href = dn.the_file.folder_id ? 
-                'https://drive.google.com/#folders/' + dn.the_file.folder_id 
-                : 'https://drive.google.com';
-    for(var ii=0; ii<els.length; ii++)
-        els[ii].href = href;
-    // TODO: set new links to have this folder too
 }
-
 
 // ############################
 // Settings stuff
 // ############################
+
+dn.g_settings = (function(){ 
+    // This acts as a mock realtime model to be used until the real model is initialised
+    var ob = {};
+    var keeps = {};
+    var change_listeners = [];
+    return {
+           get: function(k){
+            return ob[k]
+        }, set: function(k,v){
+            if(ob[k] === v) return;
+            ob[k] = v;
+            for(var ii=0;ii<change_listeners.length;ii++)
+                change_listeners[ii]({property: k, newValue: v});
+        }, keep: function(k){
+            keeps[k] = true
+        }, get_keeps: function(){
+            return keeps;
+        }, addEventListener: function(flag, callback){
+            if(flag !== "VALUE_CHANGED") throw "only VALUE_CHANGED"
+                change_listeners.push(callback);
+        }, transfer_to_true_model: function(real_model){
+            // issue changes due to differences in the real and mock models
+            for(var k in ob)if(ob.hasOwnProperty(k) && !keeps[k])
+                if(JSON.stringify(ob[k]) !== JSON.stringify(real_model.get(k)))
+                    this.set(k, real_model.get(k)); // will call listeners
+            // and then register the listeners on the new model
+            while(change_listeners.length)
+                real_model.addEventListener(gapi.drive.realtime.EventType.VALUE_CHANGED, change_listeners.shift());
+        }
+    };                          
+})();
+
+dn.load_default_settings = function(){
+  //Lets show the user either the defualt settings or the 
+  //ones last used on this browser (restricted to impersonal settings only)
+  dn.status.local_settings = 0;
+  try{
+    console.log('Loading default/localStorage settings...');
+    for(var s in dn.default_settings)
+        if(dn.impersonal_settings_keys.indexOf(s) == -1 || !localStorage || !localStorage["g_settings_" +s])
+            dn.g_settings.set(s, dn.default_settings[s]);
+        else
+            dn.g_settings.set(s, JSON.parse(localStorage["g_settings_" + s]));
+  }catch(err){
+      if(localStorage) 
+        localStorage.clear();
+      console.log("Failed to load defaults/localStorage settings.  Have cleared localStorage cache.")
+  }
+  dn.status.local_settings = 1;
+}
 
 
 dn.show_app_data_document = function(doc){
@@ -376,58 +405,6 @@ dn.show_app_data_document = function(doc){
 }
 
 
-
-dn.g_settings = (function(){ //mock realtime model to be used until the real model is initialised
-    var ob = {};
-    var keeps = {};
-    var change_listeners = [];
-    return {
-           get: function(k){
-            return ob[k]
-        }, set: function(k,v){
-            if(ob[k] === v) return;
-            ob[k] = v;
-            for(var ii=0;ii<change_listeners.length;ii++)
-                change_listeners[ii]({property: k, newValue: v});
-        }, keep: function(k){
-            keeps[k] = true
-        }, get_keeps: function(){
-            return keeps;
-        }, addEventListener: function(flag, callback){
-            if(flag !== "VALUE_CHANGED") throw "only VALUE_CHANGED"
-                change_listeners.push(callback);
-        }, transfer_to_true_model: function(real_model){
-            // issue changes due to differences in the real and mock models
-            for(var k in ob)if(ob.hasOwnProperty(k) && !keeps[k])
-                if(JSON.stringify(ob[k]) !== JSON.stringify(real_model.get(k)))
-                    this.set(k, real_model.get(k)); // will call listeners
-            // and then register the listeners on the new model
-            while(change_listeners.length)
-                real_model.addEventListener(gapi.drive.realtime.EventType.VALUE_CHANGED, change_listeners.shift());
-        }
-    };                          
-})();
-
-dn.load_default_settings = function(){
-  //Lets show the user either the defualt settings or the 
-  //ones last used on this browser (restricted to impersonal settings only)
-
-  dn.status.local_settings = 0;
-  try{
-    console.log('Loading default/localStorage settings...');
-    for(var s in dn.default_settings)
-        if(dn.impersonal_settings_keys.indexOf(s) == -1 || !localStorage || !localStorage["g_settings_" +s])
-            dn.g_settings.set(s, dn.default_settings[s]);
-        else
-            dn.g_settings.set(s, JSON.parse(localStorage["g_settings_" + s]));
-  }catch(err){
-      if(localStorage) 
-        localStorage.clear();
-      console.log("Failed to load defaults/localStorage settings.  Have cleared localStorage cache.")
-  }
-  dn.status.local_settings = 1;
-}
-
 dn.settings_changed = function(e){
     var new_value = e.newValue;
     console.log("[user settings] " + e.property +": " + new_value);
@@ -437,62 +414,72 @@ dn.settings_changed = function(e){
     try{
         switch(e.property){
             case "widget_anchor":
-                dn.widget_apply_anchor(new_value);
-                    break;
+            dn.widget_apply_anchor(new_value);
+            break;
+
             case "theme":
-                dn.editor.setTheme('ace/theme/' + new_value);
-                break;
+            dn.editor.setTheme('ace/theme/' + new_value);
+            break;
+
             case "fontSize":
-                var scrollLine = dn.get_scroll_line();
-                dn.editor.setFontSize(new_value + 'em')    
-                dn.editor.scrollToLine(scrollLine);
-                break;
+            var scrollLine = dn.get_scroll_line();
+            dn.editor.setFontSize(new_value + 'em')    
+            dn.editor.scrollToLine(scrollLine);
+            break;
+
             case "wordWrap":
-                var s = dn.editor.getSession();
-                var scrollLine = dn.get_scroll_line();
-                s.setUseWrapMode(new_value[0]);
-                s.setWrapLimitRange(new_value[1],new_value[2]);
-                dn.editor.scrollToLine(scrollLine);
-                break;
+            var s = dn.editor.getSession();
+            var scrollLine = dn.get_scroll_line();
+            s.setUseWrapMode(new_value[0]);
+            s.setWrapLimitRange(new_value[1],new_value[2]);
+            dn.editor.scrollToLine(scrollLine);
+            break;
+
             case "wordWrapAt":
-                var curWrap = dn.g_settings.get('wordWrap');
-                if(curWrap[1] && curWrap[1] != new_value)
-                    dn.g_settings.set('wordWrap',[1,new_value,new_value]);
-                dn.editor.setPrintMarginColumn(new_value);
-                break;
+            var curWrap = dn.g_settings.get('wordWrap');
+            if(curWrap[1] && curWrap[1] != new_value)
+                dn.g_settings.set('wordWrap',[1,new_value,new_value]);
+            dn.editor.setPrintMarginColumn(new_value);
+            break;
+
             case "showGutterHistory":
-                var s = dn.editor.getSession(); 
-                if(!new_value){
-                    var h = dn.change_line_history;
-                    for(var i=0;i<h.length;i++)if(h[i])
-                        s.removeGutterDecoration(i,h[i]<0 ? dn.change_line_classes_rm[-h[i]] : dn.change_line_classes[h[i]]);
-                    dn.change_line_history = []; 
-                }
-                break;
+            var s = dn.editor.getSession(); 
+            if(!new_value){
+                var h = dn.change_line_history;
+                for(var i=0;i<h.length;i++)if(h[i])
+                    s.removeGutterDecoration(i,h[i]<0 ? dn.change_line_classes_rm[-h[i]] : dn.change_line_classes[h[i]]);
+                dn.change_line_history = []; 
+            }
+            break;
+
             case "newLineDefault":
-                if(dn.the_file.loaded_body)
-                    dn.the_file.compute_newline();
-                break;
+            if(dn.the_file.loaded_body)
+                dn.the_file.compute_newline();
+            break;
+
             case "historyRemovedIsExpanded":
-                dn.revision_setis_expaned(new_value);
-                break;
+            dn.revision_set_is_expaned(new_value);
+            break;
+
             case "softTabN":
             case "tabIsHard":        
-                if(dn.the_file.loaded_body)
-                    dn.the_file.compute_newline();
-                break;
+            if(dn.the_file.loaded_body)
+                dn.the_file.compute_newline();
+            break;
+
             case 'pane_open':
-                dn.toggle_widget(new_value)
-                if(dn.g_settings.keep)
-                    dn.g_settings.keep('pane_open');
-                break;
+            dn.toggle_widget(new_value)
+            if(dn.g_settings.keep)
+                dn.g_settings.keep('pane_open');
+            break;
+
             case 'pane':
-                dn.show_pane(new_value);
-                if(dn.g_settings.keep)
-                    dn.g_settings.keep('pane');
-                if(new_value !== 'pane_help')
-                    dn.g_settings.set('help_inner', 'main');
-                break; 
+            dn.show_pane(new_value);
+            if(dn.g_settings.keep)
+                dn.g_settings.keep('pane');
+            if(new_value !== 'pane_help')
+                dn.g_settings.set('help_inner', 'main');
+            break; 
         }
     }catch(err){
         console.log("Error while uptating new settings value.")
@@ -715,10 +702,33 @@ dn.query_unload = function(){
         return "If you leave the page now you will loose the unsaved " + (dn.the_file.is_brand_new ? "new " : "changes to ") + "file '" + dn.the_file.title + "'."
 }
 
+dn.set_drive_link_to_folder = function(){
+    var els = document.getElementsByClassName('link_drive');
+    var href = dn.the_file.folder_id ? 
+                'https://drive.google.com/#folders/' + dn.the_file.folder_id 
+                : 'https://drive.google.com';
+    for(var ii=0; ii<els.length; ii++)
+        els[ii].href = href;
+    // TODO: set new links to have this folder too
+}
+
+dn.show_user_info = function(a){
+    dn.user_info = a.result;
+    dn.help_pane.on_user_name_change(a.result.name);
+}
+
+dn.render_document_title = function(){
+    document.title = (dn.status.unsaved_changes ? "*" : "") + dn.the_file.title;
+}
+
+dn.set_editor_newline = function(){
+    // view for dn.the_file model
+    dn.editor.session.setNewLineMode(dn.the_file.properties_chosen.newline);
+}
+
 dn.set_editor_tabs = function(){
     // view for dn.the_file model
     var val = dn.the_file.properties_chosen.tabs;
-
     if(val.val === "hard"){
         dn.editor.session.setUseSoftTabs(false);
     }else{
@@ -731,7 +741,6 @@ dn.set_editor_syntax = function(){
     // view for dn.the_file model
     var mode_str = dn.the_file.properties_chosen.syntax;
     var modes_array = require("ace/ext/modelist").modes;
-
     for(var ii=0; ii<modes_array.length;ii++)if(modes_array[ii].caption === mode_str){
         dn.editor.getSession().setMode(modes_array[ii].mode);
         return;
@@ -739,10 +748,6 @@ dn.set_editor_syntax = function(){
     dn.show_error("unrecognised syntax mode requested");
 }
 
-
-dn.render_document_title = function(){
-    document.title = (dn.status.unsaved_changes ? "*" : "") + dn.the_file.title;
-};
 
 dn.document_ready = function(e){
 
@@ -757,10 +762,7 @@ dn.document_ready = function(e){
     translate(dn.el.the_widget, 0, 0);
     dn.el.the_widget.style.display = '';
     dn.el.widget_error.style.display = 'none';
-    dn.el.widget_content.addEventListener('mousedown', function(e){
-        e.preventDefault();
-        e.stopPropagation();
-    });
+    dn.el.widget_content.addEventListener('mousedown', prevent_default_and_stop_propagation);
     var els = dn.el.widget_content.getElementsByTagName('input');
     for(var ii=0; ii<els.length; ii++)
         els[ii].addEventListener('mousedown', stop_propagation); // prevents propagation to preventDefault, installed above.
@@ -792,11 +794,10 @@ dn.document_ready = function(e){
     dn.el.menu_help = document.getElementById('menu_help');
     dn.el.menu_file = document.getElementById('menu_file');
     dn.el.menu_general_settings = document.getElementById('menu_general_settings');
-    dn.el.widget_menu.addEventListener('mousedown', stop_propagation);
+    dn.el.widget_menu.addEventListener('mousedown', prevent_default_and_stop_propagation);
     dn.menu_icon_from_pane_id = {}
     var els = dn.el.widget_menu.getElementsByClassName('widget_menu_icon');
     for(var ii=0; ii<els.length; ii++){
-        els[ii].addEventListener("mousedown", prevent_default);
         els[ii].title = dn.menu_id_to_caption[els[ii].id];
         dn.menu_icon_from_pane_id['pane_' + els[ii].id.substr(5)] = els[ii];
     }

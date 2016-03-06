@@ -63,7 +63,7 @@ dn.start_revisions_worker = function(){
         dn.file_history.$view = dn.file_history.$revisions_display.find('ol'); 
         dn.file_history.$expand_removed.addEventListener('click', function(){dn.g_settings.set('historyRemovedIsExpanded',true)});
         dn.file_history.$collapse_removed.addEventListener('click', function(){dn.g_settings.set('historyRemovedIsExpanded',false)});
-        dn.revision_setis_expaned(dn.g_settings.get('historyRemovedIsExpanded'))
+        dn.revision_set_is_expaned(dn.g_settings.get('historyRemovedIsExpanded'))
 
         var w = dn.file_history.worker;
         w.onmessage = dn.revision_worker_delivery;
@@ -79,7 +79,7 @@ dn.start_revisions_worker = function(){
     return false;
 }
 
-dn.revision_setis_expaned = function(v){
+dn.revision_set_is_expaned = function(v){
     var h = dn.file_history;
     if(!h) return; //if we haven't yet initialised fileHistory stuff then ignore this for now, when we do initialise we will read and apply the g_settings value
     
