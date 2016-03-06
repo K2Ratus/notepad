@@ -290,13 +290,13 @@ dn.find_select_result_idx = function(current_match_idx){
     
     var replace_is_showing = dn.g_settings.get('find_replace');
 
-    var max_results = dn.find_max_results_half*2 + (replace_is_showing ? 0 : 1);
+    var max_results = dn.const.find_max_results_half*2 + (replace_is_showing ? 0 : 1);
 
     if(results.length <= max_results){
         results_sub = results;
     }else{
-        var n_pre = dn.find_max_results_half - (replace_is_showing ? 1 : 0);
-        var n_post = dn.find_max_results_half;
+        var n_pre = dn.const.find_max_results_half - (replace_is_showing ? 1 : 0);
+        var n_post = dn.const.find_max_results_half;
         if(current_match_idx < n_pre){
             results_sub = results_sub.concat(results.slice(current_match_idx - n_pre));
             results_sub = results_sub.concat(results.slice(0, current_match_idx));
@@ -318,11 +318,11 @@ dn.find_select_result_idx = function(current_match_idx){
     for(var ii=0; ii<results_sub.length; ii++){
         var row = results_sub[ii].range.start.row;
         var col = results_sub[ii].range.start.column;
-        var prefix_range = new dn.AceRange(row, Math.max(0, col-dn.find_max_prefix_chars), row, col);
-        var pre_ellipses = col > dn.find_max_prefix_chars; //TODO: deal with indent better
+        var prefix_range = new dn.AceRange(row, Math.max(0, col-dn.const.find_max_prefix_chars), row, col);
+        var pre_ellipses = col > dn.const.find_max_prefix_chars; //TODO: deal with indent better
         row = results_sub[ii].range.end.row;
         col = results_sub[ii].range.end.column;
-        var suffix_range = new dn.AceRange(row, col, row, col+dn.find_max_suffix_chars);
+        var suffix_range = new dn.AceRange(row, col, row, col+dn.const.find_max_suffix_chars);
         html += "<div class='find_result_item" + (results_sub[ii].idx==current_match_idx? " find_result_current" : "") + "'>" +
                     "<div class='find_result_line_num'>" + (row+1) + "</div>" +
                     "<div class='find_result_text'>" +

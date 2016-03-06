@@ -145,7 +145,7 @@ dn.toggle_permission = function(state){
             el.style.display = '';
             dn.g_settings.set('pane', 'pane_help');
             dn.g_settings.set('pane_open', true);
-            css_animation(dn.el.the_widget, 'shake', function(){}, dn.error_delay_ms);
+            css_animation(dn.el.the_widget, 'shake', function(){}, dn.const.error_delay_ms);
         }
     } else {
         dn.status.permissions_showing = 0;
@@ -192,8 +192,8 @@ dn.document_mouse_move_widget = function(e){
     var x = e.clientX+dn.widget_mouse_down_info.off_left;
     var y = e.clientY+dn.widget_mouse_down_info.off_top;
     if(!dn.widget_mouse_down_info.is_dragging){
-        dn.widget_mouse_down_info.is_dragging = (Date.now() - dn.widget_mouse_down_info.start_time > dn.drag_delay_ms)
-                                              || (x*x + y*y > dn.drag_shift_px * dn.drag_shift_px);
+        dn.widget_mouse_down_info.is_dragging = (Date.now() - dn.widget_mouse_down_info.start_time > dn.const.drag_delay_ms)
+                                              || (x*x + y*y > dn.const.drag_shift_px * dn.const.drag_shift_px);
     }
     if(dn.widget_mouse_down_info.is_dragging)
         translate(dn.el.the_widget, x, y);
@@ -389,7 +389,7 @@ dn.show_error = function(message){
     dn.el.widget_error.style.display = '';
     css_animation(dn.el.the_widget, 'shake', function(){
         dn.el.widget_error.style.display = 'none';
-    }, dn.error_delay_ms);
+    }, dn.const.error_delay_ms);
 };
 
 dn.set_drive_link_to_folder = function(){
@@ -658,7 +658,7 @@ dn.on_paste = function(text){
     dn.clipboard_index = dn.g_clipboard.lastIndexOf(text); 
     if(dn.clipboard_index == -1){ //it's possible the user copied some text from outside the DN, in which case we will add it to the clipboard now
        dn.clipboard_index = dn.g_clipboard.push(text);
-       while(dn.g_clipboard.length >dn.clipboard_max_length) //same as on copy
+       while(dn.g_clipboard.length > dn.const.clipboard_max_length) //same as on copy
          dn.g_clipboard.remove(0);
     }
     if(dn.clipboard_info_timer)
@@ -667,7 +667,7 @@ dn.on_paste = function(text){
     dn.clipboard_info_timer = setTimeout(function(){
         dn.clipboard_info_timer = null;
         dn.el.pane_clipboard.style.display = '';
-    },dn.clipboard_info_delay);
+    },dn.const.clipboard_info_delay);
 }
 
 dn.on_copy = function(text){
@@ -675,7 +675,7 @@ dn.on_copy = function(text){
         return;
     
     dn.g_clipboard.push(text);
-    while(dn.g_clipboard.length >dn.clipboard_max_length)
+    while(dn.g_clipboard.length >dn.const.clipboard_max_length)
         dn.g_clipboard.remove(0);
 }
 
@@ -854,8 +854,8 @@ dn.document_drag_over = function (evt) {
         evt.dataTransfer.dropEffect = 'none';
         if(dn.can_show_drag_drop_error){
             dn.show_error("File drag-drop is only permitted when the Drive Notpad page is displaying a new and unmodified file.")
-            dn.can_show_drag_drop_error = false; //wait at least ERROR_DELAY_MS until displaying the error again
-            setTimeout(function(){dn.can_show_drag_drop_error = true;},dn.error_delay_ms);
+            dn.can_show_drag_drop_error = false; //wait at least dn.const.error_delay_ms until displaying the error again
+            setTimeout(function(){dn.can_show_drag_drop_error = true;},dn.const.error_delay_ms);
         }
         return;
     }

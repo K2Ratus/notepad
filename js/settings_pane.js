@@ -56,12 +56,12 @@ var on_document_ready = function(){
     });
     el.tab_soft_dec.addEventListener('click', function(){
         var at = dn.g_settings.get('softTabN') - 1;
-        at = at < dn.min_soft_tab_n ? dn.min_soft_tab_n : at;
+        at = at < dn.const.min_soft_tab_n ? dn.const.min_soft_tab_n : at;
         dn.g_settings.set('softTabN',at);
     });
     el.tab_soft_inc.addEventListener('click', function(){
         var at = dn.g_settings.get('softTabN') + 1;
-        at = at > dn.max_soft_tab_n ? dn.max_soft_tab_n : at;
+        at = at > dn.const.max_soft_tab_n ? dn.const.max_soft_tab_n : at;
         dn.g_settings.set('softTabN',at);
     });
     el.font_size_dec.addEventListener('click', font_size_dec_click);
@@ -74,13 +74,13 @@ var on_document_ready = function(){
         dn.g_settings.set('wordWrap',[1,at,at]);
     });
     el.word_wrap_at_dec.addEventListener('click', function(){
-        var at = dn.g_settings.get('wordWrapAt') - dn.wrap_at_increment;
-        at = at < dn.min_wrap_at ? dn.min_wrap_at : at;
+        var at = dn.g_settings.get('wordWrapAt') - dn.const.wrap_at_increment;
+        at = at < dn.const.min_wrap_at ? dn.const.min_wrap_at : at;
         dn.g_settings.set('wordWrapAt',at);
     });
     el.word_wrap_at_inc.addEventListener('click', function(){
-        var at = dn.g_settings.get('wordWrapAt') + dn.wrap_at_increment;
-        at = at > dn.max_wrap_at ? dn.max_wrap_at : at;
+        var at = dn.g_settings.get('wordWrapAt') + dn.const.wrap_at_increment;
+        at = at > dn.const.max_wrap_at ? dn.const.max_wrap_at : at;
         dn.g_settings.set('wordWrapAt',at);
     });
     el.word_wrap_edge.addEventListener('click', function(){
@@ -107,15 +107,15 @@ var on_document_ready = function(){
 
 var font_size_dec_click = function(){
     var font_size = dn.g_settings.get('fontSize');
-    font_size -= dn.font_size_increment;
-    font_size = font_size  < dn.min_font_size ? dn.min_font_size: font_size;
+    font_size -= dn.const.font_size_increment;
+    font_size = font_size  < dn.const.min_font_size ? dn.const.min_font_size: font_size;
     dn.g_settings.set('fontSize', font_size);
 }
 
 var font_size_inc_click = function(){
     var font_size = dn.g_settings.get('fontSize');
-    font_size += dn.font_size_increment;
-    font_size = font_size  > dn.max_font_size ? dn.max_font_size:font_size;
+    font_size += dn.const.font_size_increment;
+    font_size = font_size  > dn.const.max_font_size ? dn.const.max_font_size:font_size;
     dn.g_settings.set('fontSize', font_size);
 }
 

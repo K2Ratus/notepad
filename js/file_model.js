@@ -159,7 +159,7 @@ dn.FileModel.prototype.compute_tabs = function(){
         prop = {val: prop.val, n: prop.n}; // drop any other nonsense
         prop.n = parseInt(prop.n) = 10;
         if(!(prop.val === "tab" || prop.val === "spaces")) throw 0
-        if(!(prop.n > dn.min_soft_tab_n && prop.n < dn.max_soft_tab_n))
+        if(!(prop.n > dn.const.min_soft_tab_n && prop.n < dn.const.max_soft_tab_n))
             prop.n = undefined; 
         if(prop.val === "spaces" && prop.n === undefined) throw 0
     }catch(e){
@@ -199,7 +199,7 @@ dn.FileModel.prototype.compute_tabs = function(){
     n_only_space = n_samp - n_with_mixture - n_only_tabs;
 
 
-    if(n_only_tabs/n_samp >= dn.detect_tabs_tabs_frac){
+    if(n_only_tabs/n_samp >= dn.const.detect_tabs_tabs_frac){
         // detected tab...
         this.properties_detected_info.tabs = "hard tab indentation detected";
         if(this.properties_chosen.tabs === undefined)
@@ -207,7 +207,7 @@ dn.FileModel.prototype.compute_tabs = function(){
         if(this.properties_chosen.tabs.n === undefined)
             this.properties_chosen.tabs.n = dn.g_settings.get('softTabN'); // we have to show something for n
 
-    } else if(n_samp === 0 || n_only_space/n_samp < dn.detect_tabs_spaces_frac){
+    } else if(n_samp === 0 || n_only_space/n_samp < dn.const.detect_tabs_spaces_frac){
         // no detection possible, use default....
 
         if(this.properties_chosen.tabs === undefined){
@@ -228,7 +228,7 @@ dn.FileModel.prototype.compute_tabs = function(){
 
         //Build a second space hist, using all "harmonics"....
         var space_mod_hist = [];
-        for(var ss=dn.min_soft_tab_n; ss<=dn.max_soft_tab_n; ss++){
+        for(var ss=dn.const.min_soft_tab_n; ss<=dn.const.max_soft_tab_n; ss++){
             for(var ii=ss, m=0; ii<space_hist.length; ii+=ss)
                 m += space_hist[ii] === undefined ? 0 : space_hist[ii];
             space_mod_hist[ii] = m;
@@ -236,16 +236,16 @@ dn.FileModel.prototype.compute_tabs = function(){
         
         // and find the largest indent that passes threshold...
         var ss;
-        for(ss=dn.max_soft_tab_n; ss>=dn.min_soft_tab_n; ss--)
-            if(space_mod_hist[ss]/n_only_space > dn.detect_tabs_n_spaces_frac){
+        for(ss=dn.const.max_soft_tab_n; ss>=dn.const.min_soft_tab_n; ss--)
+            if(space_mod_hist[ss]/n_only_space > dn.const.detect_tabs_n_spaces_frac){
                 this.properties_detected_info.tabs = "detected soft-tabs of " + ss + " spaces"
                 break;
             }
 
         // if nothing was over threshold, use default space count
-        if(ss < dn.min_soft_tab_n){
+        if(ss < dn.const.min_soft_tab_n){
             ss = dn.g_settings.get('softTabN');    
-            if(space_mod_hist[ss]/n_only_space > dn.detect_tabs_n_spaces_frac_for_default)
+            if(space_mod_hist[ss]/n_only_space > dn.const.detect_tabs_n_spaces_frac_for_default)
                 this.properties_detected_info.tabs = "detected close match to default of " + ss + " spaces";
             else 
                 this.properties_detected_info.tabs = "detected soft-tabs, assuming default " + ss + " spaces";

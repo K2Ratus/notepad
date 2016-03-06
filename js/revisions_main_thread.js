@@ -10,8 +10,8 @@ dn.close_history = function(){
 dn.revisions_window_resize = function(){
     if(dn.file_history.canShowResizeError){
         dn.show_error("The history explorer displays poorly if you resize the window while it is open. (This is a bug.)");
-        dn.file_history.canShowResizeError = false; //wait at least ERROR_DELAY_MS until displaying the error again
-        setTimeout(function(){dn.file_history.canShowResizeError = true;},dn.error_delay_ms);
+        dn.file_history.canShowResizeError = false; //wait at least dn.const.error_delay_ms until displaying the error again
+        setTimeout(function(){dn.file_history.canShowResizeError = true;},dn.const.error_delay_ms);
     }    
 }
 

@@ -161,26 +161,26 @@ dn.impersonal_settings_keys = [
 "find_replace"
 ];
 
-dn.drag_delay_ms = 400;
-dn.drag_shift_px = 40;
-dn.min_font_size = 0.3;
-dn.max_font_size = 5; 
-dn.max_wrap_at = 200;
-dn.min_wrap_at = 20;
-dn.wrap_at_increment = 10;
-dn.max_soft_tab_n = 10;
-dn.min_soft_tab_n = 2;
-dn.detect_tabs_spaces_frac = 0.9;
-dn.detect_tabs_tabs_frac = 0.9;
-dn.detect_tabs_n_spaces_frac = 0.99;
-dn.detect_tabs_n_spaces_frac_for_default = 0.6;
-dn.font_size_increment = 0.15;
-dn.icon_mouse_over_ms = 300;
-dn.editor_refocus_time_ms = 500;
-dn.error_delay_ms = 5000;//5 seconds
-dn.find_history_add_delay = 2000; //ms
-dn.clipboard_info_delay = 500; //ms
-dn.clipboard_max_length = 20; //TODO: decide whether a large clipboard slows page loads and whether we can do anything about it.
-dn.find_max_results_half = 3; 
-dn.find_max_prefix_chars = 10;
-dn.find_max_suffix_chars = 60;
+dn.const = {
+drag_delay_ms: 400,
+drag_shift_px: 40,
+min_font_size: 0.3,
+max_font_size: 5, 
+max_wrap_at: 200,
+min_wrap_at: 20,
+wrap_at_increment: 10,
+max_soft_tab_n: 10,
+min_soft_tab_n: 2,
+detect_tabs_spaces_frac: 0.9,
+detect_tabs_tabs_frac: 0.9,
+detect_tabs_n_spaces_frac: 0.99,
+detect_tabs_n_spaces_frac_for_default: 0.6, //check
+font_size_increment: 0.15, //check
+error_delay_ms: 5000,//5 seconds
+find_history_add_delay: 2000, //ms
+clipboard_info_delay: 500, //ms
+clipboard_max_length: 20, //TODO: decide whether a large clipboard slows page loads and whether we can do anything about it.
+find_max_results_half: 3, 
+find_max_prefix_chars: 10,
+find_max_suffix_chars: 60
+};

@@ -75,7 +75,7 @@ There are (at least) two separate MVC systems at play in the app, one for the fi
 
 The saving system allows for the user to issue multiple requets in quick succession, so that multiple requests are pending at the same time.  As the requests return, we check the server's version number to check that they were resolved in the correct order. If anything ended up out of order then we issue a correction save until the order is as we wanted it to be.  The things that can be saved are the file body, and the various pieces of metadata shown in the file pane.  A single request can contain one or more of these elements. We track the server's version number for each element separately, so we can make minimal corrections as needed.
 
-Note that if there are other users/devices saving at the same time as the current user then there is no guarantee that they will see the same order of changes. The only guarantee is that if user X makes change A and then change B, then it once user X receives confirmation of saving being completed, we know the server will defintiely not hold the value of change A.  It may hold the value from some other user or it may hold the change B. Also note that rather than simply holding value A then value B, it may have held value B, then A, then B', with B' identical to B but issued in a later "correction" request.
+Note that if there are other users/devices saving at the same time as the current user then there is no guarantee that they will see the same order of changes. The only guarantee is that if user X makes change A and then change B, then once user X receives confirmation of saving being completed, we know the server will defintiely not hold the value of change A.  It may hold the value from some other user or it may hold the change B. Also note that rather than simply holding value A then value B, it may have held value B, then A, then B', with B' identical to B but issued in a later "correction" request.
 
 ### Find/replace
 
@@ -95,5 +95,3 @@ When the input gets the focus, the goto/search operation is performed, when the 
 There are special functions for producing exactly the right focus behaviour when pressing Esc (with focus on the editor) and pressing 
 Ctrl-F/Crtl-L.
 
-
-*/
