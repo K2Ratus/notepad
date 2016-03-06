@@ -57,7 +57,7 @@ dn.el = dn.el || {};
 
 dn.show_user_info = function(a){
     dn.user_info = a.result;
-    dn.el.user_name.textContent = a.result.name;
+    dn.help_pane.on_user_name_change(a.result.name);
 }
 
 
@@ -116,26 +116,6 @@ dn.picker_callback = function(data) {
 // Widget stuff
 // ############################
 
-dn.show_help_inner = function(inner_pane){
-    // expects string 'shorcuts' or 'tips',  any other values shows main
-
-    dn.el.pane_help_shortcuts.style.display = 'none';
-    dn.el.pane_help_tips.style.display = 'none';
-    dn.el.pane_help_main.style.display = 'none';
-
-    dn.el.button_shortcuts.classList.remove('selected');
-    dn.el.button_tips.classList.remove('selected');
-    
-    if(inner_pane == 'tips'){
-        dn.el.pane_help_tips.style.display = '';
-        dn.el.button_tips.classList.add('selected');
-    } else if(inner_pane == 'shortcuts'){
-        dn.el.pane_help_shortcuts.style.display = '';
-        dn.el.button_shortcuts.classList.add('selected');
-    } else {
-        dn.el.pane_help_main.style.display = '';
-    }
-}
 
 dn.toggle_permission = function(state){
     var el = dn.el.pane_permissions;
@@ -563,10 +543,6 @@ dn.settings_changed = function(e){
                 if(new_value !== 'pane_help')
                     dn.g_settings.set('help_inner', 'main');
                 break; 
-            case 'help_inner':
-                dn.show_help_inner(new_value);
-                break;
-            
         }
     }catch(err){
         console.log("Error while uptating new settings value.")
@@ -952,28 +928,10 @@ dn.document_ready = function(e){
 
     // pane help ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.el.pane_help = document.getElementById('pane_help');
-    dn.el.user_name = document.getElementById('user_name');
-    dn.el.pane_help_shortcuts = document.getElementById('pane_help_shortcuts');
-    dn.el.pane_help_tips = document.getElementById('pane_help_tips');
-    dn.el.pane_help_main = document.getElementById('pane_help_main');
-    dn.el.button_shortcuts = document.getElementById('button_view_shortcuts');
-    dn.el.button_tips = document.getElementById('button_view_tips');
-    dn.el.button_shortcuts.addEventListener('click', function(){
-        if(dn.g_settings.get('help_inner') === 'shortcuts')
-            dn.g_settings.set('help_inner', 'main');
-        else
-            dn.g_settings.set('help_inner', 'shortcuts');
-    })
-    dn.el.button_tips.addEventListener('click', function(){
-        if(dn.g_settings.get('help_inner') === 'tips')
-            dn.g_settings.set('help_inner', 'main');
-        else
-            dn.g_settings.set('help_inner', 'tips');
-    })
+    dn.help_pane.on_document_ready();
     dn.el.menu_help.addEventListener('click', function(){
         dn.g_settings.set('pane', 'pane_help');
     })
-    dn.create_pane_shortcuts();
 
     // pane find ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::    
     dn.el.pane_find = document.getElementById('pane_find');

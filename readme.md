@@ -40,7 +40,7 @@ The main model is `dn.g_settings`.  At some point after the page loads, this bec
 
 A second model is `dn.the_file`, which is an instance of `dn.FileModel` (defined in `file_model.js`).  This is a relatively simple object which backs the metadata shown in the file pane.  The only complexity is that when you change some of the values it has to recompute some of the data, e.g. if you change the file's title it has to recompute the message about the detected syntax and, unless a syntax was explicity specified by the user, it must update the chosen syntax. For simplicity, saving (to the server) is handled by the controllers in `dn.file_pane`, it's just easier to tie the saving action to user actions rather than arbitrary updates on the model.
 
-`app.js` is, among other things, a view for almost all of  `dn.g_settings`, and controller for some of it (e.g. widget position), it is also a view for most of `dn.the_file` (e.g. the document title and syntax choice).  `dn.settings_pane` is a view and controller for a subset of settings. `dn.file_pane` is a view and controller for `dn.the_file`.
+`app.js` is, among other things, a view for almost all of  `dn.g_settings`, and controller for some of it (e.g. widget position), it is also a view for most of `dn.the_file` (e.g. the document title and syntax choice).  `dn.settings_pane` is a view and controller for a subset of settings. `dn.file_pane` is a view and controller for `dn.the_file`.  `dn.help_pane` is a view and controller for just `dn.g_settings['help_inner']`.
 
 `dn.find_pane` is a bit more complicated: all the settings roughly obey an MVC pattern, backed by `dn.g_settings`, but the values in the input boxes and currently selected result are implemented in a more ad-hoc manner.
 

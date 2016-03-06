@@ -184,3 +184,13 @@ find_max_results_half: 3,
 find_max_prefix_chars: 10,
 find_max_suffix_chars: 60
 };
+
+dn.platform = (function(){
+    if(navigator.platform.indexOf("Win") >-1)
+        return "Windows";
+    else if(navigator.platform.indexOf("Linux") >-1)
+        return "Linux";
+    else if(navigator.platform.indexOf("Mac")>-1)
+        return "Mac";   
+    return null;
+})();

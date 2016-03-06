@@ -1,57 +1,6 @@
 "use strict";
 
-dn.platform = (function(){
-    if(navigator.platform.indexOf("Win") >-1)
-        return "Windows";
-    else if(navigator.platform.indexOf("Linux") >-1)
-        return "Linux";
-    else if(navigator.platform.indexOf("Mac")>-1)
-        return "Mac";
-        
-    return null;
-})();
 
-dn.create_pane_shortcuts = function(){
-//This is hardly the world's most efficient way of doing this....(but it probably doesn't matter)...
-
-    var arry = dn.shortcuts_list;
-    var dict = {};
-    var platform = dn.platform;
-
-    if(platform == "Windows" || platform == "Linux"){
-       for(var i=0;i<arry.length;i++){
-            var parts = arry[i].split("|");
-            if(parts[1].length)
-                dict[parts[0]] = parts[1];
-        }
-    }else if(platform == "Mac"){
-        for(var i=0;i<arry.length;i++){
-            var parts = arry[i].split("|");
-            if(parts[1].length)
-                dict[parts[0]] = parts.length > 2? parts[2] : parts[1];
-        }
-    }else{
-        //TODO: show something here, maybe let user switch, maybe have touch info for ipad & android.
-    }
-    
-    var html = [];
-    for(var action in dict)
-        html.push("<div class='shortcut_item'><div class='shortcut_action'>" + 
-                   action + "</div><div class='shortcut_key'>" + dict[action].replace(",","<br>") +
-                   "</div></div>");
-    for(var action in dn.tooltip_info)if(action in dict)
-        dn.tooltip_info[action] += dict[action];
-
-    dn.el.pane_help_shortcuts.innerHTML =  [
-        "<div class='widget_box_title shortcuts_title'>Keyboard Shortcuts ",
-             platform ? "(" + platform + ")" : "" ,
-        "</div>",
-        "<div class='shortcuts_header_action'>action</div><div class='shortcuts_header_key'>key</div>",
-        "<div class='shortcuts_list'>",
-        html.join(''),
-        "</div>"].join('');
-
-};
 
 dn.esc_pressed = function(e){
     dn.g_settings.set('pane_open', !dn.g_settings.get('pane_open'));
@@ -60,8 +9,6 @@ dn.esc_pressed = function(e){
         dn.find_pane.focus_on_input();
     e.preventDefault();
 }
-
-
 
 dn.make_keyboard_shortcuts = function(){
     //perviously was using ace for handling these shorcuts because it neater (and efficient?) but it was
