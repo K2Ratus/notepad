@@ -1,6 +1,6 @@
 "use strict;"
 
-dn.pane_open = (function(){
+dn.open_pane = (function(){
 
 var el = {};
 var picker;

@@ -839,7 +839,7 @@ dn.document_ready = function(e){
 
     // pane open
     dn.el.pane_open = document.getElementById('pane_open');
-    dn.pane_open.on_document_ready();
+    dn.open_pane.on_document_ready();
     dn.el.menu_open.addEventListener('click', function(){    
         dn.g_settings.set('pane', 'pane_open');
     });
