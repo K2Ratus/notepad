@@ -187,7 +187,7 @@ dn.FileModel.prototype.compute_tabs = function(){
     var n_with_mixture = 0;
     var n_samp = Math.min(indents.length, 1000);
     for(var ii=0; ii<n_samp; ii++){
-        var indent_ii = indents[ii]
+        var indents_ii = indents[ii]
         var without_tabs = indents_ii.replace("\t", "");
         if(without_tabs.length === 0)
             n_only_tabs++;

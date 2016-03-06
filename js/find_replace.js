@@ -1,65 +1,175 @@
 "use strict";
+dn.find_pane = (function(const_){
 
-/*
-The find focus/blur problem.  This took some thinking to sort out!!!
+var el = {};
+var goto_input_has_focus = false; // we don't actually need this, but we keep it for analogy with search
+var AceSearch;
+var AceRange;
+var search_inputs_have_focus = false; // either find itself or replace
+var search_results = [];
+var search_current_match_idx = -1;
+var search_markers = [];
+var search_marker_current = undefined;
+var search_str = "";
 
-In the end it is now relatively neat and simple to get your head around.
 
-dn.g_settings.set('pane', 'pane_find') and dn.g_settings.set('pane_open', true)
-do not mess with the focus themselves. Any code that uses that must explicitly
-decide whether or not it wants to focus on the input for search/goto (a choice
-which is made based on the flag dn.g_settings.get('find_goto')).
 
-Calling  dn.g_settings.set('find_goto', bool), also does not mess with the focus, it
-just renders the inactive version of goto/search.
+var focus_on_input = function(){
+    if(dn.g_settings.get('find_goto'))
+        el.goto_input.focus();
+    else
+        el.find_input.focus();
+}
 
-We basically have the same setup for goto and for search, with goto having a less
-meaty implementation, so it's easier to start by looking at that.
+var on_document_ready = function(){
+    AceSearch = ace.require("./search").Search;
+    AceRange = ace.require("./range").Range;
 
-When the input gets the focus, the goto/search operation is performed, when the
-input is blurred it sets the info text to "inactive".  If the blur events is moving the
-focus to null, then at the end of the blur event we redirect the focus to the editor.
+    el.button_case_sensitive = document.getElementById('button_find_case_sensitive');
+    el.button_whole_words = document.getElementById('button_find_whole_words');
+    el.button_regex = document.getElementById('button_find_regex');
+    el.find_input = document.getElementById('find_input');
+    el.goto_input = document.getElementById('goto_input');
+    el.replace_input = document.getElementById('find_replace_input');
+    el.info = document.getElementById('find_info');
+    el.search_results = document.getElementById('find_results');
+    el.info_overflow = document.getElementById('find_info_overflow');
+    el.button_goto = document.getElementById('button_goto');
+    el.button_replace = document.getElementById('button_replace');
+    el.goto_wrapper = document.getElementById('find_goto_wrapper');
+    el.find_wrapper = document.getElementById('find_find_wrapper');
+    el.replace_wrapper = document.getElementById('find_replace_wrapper');
+    el.button_find_replace_all = document.getElementById('button_find_replace_all');
 
-In keyboard.js there are special functions for producing exactly the right
-focus behaviour when pressing Esc (with focus on the editor) and pressing 
-Ctrl-F/Crtl-L.  
-============================
+    dn.g_settings.addEventListener('VALUE_CHANGED', function(e){
+        var new_value = e.newValue;
+        switch(e.property){
+            case 'find_regex':
+            if(new_value)
+                el.button_regex.classList.add('selected');
+            else
+                el.button_regex.classList.remove('selected');
+            settings_changed();
+            break;
 
-Evetunally we may have to deal with the realtime document changes.
+            case 'find_whole_words':
+            if(new_value)
+                el.button_whole_words.classList.add('selected');
+            else
+                el.button_whole_words.classList.remove('selected');
+            settings_changed();
+            break;
 
-*/
+            case 'find_case_sensitive':
+            if(new_value)
+                el.button_case_sensitive.classList.add('selected');
+            else
+                el.button_case_sensitive.classList.remove('selected');
+            settings_changed();
+            break;
 
-dn.find_goto_changed = function(new_value){
+            case 'find_replace':
+            on_replace_toggled(new_value);
+            break;
+
+            case 'find_goto':
+            on_goto_toggled(new_value);
+            break;
+        }
+    })
+
+    el.button_case_sensitive.addEventListener('click', function(){
+        dn.g_settings.set('find_case_sensitive', !dn.g_settings.get('find_case_sensitive'));
+    })
+    el.button_whole_words.addEventListener('click', function(){
+        dn.g_settings.set('find_whole_words', !dn.g_settings.get('find_whole_words'));
+    })
+    el.button_regex.addEventListener('click', function(){
+        dn.g_settings.set('find_regex', !dn.g_settings.get('find_regex'));
+    })
+    el.goto_input.addEventListener('keydown', goto_input_keydown);
+    el.goto_input.addEventListener('keyup', goto_input_keyup);
+    el.goto_input.addEventListener('blur', goto_input_blur);
+    el.goto_input.addEventListener('focus', goto_input_focus);
+    el.find_input.addEventListener('keyup', find_input_keyup);
+    el.find_input.addEventListener('keydown', find_input_keydown);
+    el.find_input.addEventListener('blur', search_inputs_blur);
+    el.find_input.addEventListener('focus', search_inputs_focus);
+    el.replace_input.addEventListener('blur', search_inputs_blur);
+    el.replace_input.addEventListener('focus', search_inputs_focus);
+    el.replace_input.addEventListener('keydown', replace_input_keydown);
+    el.button_find_replace_all.addEventListener('click', replace_all);
+    el.button_replace.addEventListener('click', function(){
+        dn.g_settings.set('find_replace', !dn.g_settings.get('find_replace'));
+        dn.g_settings.set('find_goto', false);
+        el.find_input.focus();
+    })
+    el.button_goto.addEventListener('click', function(){
+        dn.g_settings.set('find_goto', !dn.g_settings.get('find_goto'));
+        if(dn.g_settings.get('find_goto'))
+            el.goto_input.focus();
+        else
+            el.find_input.focus();
+    })
+}
+
+var find_shortcut_used = function(e){
+    var sel = dn.editor.session.getTextRange(dn.editor.getSelectionRange());
+    dn.g_settings.set('find_goto', false);
+    dn.g_settings.set('pane', 'pane_find');
+    dn.g_settings.set('pane_open', true);
+    if(sel){
+        el.find_input.value = sel;
+        el.find_input.select();
+    }
+    el.find_input.focus();
+    e.preventDefault();
+}
+
+var goto_shortcut_used = function(e){
+    dn.g_settings.set('find_goto', true);
+    dn.g_settings.set('pane', 'pane_find'); // doing this after the find_active=true, tells the change handler not to put focus back to editor
+    dn.g_settings.set('pane_open', true);
+    el.goto_input.focus();
+    e.preventDefault();
+}
+
+var replace_shortcut_used = function(e){
+    dn.g_settings.set('find_replace', true);
+    find_shortcut_used(e);   
+}
+
+var on_goto_toggled = function(new_value){
     // This just toggles the display, it does not deal with focus/blur, which may happen afterwards
     // as a consequence if the relevant inputs previously had the focus.
 
     if(new_value){
-        dn.el.find_goto_wrapper.style.display = '';
-        dn.el.find_find_wrapper.style.display = 'none';
-        dn.el.button_goto.classList.add('selected');
-        dn.el.find_info.textContent = 'goto line inactive';
-        dn.el.find_replace_wrapper.style.display = 'none';
+        el.goto_wrapper.style.display = '';
+        el.find_wrapper.style.display = 'none';
+        el.button_goto.classList.add('selected');
+        el.info.textContent = 'goto line inactive';
+        el.replace_wrapper.style.display = 'none';
     }else{
-        dn.el.find_goto_wrapper.style.display = 'none';
-        dn.el.find_find_wrapper.style.display = '';
-        dn.el.button_goto.classList.remove('selected');
-        dn.el.find_info.textContent = 'search inactive';
+        el.goto_wrapper.style.display = 'none';
+        el.find_wrapper.style.display = '';
+        el.button_goto.classList.remove('selected');
+        el.info.textContent = 'search inactive';
         if (dn.g_settings.get('find_replace'))
-            dn.el.find_replace_wrapper.style.display = '';
+            el.replace_wrapper.style.display = '';
     }
 }
 
-dn.find_replace_changed = function(new_value){
+var on_replace_toggled = function(new_value){
     if(new_value){
-        dn.el.button_replace.classList.add('selected');
+        el.button_replace.classList.add('selected');
         if(!dn.g_settings.get('find_goto'))
-            dn.el.find_replace_wrapper.style.display = '';
+            el.replace_wrapper.style.display = '';
     }else{
-        dn.el.find_replace_wrapper.style.display = 'none';
-        dn.el.button_replace.classList.remove('selected');
+        el.replace_wrapper.style.display = 'none';
+        el.button_replace.classList.remove('selected');
     }
-    if(dn.find_inputs_have_focus)
-        dn.find_select_result_idx(dn.find_current_match_idx);
+    if(search_inputs_have_focus)
+        select_search_result_idx(search_current_match_idx);
 }
 
 // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -67,26 +177,24 @@ dn.find_replace_changed = function(new_value){
 // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 // the implementation of goto is simpler than for search, so we start with it...
 
-dn.find_goto_input_has_focus = false; // we don't actually need this, but we keep it for analogy with search
-
-dn.find_goto_input_focus = function(){
-    dn.find_goto_input_has_focus = true;
-    dn.el.find_info.textContent = "type to goto line";
-    dn.find_perform_goto();
+var goto_input_focus = function(){
+    goto_input_has_focus = true;
+    el.info.textContent = "type to goto line";
+    perform_goto();
 }
 
-dn.find_goto_input_blur = function(e){
-    dn.find_goto_input_has_focus = false;
-    dn.el.find_info.textContent = "goto line inactive"; 
+var goto_input_blur = function(e){
+    goto_input_has_focus = false;
+    el.info.textContent = "goto line inactive"; 
     if(!e.relatedTarget)
         dn.focus_editor();
 }
 
-dn.find_perform_goto = function(){
+var perform_goto = function(){
     // called by find_goto_input_focus and find_goto_keyup
-    var validated_str = dn.el.find_goto_input.value.replace(/[^\d]/,'');
-    if (validated_str !== dn.el.find_goto_input.value)
-        dn.el.find_goto_input.value = validated_str;
+    var validated_str = el.goto_input.value.replace(/[^\d]/,'');
+    if (validated_str !== el.goto_input.value)
+        el.goto_input.value = validated_str;
     if(validated_str === "")
         return;
     var num = parseInt(validated_str);
@@ -94,17 +202,17 @@ dn.find_perform_goto = function(){
     dn.editor.navigateLineEnd();
 }
 
-dn.find_goto_input_keyup = dn.find_perform_goto; //alias
+var goto_input_keyup = perform_goto; //alias
 
-dn.find_goto_input_keydown = function(e){
+var goto_input_keydown = function(e){
     // keydown is fired repeatedly when key remains down
     if(e.which == WHICH.DOWN){
-        dn.el.find_goto_input.value = parseInt(dn.el.find_goto_input.value.replace(/[^\d]/,''))+1;
-        dn.find_perform_goto();
+        el.goto_input.value = parseInt(el.goto_input.value.replace(/[^\d]/,''))+1;
+        perform_goto();
         e.preventDefault();
     }else if(e.which == WHICH.UP){
-        dn.el.find_goto_input.value = parseInt(dn.el.find_goto_input.value.replace(/[^\d]/,''))-1;
-        dn.find_perform_goto();
+        el.goto_input.value = parseInt(el.goto_input.value.replace(/[^\d]/,''))-1;
+        perform_goto();
         e.preventDefault();
     } else if(e.which == WHICH.ESC){
         dn.g_settings.set('pane_open', false);
@@ -118,58 +226,51 @@ dn.find_goto_input_keydown = function(e){
 // search :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-dn.find_inputs_have_focus = false; // either find itself or replace
-dn.find_results = [];
-dn.find_current_match_idx = -1;
-dn.find_markers = [];
-dn.find_marker_current = undefined;
-dn.find_str = "";
+    
 
-dn.find_inputs_focus = function(e){
-    if(e.currentTarget == dn.el.find_input){
-        dn.el.find_input.tabIndex = 101;
-        dn.el.find_replace_input.tabIndex = 102;   
+var search_inputs_focus = function(e){
+    if(e.currentTarget == el.find_input){
+        el.find_input.tabIndex = 101;
+        el.replace_input.tabIndex = 102;   
     } else {
-        dn.el.find_input.tabIndex = 102;
-        dn.el.find_replace_input.tabIndex = 101;   
+        el.find_input.tabIndex = 102;
+        el.replace_input.tabIndex = 101;   
     }
-    if(dn.find_inputs_have_focus)
+    if(search_inputs_have_focus)
         return; // focus was transfered between replace/find inputs
 
-    dn.find_inputs_have_focus = true;
-    dn.AceSearch = dn.AceSearch || ace.require("./search").Search;
-    dn.AceRange = dn.AceRange || ace.require("./range").Range;
+    search_inputs_have_focus = true;
     dn.editor.setHighlightSelectedWord(false);  
-    dn.find_perform_search();
+    perform_search();
 }
 
-dn.find_inputs_blur = function(e){
-    if(e.relatedTarget == dn.el.find_replace_input  || e.relatedTarget == dn.el.find_input)
+var search_inputs_blur = function(e){
+    if(e.relatedTarget == el.replace_input  || e.relatedTarget == el.find_input)
         return; // focus is transfering between replace/find inputs
 
-    dn.find_inputs_have_focus = false;
+    search_inputs_have_focus = false;
 
-    // remove all markers
+    // remove all search_markers
     var session = dn.editor.getSession();   
-    for(var ii=0; ii<dn.find_markers.length; ii++)
-        session.removeMarker(dn.find_markers[ii]);
-    if (dn.find_marker_current !== undefined){
-        session.removeMarker(dn.find_marker_current);
-        dn.find_marker_current = undefined;
+    for(var ii=0; ii<search_markers.length; ii++)
+        session.removeMarker(search_markers[ii]);
+    if (search_marker_current !== undefined){
+        session.removeMarker(search_marker_current);
+        search_marker_current = undefined;
     }
 
     // reset widget display
-    dn.el.find_info.textContent = "search inactive";
-    dn.el.find_results.innerHTML = "";
-    dn.el.find_info_overflow.textContent = "";
+    el.info.textContent = "search inactive";
+    el.search_results.innerHTML = "";
+    el.info_overflow.textContent = "";
 
     // forget last search
-    dn.find_markers = [];
-    dn.find_results = [];
-    dn.find_current_match_idx = -1;
+    search_markers = [];
+    search_results = [];
+    search_current_match_idx = -1;
 
     // forget last selection in input (in preparation for next time it gets focus)
-    dn.el.find_input.setSelectionRange(dn.el.find_input.selectionEnd, dn.el.find_input.selectionEnd);
+    el.find_input.setSelectionRange(el.find_input.selectionEnd, el.find_input.selectionEnd);
 
      // we had this on false during find
     dn.editor.setHighlightSelectedWord(true);
@@ -178,8 +279,8 @@ dn.find_inputs_blur = function(e){
         dn.focus_editor();
 }
 
-dn.find_build_options = function(){
-    var str = dn.el.find_input.value;
+var build_search_options = function(){
+    var str = el.find_input.value;
     var use_reg_exp = dn.g_settings.get('find_regex');
     var sensitive = dn.g_settings.get('find_case_sensitive');
     if(use_reg_exp){
@@ -194,210 +295,209 @@ dn.find_build_options = function(){
     regExp: use_reg_exp };
 }
 
-dn.find_perform_search = function(){
+var perform_search = function(){
     // called by find_input_focus, find_settings_changed, and on keyup in the input, when text has changed
 
     // clear previous find (but leave selection for now)
     var session = dn.editor.getSession();   
-    for(var ii=0; ii<dn.find_markers.length; ii++)
-        session.removeMarker(dn.find_markers[ii]);
-    if(dn.find_marker_current !== undefined){
-        session.removeMarker(dn.find_marker_current)
-        dn.find_marker_current = undefined;
+    for(var ii=0; ii<search_markers.length; ii++)
+        session.removeMarker(search_markers[ii]);
+    if(search_marker_current !== undefined){
+        session.removeMarker(search_marker_current)
+        search_marker_current = undefined;
     }
-    dn.find_markers = [];
-    dn.find_results = [];
-    dn.find_current_match_idx = -1;
-    dn.el.find_results.innerHTML = "";  
-    dn.el.find_info_overflow.textContent = "";
-    dn.el.find_info.textContent = "";
-    dn.find_str = dn.el.find_input.value; // we only store it to make it easier for key_down to check for true changes
+    search_markers = [];
+    search_results = [];
+    search_current_match_idx = -1;
+    el.search_results.innerHTML = "";  
+    el.info_overflow.textContent = "";
+    el.info.textContent = "";
+    search_str = el.find_input.value; // we only store it to make it easier for key_down to check for true changes
 
     var search_options = undefined;
     try{
-        search_options = dn.find_build_options();
+        search_options = build_search_options();
     } catch (e){
-        dn.el.find_info.textContent = escape_str(e.message); //TODO: could force first letter to lower case
+        el.info.textContent = escape_str(e.message); //TODO: could force first letter to lower case
     }
 
     if(search_options === undefined){
-        // failed regex, don't show any results
+        // failed regex, don't show any search_results
         dn.editor.selection.clearSelection();
 
-    } else if(dn.find_str == ""){
-        // empty string (including empty regex), dont show any results
-        dn.el.find_info.textContent = "type to search. " /*+ dn.ctrl_key + "-up/down for history."*/;
+    } else if(search_str == ""){
+        // empty string (including empty regex), dont show any search_results
+        el.info.textContent = "type to search. " /*+ dn.ctrl_key + "-up/down for history."*/;
         dn.editor.selection.clearSelection();
         
     } else {
-        // valid regex or pure str search..
+        // valid regex or pure search_str search..
 
         // This is the actual search
-        var search = new dn.AceSearch();
+        var search = new AceSearch();
         search.setOptions(search_options);
-        var results = dn.find_results = search.findAll(session);
+        search_results = search.findAll(session);
 
-        if(results.length === 0){
-            // No results to display, life is easy...
-            dn.el.find_info.textContent = "no matches found.";
-            dn.el.find_info_overflow.textContent = "";
+        if(search_results.length === 0){
+            // No search_results to display, life is easy...
+            el.info.textContent = "no matches found.";
+            el.info_overflow.textContent = "";
             dn.editor.selection.clearSelection();
 
         }else{
-            // Right, we got some results ....
+            // Right, we got some search_results ....
 
             // Work out which result we should consider the current match.
             var selected_range = session.getSelection().getRange();
-            for(var ii=0; ii<results.length; ii++) 
-                if(results[ii].end.row > selected_range.start.row  || 
-                    (results[ii].end.row == selected_range.start.row &&
-                     results[ii].end.column >= selected_range.start.column))
+            for(var ii=0; ii<search_results.length; ii++) 
+                if(search_results[ii].end.row > selected_range.start.row  || 
+                    (search_results[ii].end.row == selected_range.start.row &&
+                     search_results[ii].end.column >= selected_range.start.column))
                 break;
-            var current_match_idx = (ii == results.length ? results.length-1 : ii);
+            var current_match_idx = (ii == search_results.length ? search_results.length-1 : ii);
 
-            // Add markers into the editor to show *all* the results
-            for(var ii=0; ii<results.length; ii++)
-                dn.find_markers.push(session.addMarker(results[ii], "find_match_marker", "find_match_marker", false));
+            // Add search_markers into the editor to show *all* the search_results
+            for(var ii=0; ii<search_results.length; ii++)
+                search_markers.push(session.addMarker(search_results[ii], "find_match_marker", "find_match_marker", false));
 
-            // augment the results with their idx, this is useful for the subselection stuff
-            for(var ii=0; ii<results.length; ii++)
-                results[ii] = {range: results[ii], idx: ii};
+            // augment the search_results with their idx, this is useful for the subselection stuff
+            for(var ii=0; ii<search_results.length; ii++)
+                search_results[ii] = {range: search_results[ii], idx: ii};
 
-            // Render a subset of the results into the widget and mark & select the current match
-            dn.find_select_result_idx(current_match_idx);
+            // Render a subset of the search_results into the widget and mark & select the current match
+            select_search_result_idx(current_match_idx);
         }
     }
 
 }
 
-dn.find_select_result_idx = function(current_match_idx){
-    // This is called within find_perform_search when a new search returns some results
-    // it's also called when we move through the results without changing the search and
+var select_search_result_idx = function(new_idx){
+    // This is called within find_perform_search when a new search returns some search_results
+    // it's also called when we move through the search_results without changing the search and
     // when replace_changed is called when find input already has the focus.   */
 
-    // Get a small sub set of results to show in the widget.
+    // Get a small sub set of search_results to show in the widget.
     // We carefully implement some wrapping logic, which is a bit fiddly.
-    dn.find_current_match_idx = current_match_idx;
+    search_current_match_idx = new_idx;
 
     var session = dn.editor.getSession();
-    if (dn.find_marker_current !== undefined){
-        session.removeMarker(dn.find_marker_current);
-        dn.find_marker_current = undefined;
+    if (search_marker_current !== undefined){
+        session.removeMarker(search_marker_current);
+        search_marker_current = undefined;
     }
 
-    var results = dn.find_results;
-    var results_sub = [];
+    var search_results_sub = [];
     
     var replace_is_showing = dn.g_settings.get('find_replace');
 
-    var max_results = dn.const.find_max_results_half*2 + (replace_is_showing ? 0 : 1);
+    var max_search_results = const_.find_max_results_half*2 + (replace_is_showing ? 0 : 1);
 
-    if(results.length <= max_results){
-        results_sub = results;
+    if(search_results.length <= max_search_results){
+        search_results_sub = search_results;
     }else{
-        var n_pre = dn.const.find_max_results_half - (replace_is_showing ? 1 : 0);
-        var n_post = dn.const.find_max_results_half;
-        if(current_match_idx < n_pre){
-            results_sub = results_sub.concat(results.slice(current_match_idx - n_pre));
-            results_sub = results_sub.concat(results.slice(0, current_match_idx));
+        var n_pre = const_.find_max_results_half - (replace_is_showing ? 1 : 0);
+        var n_post = const_.find_max_results_half;
+        if(search_current_match_idx < n_pre){
+            search_results_sub = search_results_sub.concat(search_results.slice(search_current_match_idx - n_pre));
+            search_results_sub = search_results_sub.concat(search_results.slice(0, search_current_match_idx));
         } else {
-            results_sub = results_sub.concat(results.slice(current_match_idx - n_pre, current_match_idx));
+            search_results_sub = search_results_sub.concat(search_results.slice(search_current_match_idx - n_pre, search_current_match_idx));
         }
-        results_sub.push(results[current_match_idx]); 
-        if(current_match_idx + n_post >= results.length){
-            results_sub = results_sub.concat(results.slice(current_match_idx + 1));
-            results_sub = results_sub.concat(results.slice(0, n_post + 1 - (results.length - current_match_idx)));
+        search_results_sub.push(search_results[search_current_match_idx]); 
+        if(search_current_match_idx + n_post >= search_results.length){
+            search_results_sub = search_results_sub.concat(search_results.slice(search_current_match_idx + 1));
+            search_results_sub = search_results_sub.concat(search_results.slice(0, n_post + 1 - (search_results.length - search_current_match_idx)));
         } else {
-            results_sub = results_sub.concat(results.slice(current_match_idx + 1, current_match_idx + n_post + 1));
+            search_results_sub = search_results_sub.concat(search_results.slice(search_current_match_idx + 1, search_current_match_idx + n_post + 1));
         }
     }
 
-    // Now lets build the html to show the subset of results in the widget
+    // Now lets build the html to show the subset of search_results in the widget
     var show_replace_buttons = dn.g_settings.get('find_replace');
     var html = "";
-    for(var ii=0; ii<results_sub.length; ii++){
-        var row = results_sub[ii].range.start.row;
-        var col = results_sub[ii].range.start.column;
-        var prefix_range = new dn.AceRange(row, Math.max(0, col-dn.const.find_max_prefix_chars), row, col);
-        var pre_ellipses = col > dn.const.find_max_prefix_chars; //TODO: deal with indent better
-        row = results_sub[ii].range.end.row;
-        col = results_sub[ii].range.end.column;
-        var suffix_range = new dn.AceRange(row, col, row, col+dn.const.find_max_suffix_chars);
-        html += "<div class='find_result_item" + (results_sub[ii].idx==current_match_idx? " find_result_current" : "") + "'>" +
+    for(var ii=0; ii<search_results_sub.length; ii++){
+        var row = search_results_sub[ii].range.start.row;
+        var col = search_results_sub[ii].range.start.column;
+        var prefix_range = new AceRange(row, Math.max(0, col-const_.find_max_prefix_chars), row, col);
+        var pre_ellipses = col > const_.find_max_prefix_chars; //TODO: deal with indent better
+        row = search_results_sub[ii].range.end.row;
+        col = search_results_sub[ii].range.end.column;
+        var suffix_range = new AceRange(row, col, row, col+const_.find_max_suffix_chars);
+        html += "<div class='find_result_item" + (search_results_sub[ii].idx==search_current_match_idx? " find_result_current" : "") + "'>" +
                     "<div class='find_result_line_num'>" + (row+1) + "</div>" +
                     "<div class='find_result_text'>" +
                         "<div class='find_result_text_inner'>" +
                             (pre_ellipses ? "&#8230;" : "") + escape_str(session.getTextRange(prefix_range)) +
-                            "<span class='find_result_match'>" + escape_str(session.getTextRange(results_sub[ii].range)) + "</span>" +
+                            "<span class='find_result_match'>" + escape_str(session.getTextRange(search_results_sub[ii].range)) + "</span>" +
                             escape_str(session.getTextRange(suffix_range)) +
                         "</div>" +
                     "</div>" +
                     (show_replace_buttons ? "<div class='button inline_button replace_single_result' title='replace'>r</div>" : "") + 
                 "</div>";
     }
-    dn.el.find_results.innerHTML = html;
-    var els = dn.el.find_results.getElementsByClassName('find_result_item');
-    for(var ii=0; ii<els.length; ii++) if(results_sub[ii].idx !== current_match_idx)
-        els[ii].addEventListener('click', dn.find_result_click(results_sub[ii].idx));
+    el.search_results.innerHTML = html;
+    var els = el.search_results.getElementsByClassName('find_result_item');
+    for(var ii=0; ii<els.length; ii++) if(search_results_sub[ii].idx !== search_current_match_idx)
+        els[ii].addEventListener('click', search_result_click(search_results_sub[ii].idx));
     if(show_replace_buttons){
-        var els = dn.el.find_results.getElementsByClassName('replace_single_result')
+        var els = el.search_results.getElementsByClassName('replace_single_result')
         for(var ii=0; ii<els.length; ii++)
-            els[ii].addEventListener('click', dn.find_replace_result_click(results_sub[ii].idx));
+            els[ii].addEventListener('click', search_replace_result_click(search_results_sub[ii].idx));
     }
 
-    if(results.length > max_results)
-        dn.el.find_info_overflow.textContent = "... and " + (results.length - max_results) + " more matches";
+    if(search_results.length > max_search_results)
+        el.info_overflow.textContent = "... and " + (search_results.length - max_search_results) + " more matches";
     else
-        dn.el.find_info_overflow.textContent = "";
+        el.info_overflow.textContent = "";
 
     // do the special marker for the current selection and actually select it
-    dn.find_marker_current = session.addMarker(results[current_match_idx].range, "find_current_match_marker", "find_current_match_marker", false);
-    dn.editor.selection.setSelectionRange(results[current_match_idx].range, false);
+    search_marker_current = session.addMarker(search_results[search_current_match_idx].range, "find_current_match_marker", "find_current_match_marker", false);
+    dn.editor.selection.setSelectionRange(search_results[search_current_match_idx].range, false);
     dn.editor.renderer.scrollSelectionIntoView();
 }
 
-dn.find_settings_changed = function(){
-    if(dn.find_inputs_have_focus || 
-       (dn.g_settings.get('pane') === 'pane_find' && dn.g_settings.get('pane_open') &&  dn.el.find_input.value))
-        dn.find_perform_search();
+var settings_changed = function(){
+    if(search_inputs_have_focus || 
+       (dn.g_settings.get('pane') === 'pane_find' && dn.g_settings.get('pane_open') &&  el.find_input.value))
+        perform_search();
 }
 
-dn.find_result_click = function(ii){
+var search_result_click = function(ii){
     // this can only be called while find input has the focus
-    return function(e){dn.find_select_result_idx(ii);};
+    return function(e){select_search_result_idx(ii);};
 }
 
-dn.find_replace_result_click = function(ii){
+var search_replace_result_click = function(ii){
     return function(e){
-        dn.find_replace_result_idx(ii);
+        replace_result_idx(ii);
         e.stopPropagation(); // prevent selecting item
     }
 }
 
-dn.find_input_keyup = function(e){ 
+var find_input_keyup = function(e){ 
     //we need keyup here in order that the val has the new character or new backspace
     if(e.which == WHICH.ENTER || e.which == WHICH.ESC || e.which == WHICH.UP || e.which == WHICH.DOWN)
         return; 
-    if(dn.find_str == dn.el.find_input.value)
+    if(search_str == el.find_input.value)
         return;
-    dn.find_perform_search()
+    perform_search()
 }
 
-dn.find_input_keydown = function(e){ 
+var find_input_keydown = function(e){ 
     // we want keydown here so that we can get repeated firing with keydown (i think on most browsers)
 
     if ((e.which == WHICH.ENTER && !e.shiftKey) || (!e.ctrlKey && e.which == WHICH.DOWN)){
         //find next
-        dn.find_select_result_idx(dn.find_current_match_idx + 1 < dn.find_results.length ? 
-                                    dn.find_current_match_idx + 1 
+        select_search_result_idx(search_current_match_idx + 1 < search_results.length ? 
+                                    search_current_match_idx + 1 
                                   : 0);
         e.preventDefault();
         return;
     }else if((e.which == WHICH.ENTER && e.shiftKey) || (!e.ctrlKey && e.which == WHICH.UP)){
         //find previous
-        dn.find_select_result_idx(dn.find_current_match_idx - 1 < 0 ? 
-                                    dn.find_results.length -1 
-                                  : dn.find_current_match_idx - 1);
+        select_search_result_idx(search_current_match_idx - 1 < 0 ? 
+                                    search_results.length -1 
+                                  : search_current_match_idx - 1);
         e.preventDefault();
         return;
     }
@@ -411,35 +511,44 @@ dn.find_input_keydown = function(e){
 
 }
 
-dn.find_replace_input_keydown = function(e){
+var replace_input_keydown = function(e){
     if(e.which == WHICH.ENTER){
         if(e.ctrlKey || e.shiftKey)
-            dn.find_replace_all();
+            replace_all();
         else
-            dn.find_replace_result_idx(dn.find_current_match_idx);
+            replace_result_idx(search_current_match_idx);
         e.preventDefault();
     }else{
-        dn.find_input_keydown(e); // up, down results and esc
+        find_input_keydown(e); // up, down search_results and esc
     }
 }
 
-dn.find_replace_all = function(e){
+var replace_all = function(e){
     try{
-        var options = dn.find_build_options();
+        var options = build_search_options();
     } catch (e) {
         dn.show_error(e.message);
         return;
     }
-    dn.editor.replaceAll(dn.el.find_replace_input.value, options);
+    dn.editor.replaceAll(el.replace_input.value, options);
     dn.focus_editor();
 }
 
-dn.find_replace_click = dn.find_replace_all; //alias
-
-dn.find_replace_result_idx = function(idx){
-    var range = dn.find_results[idx].range;
+var replace_result_idx = function(idx){
+    var range = search_results[idx].range;
     // we use undocumented ACE API to avoid messing around tryinng to force it to use the exact range we wanted
-    dn.editor.$search.set(dn.find_build_options()); //this is needed so that $tryReplace knows what to do with regex'es
-    dn.editor.$tryReplace(range, dn.el.find_replace_input.value) // returns true on success, but do we care?
-    dn.find_perform_search();
+    dn.editor.$search.set(build_search_options()); //this is needed so that $tryReplace knows what to do with regex'es
+    dn.editor.$tryReplace(range, el.replace_input.value) // returns true on success, but do we care?
+    perform_search();
 }
+
+
+return {
+    focus_on_input: focus_on_input,
+    on_document_ready: on_document_ready,
+    on_find_shortcut: find_shortcut_used,
+    on_replace_shortcut: replace_shortcut_used,
+    on_goto_shortcut: goto_shortcut_used
+}
+
+})(dn.const);

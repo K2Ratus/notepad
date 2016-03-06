@@ -566,33 +566,7 @@ dn.settings_changed = function(e){
             case 'help_inner':
                 dn.show_help_inner(new_value);
                 break;
-            case 'find_regex':
-                if(new_value)
-                    dn.el.find_button_regex.classList.add('selected');
-                else
-                    dn.el.find_button_regex.classList.remove('selected');
-                dn.find_settings_changed();
-                break;
-            case 'find_whole_words':
-                if(new_value)
-                    dn.el.find_button_whole_words.classList.add('selected');
-                else
-                    dn.el.find_button_whole_words.classList.remove('selected');
-                dn.find_settings_changed();
-                break;
-            case 'find_case_sensitive':
-                if(new_value)
-                    dn.el.find_button_case_sensitive.classList.add('selected');
-                else
-                    dn.el.find_button_case_sensitive.classList.remove('selected');
-                dn.find_settings_changed();
-                break;
-            case 'find_replace':
-                dn.find_replace_changed(new_value);
-                break;
-            case 'find_goto':
-                dn.find_goto_changed(new_value);
-                break;
+            
         }
     }catch(err){
         console.log("Error while uptating new settings value.")
@@ -1003,61 +977,11 @@ dn.document_ready = function(e){
 
     // pane find ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::    
     dn.el.pane_find = document.getElementById('pane_find');
-    dn.el.find_button_case_sensitive = document.getElementById('button_find_case_sensitive');
-    dn.el.find_button_whole_words = document.getElementById('button_find_whole_words');
-    dn.el.find_button_regex = document.getElementById('button_find_regex');
-    dn.el.find_input = document.getElementById('find_input');
-    dn.el.find_goto_input = document.getElementById('goto_input');
-    dn.el.find_replace_input = document.getElementById('find_replace_input');
-    dn.el.find_info = document.getElementById('find_info');
-    dn.el.find_results = document.getElementById('find_results');
-    dn.el.find_info_overflow = document.getElementById('find_info_overflow');
-    dn.el.button_goto = document.getElementById('button_goto');
-    dn.el.button_replace = document.getElementById('button_replace');
-    dn.el.find_goto_wrapper = document.getElementById('find_goto_wrapper');
-    dn.el.find_find_wrapper = document.getElementById('find_find_wrapper');
-    dn.el.find_replace_wrapper = document.getElementById('find_replace_wrapper');
-    dn.el.button_find_replace_all = document.getElementById('button_find_replace_all');
-    dn.el.find_button_case_sensitive.addEventListener('click', function(){
-        dn.g_settings.set('find_case_sensitive', !dn.g_settings.get('find_case_sensitive'));
-    })
-    dn.el.find_button_whole_words.addEventListener('click', function(){
-        dn.g_settings.set('find_whole_words', !dn.g_settings.get('find_whole_words'));
-    })
-    dn.el.find_button_regex.addEventListener('click', function(){
-        dn.g_settings.set('find_regex', !dn.g_settings.get('find_regex'));
-    })
+    dn.find_pane.on_document_ready();
     dn.el.menu_find.addEventListener('click', function(){
         dn.g_settings.set('pane', 'pane_find');
-        if(dn.g_settings.get('find_goto'))
-            dn.el.find_goto_input.focus();
-        else
-            dn.el.find_input.focus();
+        dn.find_pane.focus_on_input();
     });
-    dn.el.find_goto_input.addEventListener('keydown', dn.find_goto_input_keydown);
-    dn.el.find_goto_input.addEventListener('keyup', dn.find_goto_input_keyup);
-    dn.el.find_goto_input.addEventListener('blur', dn.find_goto_input_blur);
-    dn.el.find_goto_input.addEventListener('focus', dn.find_goto_input_focus);
-    dn.el.find_input.addEventListener('keyup', dn.find_input_keyup);
-    dn.el.find_input.addEventListener('keydown', dn.find_input_keydown);
-    dn.el.find_input.addEventListener('blur', dn.find_inputs_blur);
-    dn.el.find_input.addEventListener('focus', dn.find_inputs_focus);
-    dn.el.find_replace_input.addEventListener('blur', dn.find_inputs_blur);
-    dn.el.find_replace_input.addEventListener('focus', dn.find_inputs_focus);
-    dn.el.find_replace_input.addEventListener('keydown', dn.find_replace_input_keydown);
-    dn.el.button_find_replace_all.addEventListener('click', dn.find_replace_click);
-    dn.el.button_replace.addEventListener('click', function(){
-        dn.g_settings.set('find_replace', !dn.g_settings.get('find_replace'));
-        dn.g_settings.set('find_goto', false);
-        dn.el.find_input.focus();
-    })
-    dn.el.button_goto.addEventListener('click', function(){
-        dn.g_settings.set('find_goto', !dn.g_settings.get('find_goto'));
-        if(dn.g_settings.get('find_goto'))
-            dn.el.find_goto_input.focus();
-        else
-            dn.el.find_input.focus();
-    })
 
     // pane open ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.el.pane_open = document.getElementById('pane_open');
