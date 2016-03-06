@@ -162,6 +162,7 @@ dn.impersonal_settings_keys = [
 ];
 
 dn.const = {
+auth_timeout: dn.const.auth_timeout, // already provided in app.html
 drag_delay_ms: 400,
 drag_shift_px: 40,
 min_font_size: 0.3,

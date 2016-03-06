@@ -18,7 +18,7 @@
            url_params[decode(match[1])] = decode(match[2]);
         return url_params;
     }
-    var dn = dn || {};
+    var dn = {};
     dn.client_id = '591525900269-94ok9krafau8qa24666btvccmsfnq5fp.apps.googleusercontent.com';
     dn.scopes = [
       'https://www.googleapis.com/auth/drive.file',
@@ -43,6 +43,7 @@
         }
         return m;
     }
+    dn.const = {auth_timeout: 6000};
     /* 
     SpecialPromise: a *variation* on the concept of a promise.  Explanation by example:
 
@@ -140,9 +141,13 @@
     }
     dn.pr_auth = new SpecialPromise();
     dn.pr_realtime_loaded = new SpecialPromise();
-
+    var make_timeout = function(delay){
+        return new Promise(function(resolve, reject){
+            setTimeout(reject, delay, "timeout");
+        });
+    }
     function gapi_loaded() {
-        Promise.resolve(gapi.auth.authorize(dn.auth_map(true)))
+        Promise.race([gapi.auth.authorize(dn.auth_map(true)), make_timeout(dn.const.auth_timeout)])
             .then(dn.pr_auth.resolve.bind(dn.pr_auth),
                   dn.pr_auth.reject.bind(dn.pr_auth));
         gapi.load('drive-realtime', dn.pr_realtime_loaded.resolve.bind(dn.pr_realtime_loaded));

@@ -25,7 +25,7 @@ dn.filter_api_errors = function(err){
 }
 
 dn.is_auth_error = function(err){
-    // returns 0 for non-auth errors, 1 for auto refresh and 2 for manual refresh
+    // returns 0 for non-auth errors, 1 for auto refresh and 2 for manual refresh, 3 for network error
     if(!err)
         return 2;
     if(err.type && err.type === "token_refresh_required")
@@ -34,8 +34,10 @@ dn.is_auth_error = function(err){
         return 1;
     if(err.status === 404)
         return 0;
+    if(err === "timeout")
+        return 3;
     if(err.result && err.result.error && err.result.error.code === -1)//network error
-        return 1;
+        return 3;
     return 0;
 }
 
@@ -63,12 +65,15 @@ dn.handle_auth_error = function(err){
         dn.show_error(dn.api_error_to_string(err));
     }else if(err_type == 1){
         dn.reauth_auto();
-    }else{
+    }else if(err_type == 2){
         // user has to click button to trigger reauth-manual
         dn.toggle_permission(true);
+    }else{
+        // should be network error
+        dn.show_error("network error. retrying...");
+        offline_simple.commence_testing(); // we have already registered a listener that will resolve pr_auth when the connection is restored
     }
 }
-
 
 dn.reauth_auto_delay_chain = {0: 1, 1:500, 500: 1000, 1000: 2500, 2500: 5000, 5000: 10000, 10000: 60000, 60000: 60000}
 dn.reauth_auto = function(){ 
@@ -85,9 +90,9 @@ dn.reauth_auto = function(){
         dn.reauth_auto_timer = setTimeout(function(){
             dn.reauth_auto_timer = undefined;
             console.log("and now running the auto reauth...")
-            gapi.auth.authorize(dn.auth_map(true))
-                .then(dn.pr_auth.resolve.bind(dn.pr_auth),
-                      dn.pr_auth.reject.bind(dn.pr_auth));
+            Promise.race([gapi.auth.authorize(dn.auth_map(true)), make_timeout(dn.const.auth_timeout)])
+                   .then(dn.pr_auth.resolve.bind(dn.pr_auth),
+                         dn.pr_auth.reject.bind(dn.pr_auth));
         }, dn.reauth_auto_delay)
     } else {
         console.log("auto reauth already due to be sent")
@@ -100,9 +105,9 @@ dn.reauth_manual = function(){
     dn.status.popup_active = 1;
     dn.status.authorization = 0;
     dn.show_status();    
-    gapi.auth.authorize(dn.auth_map(false))
-        .then(dn.pr_auth.resolve.bind(dn.pr_auth),
-              dn.pr_auth.reject.bind(dn.pr_auth));
+    Promise.race([gapi.auth.authorize(dn.auth_map(false)), make_timeout(dn.const.auth_timeout)])
+           .then(dn.pr_auth.resolve.bind(dn.pr_auth),
+                 dn.pr_auth.reject.bind(dn.pr_auth));
 }
 
 dn.request_user_info = function(){

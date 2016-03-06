@@ -240,7 +240,7 @@ dn.show_status = function(){
     var s = ''
 
     if (dn.status.file_new === 1 && dn.status.file_meta === 1 && dn.status.file_body === 1){
-        s = dn.the_file.title;
+        s = "" + dn.the_file.title;
         var extra = [];
         if(dn.the_file.is_brand_new)
             extra.push("ex nihilo omnia...");
@@ -912,6 +912,10 @@ dn.document_ready = function(e){
         dn.status.authentication = 1;
         dn.show_status(); 
     })
+
+    // if we ever find that we have gone offline, we have to call offline_simple.commence_testing,
+    // that will then trigger the following event when the connection is restored.
+    offline_simple.addEventListener('online', dn.pr_auth.resolve.bind(dn.pr_auth)); 
 
     // get user info...
     until_success(function(succ, fail){
