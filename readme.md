@@ -1,8 +1,14 @@
- Drive Notepad
+# Drive Notepad
 
-A webapp for editing text files in Google Drive, implemented entirely on the client-side.  Running [live on github](https://drivenotepad.github.io/app/).
+A webapp for editing text files in Google Drive, implemented entirely on the client-side.
 
-### Notes on developing
+**The application is avaialble [live on github](https://drivenotepad.github.io/app/).**
+
+**If you want general information and help using Drive Notepad, please go to [the main website](https://drivenotepad.github.io/). This document is only meant as a development reference.**
+
+---
+
+### General Notes
 
 If, for some reason, you decide to fork this and try and make it work you will need to register various things in the Google Developer Dashboard.
 Other than that, the only thing you need is [`node`](https://nodejs.org/en/), you can then build with the command `npm run build`.
@@ -17,8 +23,6 @@ In the Google Develeoper Console you need [create OAuth2 2.0 client credentials]
 
 All the interesting cloud-based stuff goes through the google javascript client library, which lives in the global `gapi`.  In most cases there are two ways to use a particular API: you can either `load` a specific API's javascript methods and make use of them; or you can use the generic `request` method, which helps you "manually" constructing the RESTful request.  We use the manual approach for reading and writing files, but the `load` approach for realtime stuff and picker, and sharer dialogs.
 
-Most of the custom interactivity of the application takes palce within the widget and roughly sticks to an MVC framework, with the model maintained by the realtime `AppDataDocument` from the Google Drive Realtime API. Prior to the realtime document loading, a simplified stand-in is used that has (hopefully) the same behaviour as the full API, minus the cloud-iness, but with the addition of localStorage for impersonal settings.
-
 Occasionally chrome mistakenly caches source maps. If that happens, the easiest thing to do is go into the minified js file and add a query string to the source map url (which is specified in a special comment at the end).  Normally you won't need to do this, but it's annoying when it does happen.
 
 
@@ -26,6 +30,19 @@ Occasionally chrome mistakenly caches source maps. If that happens, the easiest 
 
 When the page is loaded we either (try to) create a new document, or (try to) load an existing file.  Only one file can ever be loaded, if you need to load/create a new file you have to refresh the page.  This makes life a little simpler.
 
+Everything is attached to the `dn` global object apart from a few basic utility functions in `utils.js`.  The widget's panes are manifested as module/closure things and are held as `dn.file_pane`, `dn.settings_pane`, `dn.find_pane`, etc. They each have their own `js` file, and they all have `.on_document_ready` methods which are called from the primary `document_ready` function in `app.js`.  Each module is responsible for displaying the given pane's current settings and making it interactive, but on the whole they do not make changes outside of the pane (the find tool is an exception as it changes the editor text, scroll position and markers).  In general we try and use some form of MVC paradigm for all panes - see section below.  `app.js` contains an important miscellany of functions that are not-specific to individual widget panes.
+
+### Model-View-Controllers
+
+There are (at least) two separate MVC systems at play in the app, one for the file's metadata and one for the application's setttings.  Interested parties can subscribe to a particular model's changes using `.addEventListener`.
+
+The main model is `dn.g_settings`.  At some point after the page loads, this becomes a Google Realtime API `AppDataDocument` `Model`, before that it is a simple home-made object that behaves very similarly. When the realtime model becomes availble, we call `.transfer_to_true_model` on the mock version, which issues any required change events and then registers the old event listeners with the new model.  The home-made object uses `localStorage` for non-personal settings values so that it can restore them immediately on page load.  Also, when migrating to the real model, some settings give the cloud model prioroty and some give the local model priority, this prevents excessive jumpiness for highly-visible things that don't matter that much, ie. the widget's position.
+
+A second model is `dn.the_file`, which is an instance of `dn.FileModel` (defined in `file_model.js`).  This is a relatively simple object which backs the metadata shown in the file pane.  The only complexity is that when you change some of the values it has to recompute some of the data, e.g. if you change the file's title it has to recompute the message about the detected syntax and, unless a syntax was explicity specified by the user, it must update the chosen syntax. For simplicity, saving (to the server) is handled by the controllers in `dn.file_pane`, it's just easier to tie the saving action to user actions rather than arbitrary updates on the model.
+
+`app.js` is, among other things, a view for almost all of  `dn.g_settings`, and controller for some of it (e.g. widget position), it is also a view for most of `dn.the_file` (e.g. the document title and syntax choice).  `dn.settings_pane` is a view and controller for a subset of settings. `dn.file_pane` is a view and controller for `dn.the_file`.
+
+`dn.find_pane` is a bit more complicated: all the settings roughly obey an MVC pattern, backed by `dn.g_settings`, but the values in the input boxes and currently selected result are implemented in a more ad-hoc manner.
 
 ### Making async API requests
 
@@ -62,13 +79,7 @@ If non-auth errors are not caught, then the `dn.pr_auth.on_error` will display t
 
 Another important `Pomise`-like thing is `dn.pr_file_loaded`, this simply gets resolved soon after the page loads, when either an existing file is loaded or a new file is created.  If neither of those things ever succeed then this is never settled.  The fact that this is a promise, allows us to put it in the save chain, and the user can then actually issue save requests before the file is loaded, which is vaugely helpful when creating new files.
 
-### Model-View-Controllers
 
-There are (at least) two separate MVC systems at play in the app, one for the file's metadata and one for the application's setttings.
-
-`dn.the_file` is an instance of `dn.FileModel`, and `dn.file_pane` is a module/closure thing which implements a view and controller for this model.  There are also a few view hooks in the main `app.js`, e.g. setting the title on the document, and applying syntax choice to the editor etc.  For simplicity, saving (of metadata) is handled by the controllers in `dn.file_pane`, it's just easier to tie the saving action to user actions rather than arbitrary updates on the model.  You can listen for changes on `dn.the_file` with `.addEventListener("change", <callback>)`.
-
-`dn.g_settings` is a Google Realtime API `Model`, or a very simple mock that behaves enough like it to do what we need.  `dn.settings_pane` implements a controller and view for some of this, and `app.js` is a controller for the rest (widget position and state etc.), and viewer of all of it.
 
 
 ### Saving
@@ -82,8 +93,7 @@ Note that if there are other users/devices saving at the same time as the curren
 It took a while to sort out focus/blur behaviour.  In the end it is now relatively neat and hopefully simple to get your head around.
 
 `dn.g_settings.set('pane', 'pane_find')` and `dn.g_settings.set('pane_open', true)` do not mess with the focus themselves. 
-Any code that uses that must explicitly decide whether or not it wants to focus on the input for search/goto (a choice
-which is made based on the flag `dn.g_settings.get('find_goto')`).
+Any code that uses that must explicitly decide whether or not it wants to focus on the input, calling `dn.find_pane.focus_on_input()`, if it whishes to.
 
 Calling  `dn.g_settings.set('find_goto', bool)`, also does not mess with the focus, it just renders the inactive version of goto/search.
 
@@ -92,6 +102,5 @@ We basically have the same setup for goto and for search, with goto having a les
 When the input gets the focus, the goto/search operation is performed, when the input is blurred it sets the info text to "inactive". 
  If the blur events is moving the focus to null, then at the end of the blur event we redirect the focus to the editor.
 
-There are special functions for producing exactly the right focus behaviour when pressing Esc (with focus on the editor) and pressing 
-Ctrl-F/Crtl-L.
+`dn.find_pane` has special functions for producing exactly the right focus behaviour for find/replace/gtoto keyboard shorcuts, and these functions are registered in `keyboard.js`.  Special behaviour when pressing Esc, but when the focus was on the editor, is implemented in `keyboard.js`.
 

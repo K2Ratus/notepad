@@ -416,7 +416,7 @@ dn.show_app_data_document = function(doc){
     // some settings we want to override the cloud values with changes we made locally,
     // other settings may have been missing in the cloud entirely.
     console.log("Transfering to realtime model for settings.")
-    old_temp_g_settings.transfer_all_listeners(dn.g_settings);
+    old_temp_g_settings.transfer_to_true_model(dn.g_settings);
     var existing_cloud_keys = dn.g_settings.keys();
     for(var s in dn.default_settings)
         if(s in old_temp_g_settings.get_keeps() || existing_cloud_keys.indexOf(s) == -1)
@@ -466,7 +466,7 @@ dn.g_settings = (function(){ //mock realtime model to be used until the real mod
         }, addEventListener: function(flag, callback){
             if(flag !== "VALUE_CHANGED") throw "only VALUE_CHANGED"
                 change_listeners.push(callback);
-        }, transfer_all_listeners: function(real_model){
+        }, transfer_to_true_model: function(real_model){
             // issue changes due to differences in the real and mock models
             for(var k in ob)if(ob.hasOwnProperty(k) && !keeps[k])
                 if(JSON.stringify(ob[k]) !== JSON.stringify(real_model.get(k)))
