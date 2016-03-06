@@ -204,6 +204,48 @@ var render_tabs = function(){
 
 var syntax_drop_down;
 
+var register_controllers = function(){
+    // We wait until the file model is loaded before registering all these controllers.
+    // Note that when creating a new file, the file model is said to be loaded before
+    // we get the file_id back from the server, that is because we don't need to wait
+    // for the server to tell us about existing metadata.  In this pre-file_id state,
+    // we can issue save requests because the save machienery knows to queued them
+    // up until it the file_id is available.
+
+    // title and description
+
+    el.title_text.addEventListener('click', on_title_begin_edit) 
+    el.title_input.addEventListener("blur", on_title_end_edit); 
+    el.title_input.addEventListener('keydown', on_title_keydown);
+
+    el.description_text.addEventListener('click', on_description_begin_edit) 
+    el.description_input.addEventListener("blur", on_description_end_edit); 
+    el.description_input.addEventListener('keydown', on_description_keydown);
+
+    // File custom props stuff, make use of currentTarget to identify src
+
+    el.newline_detect.addEventListener('click', on_newline_click);
+    el.newline_windows.addEventListener('click', on_newline_click);
+    el.newline_unix.addEventListener('click', on_newline_click);
+
+    el.tab_detect.addEventListener('click', on_tab_click);
+    el.tab_hard.addEventListener('click', on_tab_click);
+    el.tab_soft_inc.addEventListener('click', on_tab_click);
+    el.tab_soft_dec.addEventListener('click', on_tab_click);
+    el.tab_soft.addEventListener('click', on_tab_click); // propagation is stopped if inc or dec are clicked rather than the base button
+
+    el.ace_mode_detect.addEventListener('click', on_syntax_detect_click);  
+    syntax_drop_down.enabled = true;  
+    syntax_drop_down.addEventListener("click", on_syntax_dropdown_click);
+    syntax_drop_down.addEventListener("change", on_syntax_dropdown_click);
+
+    // File action buttons stuff
+    el.button_save.addEventListener('click', do_save);
+    el.button_print.addEventListener('click', do_print);
+    el.button_share.addEventListener('click', do_share);
+    //el.button_history.addEventListener('click', dn.start_revisions_worker);
+}
+
 var on_document_ready = function(){
     el.title_input  = document.getElementById('details_file_title_input');
     el.title_text = document.getElementById('details_file_title_text');
@@ -230,40 +272,11 @@ var on_document_ready = function(){
     el.button_share = document.getElementById('button_share');
     el.button_history = document.getElementById('button_history');     
         
-    // title and description
-
-    el.title_text.addEventListener('click', on_title_begin_edit) 
-    el.title_input.addEventListener("blur", on_title_end_edit); 
-    el.title_input.addEventListener('keydown', on_title_keydown);
-
-    el.description_text.addEventListener('click', on_description_begin_edit) 
-    el.description_input.addEventListener("blur", on_description_end_edit); 
-    el.description_input.addEventListener('keydown', on_description_keydown);
-
-    // File custom props stuff, make use of currentTarget to identify src
-
-    el.newline_detect.addEventListener('click', on_newline_click);
-    el.newline_windows.addEventListener('click', on_newline_click);
-    el.newline_unix.addEventListener('click', on_newline_click);
-
-    el.tab_detect.addEventListener('click', on_tab_click);
-    el.tab_hard.addEventListener('click', on_tab_click);
-    el.tab_soft_inc.addEventListener('click', on_tab_click);
-    el.tab_soft_dec.addEventListener('click', on_tab_click);
-    el.tab_soft.addEventListener('click', on_tab_click); // propagation is stopped if inc or dec are clicked rather than the base button
-
-    el.ace_mode_detect.addEventListener('click', on_syntax_detect_click);    
     var modes = require("ace/ext/modelist").modes;    
     syntax_drop_down = new DropDown(modes.map(function(m){return m.caption;}));
+    syntax_drop_down.enabled = false;
     el.ace_mode_choose.appendChild(syntax_drop_down.el);  
-    syntax_drop_down.addEventListener("click", on_syntax_dropdown_click);
-    syntax_drop_down.addEventListener("change", on_syntax_dropdown_click);
 
-    // File action buttons stuff
-    el.button_save.addEventListener('click', do_save);
-    el.button_print.addEventListener('click', do_print);
-    el.button_share.addEventListener('click', do_share);
-    //el.button_history.addEventListener('click', dn.start_revisions_worker);
 
     dn.the_file.addEventListener('change', function(e){
         switch(e.property){
@@ -285,6 +298,10 @@ var on_document_ready = function(){
 
             case "description":
             render_description();
+            break;
+
+            case "is_loaded":
+            register_controllers();
             break;
         }
     })

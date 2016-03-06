@@ -579,17 +579,27 @@ dn.show_file_meta = function(resp) {
     if (resp.error)
         throw Error(resp.error);
     dn.the_file.file_id = resp.result.id;
-    dn.the_file.set({title: resp.result.name,
-                     description: resp.result.description || '',
-                     is_read_only: !resp.result.capabilities.canEdit,
-                     is_shared: resp.result.shared});
-    if(resp.result.properties){
-        if(resp.result.properties.aceMode !== undefined)
-            dn.the_file.set({syntax: resp.result.properties.aceMode})
-        if(resp.result.properties.newline !== undefined)
-            dn.the_file.set({newline: resp.result.properties.newline})
-        // TODO: set tabs
+    var props = {is_read_only: !resp.result.capabilities.canEdit,
+                 is_shared: resp.result.shared};
+
+    // if we are loading meta of an existing file we want to set all the
+    // properties in our local model of meta.  But when creating a new file,
+    // we don't want to set anything here, because we may have already
+    // made changes to the local model, and have those changes waiting
+    // to be saved to the server (they're waiting for the file_id).
+    if(dn.status.file_meta === 0){ 
+        props.title =  resp.result.name;
+        props.description = resp.result.description || '';
+        if(resp.result.properties){
+            if(resp.result.properties.aceMode !== undefined)
+                props.syntax = resp.result.properties.aceMode;
+            if(resp.result.properties.newline !== undefined)
+                props.newline = resp.result.properties.newline;
+            // TODO: set tabs
+        }
     }
+    dn.the_file.set(props);
+
     if(resp.result.parents && resp.result.parents.length){
         dn.the_file.folder_id = resp.result.parents[0];
         dn.set_drive_link_to_folder();

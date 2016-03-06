@@ -62,11 +62,12 @@ dn.FileModel.prototype.set = function(obj){
         this.is_shared = obj.is_shared;
         this.trigger("change",{property: 'is_shared'});
     }
-    if(obj.is_loaded){
+    if(obj.is_loaded && ~this.is_loaded){
         this.is_loaded = true;
         this.compute_newline(); // these trigger when they are done
         this.compute_tabs();
         this.compute_syntax();
+        this.trigger('change', {property: 'is_loaded'});
     }
 }
 

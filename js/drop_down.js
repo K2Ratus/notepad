@@ -25,6 +25,7 @@ var DropDown = function(val_array){
     this.el_collapsed.textContent = val_array[0];
     this.event_callbacks = {}; //map of callback lists
     this.open = false;
+    this.enabled = true;
     
     var dd = this;
 
@@ -36,6 +37,8 @@ var DropDown = function(val_array){
     }
 
     this.el_collapsed.addEventListener('mousedown',function(){
+        if(!dd.enabled)
+            return;
         if(!dd.trigger("click"))
             return;
         dd.el.parentNode.classList.add("selected");
