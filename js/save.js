@@ -19,23 +19,38 @@ dn.save_server_state = {};
 // we construct a new SaveRequest, we update this list.
 dn.save_local_state = { };
 
-dn.save = function(parts){
+dn.save = function(parts, correction_with_undo_id){
     // this is the only method that should be called by other bits of the program
 
-    // update the status....
-    var keys = Object.keys(parts);
-    var idx = keys.indexOf('body');
-    if(idx >= 0){
-        dn.status.save_body = 0;
-        keys.splice(idx, 1);
+    // update the status, and deal undo manager tracking...
+    var found_something = false;
+    if(parts.hasOwnProperty('body')){
+        var editor_undo_id = correction_with_undo_id === undefined ? 
+                              dn.editor.getSession().getUndoManager().getCurrentId()
+                            : correction_with_undo_id;
+        if(dn.save_undo_id === editor_undo_id){ // during correction requests, save_undo_id will already be NaN, so this test will fail
+            delete parts.body;
+        } else {
+            found_something = true;
+            dn.save_undo_id = NaN; // while we are saving the body the document can only be "dirty"
+            parts.undo_id = editor_undo_id; // TODO: when making corrections, we need to copy this across
+            dn.check_unsaved();
+            dn.status.save_body = 0;
+        }
     }
-    idx = keys.indexOf('title');
-    if(idx >= 0){
+    if(parts.hasOwnProperty('title')){
+        found_something = true;
         dn.status.save_title = 0;
-        keys.splice(idx, 1);
     }
-    if(keys.length > 0)
-        dn.status.save_other = 0;
+    for(k in ['syntax', 'description', 'newline', 'tabs'])
+        if(parts.hasOwnProperty(k)){
+            found_something = true;
+            dn.status.save_other = true;
+        }
+    
+    if(!found_something)
+        return;
+
     dn.show_status();
 
     // and construct the (complicated) request..
@@ -142,6 +157,7 @@ dn.SaveRequest.prototype._on_finally = function(){
     dn.save_pending_requests.splice(dn.save_pending_requests.indexOf(this), 1);
 
     // if other requests are still pending, let them clean up any mess when they're done..
+    // TODO: actually, we could do this separately for each key in save_*_state.
     if(dn.save_pending_requests.length > 0)
         return;
 
@@ -152,17 +168,24 @@ dn.SaveRequest.prototype._on_finally = function(){
     var correction = {};
     var correction_need = false;
     for(var k in dn.save_local_state) if(dn.save_local_state.hasOwnProperty(k))
-        if(dn.save_server_state[k].local != dn.save_local_state[k]._tracker.local){
+        if(dn.save_server_state[k].local !== dn.save_local_state[k]._tracker.local){
             correction[k] = dn.save_local_state[k]._parts[k];
             correction_need = true;
         }
 
     // and now we can make the request, if we need to..
-    dn.status.save_body = 1; // TODO: we could have set these to 1 at an earlier point
+    dn.status.save_body = 1; 
     dn.status.save_title = 1;
     dn.status.save_other = 1;
+
+    var local_undo_id = dn.save_local_state.body ? dn.save_local_state.body._parts.undo_id : undefined;
+    if(correction.body === undefined && local_undo_id !== undefined){
+        dn.save_undo_id = dn.save_local_state.body._parts.undo_id; // we know the server now has this undo point
+        dn.check_unsaved();
+    }
+
     if (correction_need)
-        dn.save(correction); // this will set some of the status's to 0 and call show_status
+        dn.save(correction, local_undo_id); // this will set some of the status's to 0 and call show_status
     else
         dn.show_status();
 

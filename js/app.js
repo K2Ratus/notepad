@@ -10,6 +10,7 @@ dn.version_str = '2016a';
 
 dn.can_show_drag_drop_error = true;
 dn.is_showing_history = false;
+dn.save_undo_id = 0;
 
 dn.status = {
 
@@ -234,6 +235,32 @@ dn.toggle_widget = function(state){
         dn.el.widget_content.style.display = 'none';
     }
 }
+
+dn.check_unsaved = function(){
+    /*  called:
+     (a) before issuing save-body requests, at which point we set dn.save_undo_id to Nan, and
+       record (in the SaveRequest instance) the current UndoManager.getCurrentId() value for 
+       later use if and when the save completes.
+     (b) after all pending saves are completed, when we read the undo_id value for the last saved
+     body version and set dn.save_undo_id to that.
+     (c) in some kind of regular async manner in response to editor input
+
+     Importantly, note we have monkey-patched the UndoManager class in patch_ace.js.  This is what
+     gives us the concept of an undo_id and the ability to query .getCurrentId().
+    */
+    if(dn.save_undo_id === dn.editor.getSession().getUndoManager().getCurrentId()){
+        // changes match what we know is on the server
+        dn.status.unsaved_changes = false;
+        dn.render_document_title();
+        dn.show_status();
+    }else if (!dn.status.unsaved_changes){
+        // changes no longer match the server
+        dn.status.unsaved_changes = true;
+        dn.render_document_title();
+        dn.show_status();
+    } // else, we already there were unsaved changes
+}
+
 
 dn.show_status = function(){
     // TODO: drag-drop from disk
@@ -622,6 +649,7 @@ dn.show_file_body = function(resp){
     dn.setting_session_value = false;
     dn.status.file_body = 1;
     dn.show_status();
+    dn.editor.setReadOnly(false);
 }
 
 
@@ -629,82 +657,89 @@ dn.show_file_body = function(resp){
 // Change/history stuff
 // ############################
 
-dn.on_change = function(e){
+dn.on_editor_change = function(e){
     //console.dir(e);
 
     if(!e.start || !e.end || dn.setting_session_value)
         return;
-        
+
+    /*
     if(!dn.status.unsaved_changes){
         dn.status.unsaved_changes = true;
         dn.render_document_title();
         dn.show_status();
     }
+    */
 
     if(!dn.g_settings.get('showGutterHistory'))
         return;
 
-    var nClasses = dn.change_line_classes.length-1;
+    /*  We maintain an array, dn.change_line_history, which has 0 for inactive lines,
+        a negative number for lines that recently had a deleted, and a positive number
+        for lines that had a recent insertion.  When the change is first made it is
+        recorded as +-n_classes. Then, each time we make changes to a new line
+        we decrement the magnitude of previous changes, so that evetunally they hit zero
+        and are considered "inactive".    */
+    var n_classes = dn.change_line_classes.length-1;
     var h = dn.change_line_history;
     var s = dn.editor.getSession(); 
 
     var start_row = e.start.row;
     var end_row = e.end.row;
 
-    if(dn.last_change && dn.last_change.start_row == start_row && dn.last_change.end_row == end_row && start_row == end_row
-        && dn.last_change.action.indexOf("Text") != -1 && e.action.indexOf("Text") != -1){
-            //if this change and the last change were both on the same single lines with action (insert|remove)Text...
+    // e is of the form {action: "insert"| "delete", start: {row: #, column: #}, end: {row: #, column: #}, line: []}
 
-            if(dn.last_change.action == e.action){
-                return; //same action as last time
-            }else if(e.action == "removeText"){ // new action is removeText, old action was insertText
-                s.removeGutterDecoration(start_row,dn.change_line_classes[nClasses]);
-                s.addGutterDecoration(start_row,dn.change_line_classes_rm[nClasses]);
-                h[start_row] = -nClasses;
-                dn.last_change.action = "removeText";
-                return;
-            }else{// new action is isnertText, old action was removeText
-                s.removeGutterDecoration(start_row,dn.change_line_classes_rm[nClasses]);
-                s.addGutterDecoration(start_row,dn.change_line_classes[nClasses]);
-                h[start_row] = nClasses;
-                dn.last_change.action = "insertText";
-                return;
-            }
-
-    }else{
-        //otherwise we have an acutal new change
-        dn.last_change = {start_row: start_row, end_row: end_row, action: e.action};
+    // TODO: test for move based on seeing insert after a remove with both  having the same lines[] content
+    if(dn.last_change && dn.last_change.start_row == start_row && dn.last_change.end_row == end_row && start_row == end_row){
+        //if this change and the last change were both on the same single lines with action (insert|remove)...
+        if(dn.last_change.action === e.action){
+            return; //same action as last time
+        } else if(e.action === "remove"){ // new action is remove, old action was insert
+            s.removeGutterDecoration(start_row, dn.change_line_classes[n_classes]);
+            s.addGutterDecoration(start_row, dn.change_line_classes_rm[n_classes]);
+            h[start_row] = -n_classes;
+            dn.last_change.action = "remove";
+            return;
+        } else {// new action is insert, old action was remove
+            s.removeGutterDecoration(start_row, dn.change_line_classes_rm[n_classes]);
+            s.addGutterDecoration(start_row, dn.change_line_classes[n_classes]);
+            h[start_row] = n_classes;
+            dn.last_change.action = "insert";
+            return;
+        } 
+    } else {
+        // otherwise we have an "acutal" new change
+        dn.last_change = {start_row: start_row,
+                          end_row: end_row, 
+                          action: e.action};            
     }
+
 
     //remove all visible decorations and update the changeLineHistory values (we'll add in the new classes at the end)
-    for(var i=0;i<h.length;i++)if(h[i])
-        s.removeGutterDecoration(i,h[i] < 0 ? 
-                    dn.change_line_classes_rm[-h[i]++] : 
-                    dn.change_line_classes[h[i]--]);
+    for(var ii=0; ii<h.length; ii++)if(h[ii])
+        s.removeGutterDecoration(ii, h[ii] < 0 ? 
+                    dn.change_line_classes_rm[-h[ii]++] : 
+                    dn.change_line_classes[h[ii]--]);
 
     //Update the changeLineHistory relating to the current changed lines
-    if(e.action == "removeLines"){
-        h.splice(start_row, end_row - start_row + 1);        
-        h[start_row] = h[start_row+1] = -nClasses;
-    }else if(e.action === "removeText"){
-        h[start_row] = -nClasses;
+    if(e.action === "remove"){
+        if(e.lines.length > 1)
+            h.splice(start_row, e.lines.length-1); 
+        h[start_row]  = -n_classes;
     }else{
-        var newLineCount = 0;
-        if(e.action == "insertText")
-            newLineCount = (e.text.match(/\n/g) || []).length;
-        if(e.action == "insertLines")
-            newLineCount = e.lines.length;
-        h.splice.apply(h,[start_row,0].concat(Array(newLineCount)));
-
-        for(var i=start_row;i<=end_row;i++)
-            h[i] = nClasses;
-
+        h[start_row] = n_classes;
+        if(e.lines.length > 1){
+            var args_for_splice = [start_row, 0];
+            for(var ii=0; ii< e.lines.length-1; ii++)
+                args_for_splice.push(n_classes);
+            h.splice.apply(h, args_for_splice);
+        }
     }
 
-    for(var i=0;i<h.length;i++)if(h[i])
-        s.addGutterDecoration(i,h[i]<0 ?
-                dn.change_line_classes_rm[-h[i]] :
-                dn.change_line_classes[h[i]]);
+    for(var ii=0; ii<h.length; ii++)if(h[ii])
+        s.addGutterDecoration(ii, h[ii]<0 ?
+                dn.change_line_classes_rm[-h[ii]] :
+                dn.change_line_classes[h[ii]]);
 } 
 
 dn.query_unload = function(){
@@ -789,7 +824,8 @@ dn.document_ready = function(e){
     dn.editor = ace.edit("the_editor");
     dn.editor.setHighlightSelectedWord(true);
     dn.el.ace_content = document.getElementsByClassName('ace_content')[0];
-    dn.editor.getSession().addEventListener("change", dn.on_change);
+    dn.editor.getSession().addEventListener("change", dn.on_editor_change);
+    dn.editor.addEventListener("input", dn.check_unsaved);
     dn.focus_editor = dn.editor.focus.bind(dn.editor);
     dn.focus_editor();
     dn.editor.on("paste", dn.on_paste);
@@ -937,7 +973,7 @@ dn.document_ready = function(e){
         dn.status.file_meta = 0;
         dn.status.file_body = 0;
         dn.show_status();
-
+        dn.editor.setReadOnly(true);
         // metadata...
         var pr_meta =
         until_success(function(succ, fail){
