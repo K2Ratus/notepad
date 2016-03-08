@@ -830,6 +830,11 @@ dn.document_ready = function(e){
     dn.editor.on("paste", dn.on_paste);
     dn.editor.on("copy", dn.on_copy);
     dn.editor.setAnimatedScroll(true);
+    ace.require("ace/ext/language_tools");
+    dn.editor.setOptions({ 
+        enableBasicAutocompletion: true,
+        enableLiveAutocompletion: false
+    });
     dn.editor.$blockScrolling = Infinity; // disables scrolling message
     
     // widget menu ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
