@@ -5,6 +5,7 @@ dn.file_pane = (function(){
 
 var el = {};
 
+var history_active = false;
 
 // non-MVC functions ::::::::::::::::::::::::::::::::::
 
@@ -202,6 +203,28 @@ var render_tabs = function(){
     el.tab_info.textContent = dn.the_file.properties_detected_info.tabs;
 }
 
+var end_history = function(){
+    if(!history_active)
+        return;
+    dn.history_tool.end();
+    el.button_history.classList.remove('selected');
+    el.button_save.style.display = '';
+    el.button_print.style.display = '';
+    el.inner_pane_history.style.display = 'none';
+    el.inner_pane_main.style.display = '';
+    history_active = false;
+}
+
+var do_history = function(){
+    el.button_history.classList.add('selected');
+    el.button_save.style.display = 'none';
+    el.button_print.style.display = 'none';
+    el.inner_pane_history.style.display = '';
+    el.inner_pane_main.style.display = 'none';
+    dn.history_tool.start();
+    history_active = true;
+}
+
 var syntax_drop_down;
 
 var register_controllers = function(){
@@ -243,7 +266,12 @@ var register_controllers = function(){
     el.button_save.addEventListener('click', do_save);
     el.button_print.addEventListener('click', do_print);
     el.button_share.addEventListener('click', do_share);
-    //el.button_history.addEventListener('click', dn.start_revisions_worker);
+    el.button_history.addEventListener('click', function(){
+        if(history_active)
+            end_history();
+        else 
+            do_history();
+    });
 }
 
 var on_document_ready = function(){
@@ -270,13 +298,16 @@ var on_document_ready = function(){
     el.button_save = document.getElementById('button_save');
     el.button_print = document.getElementById('button_print');
     el.button_share = document.getElementById('button_share');
-    el.button_history = document.getElementById('button_history');     
+    el.button_history = document.getElementById('button_history'); 
+    el.inner_pane_main = document.getElementById('pane_file_main');    
+    el.inner_pane_history = document.getElementById('pane_file_history');    
         
     var modes = require("ace/ext/modelist").modes;    
     syntax_drop_down = new DropDown(modes.map(function(m){return m.caption;}));
     syntax_drop_down.enabled = false;
     el.ace_mode_choose.appendChild(syntax_drop_down.el);  
 
+    dn.history_tool.on_document_ready();
 
     dn.the_file.addEventListener('change', function(e){
         switch(e.property){
@@ -313,7 +344,14 @@ var on_document_ready = function(){
 return {
     on_save_shorcut: do_save,
     on_print_shortcut: do_print,
-    on_document_ready: on_document_ready
+    on_document_ready: on_document_ready,
+    on_close_pane: end_history,
+    do_history: function(e){
+        e.preventDefault();
+        dn.g_settings.set('pane', 'pane_file');
+        dn.g_settings.set('pane_open', true);
+        do_history();
+    }
 }
 
 

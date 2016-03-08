@@ -3,7 +3,7 @@
   "version": "3.0.0",
   "main": "app.html",
   "scripts": {
-    "build": "cleancss css/app.css -o app.build.css && uglifyjs node_modules/keymaster/keymaster.js js/patch_ace.js js/utils.js js/offline_simple.js js/drop_down.js js/info.js js/file_model.js js/settings_pane.js js/open_pane.js js/help_pane.js js/using_apis.js js/save.js js/print.js js/file_pane.js js/revisions_main_thread.js js/find_pane.js js/keyboard.js js/app.js -o all.build.js --source-map all.build.map.js --source-map-include-sources --screw-ie8v && html-minifier html/app.html -o index.html --minify-js --collapse-whitespace --conservative-collapse"
+    "build": "cleancss css/app.css -o app.build.css && uglifyjs node_modules/keymaster/keymaster.js js/patch_ace.js js/utils.js js/offline_simple.js js/drop_down.js js/info.js js/file_model.js js/settings_pane.js js/open_pane.js js/help_pane.js js/using_apis.js js/save.js js/print.js js/file_pane.js js/history_tool.js js/find_pane.js js/keyboard.js js/app.js -o all.build.js --source-map all.build.map.js --source-map-include-sources --screw-ie8v && html-minifier html/app.html -o index.html --minify-js --collapse-whitespace --conservative-collapse"
   },
   "repository": {
     "type": "git",

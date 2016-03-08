@@ -27,7 +27,7 @@ dn.make_keyboard_shortcuts = function(){
     key('command+f, ctrl+f,  ctrl+alt+f,  command+alt+f', dn.find_pane.on_find_shortcut); 
     key('command+r, ctrl+r,  ctrl+alt+r,  command+alt+r' + 
        ', command+g, ctrl+g,  ctrl+alt+g,  command+alt+g', dn.find_pane.on_replace_shortcut);
-    key('command+h, ctrl+h,  ctrl+alt+h,  command+alt+h', dn.file_pane.start_revisions_worker);
+    key('command+h, ctrl+h,  ctrl+alt+h,  command+alt+h', dn.file_pane.do_history);
     key('esc', dn.esc_pressed);
     key.filter = function(){return 1;}
 

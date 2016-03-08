@@ -75,6 +75,8 @@ dn.toggle_permission = function(state){
 dn.show_pane = function(id){
     if(id === "pane_permissions")
         return dn.toggle_permission(true);
+    if(id !== "pane_file") // we could check if it was open, but who cares
+        dn.file_pane.on_close_pane();
 
     var el = document.getElementById(id);
 
@@ -233,6 +235,7 @@ dn.toggle_widget = function(state){
     }else{
         dn.el.widget_menu.style.display = 'none';
         dn.el.widget_content.style.display = 'none';
+        dn.file_pane.on_close_pane(); // we could check if it file pane was open, but who cares
     }
 }
 
@@ -482,10 +485,6 @@ dn.settings_changed = function(e){
             case "newLineDefault":
             if(dn.the_file.loaded_body)
                 dn.the_file.compute_newline();
-            break;
-
-            case "historyRemovedIsExpanded":
-            dn.revision_set_is_expaned(new_value);
             break;
 
             case "softTabN":
@@ -816,9 +815,9 @@ dn.document_ready = function(e){
         els[ii].addEventListener('mousedown', stop_propagation); // prevents propagation to preventDefault, installed above.
 
     // editor :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    var editor_el = document.getElementById('the_editor');
-    editor_el.innerHTML = '';
-    editor_el.addEventListener('contextmenu', function(e){
+    dn.el.editor = document.getElementById('the_editor');
+    dn.el.editor.innerHTML = '';
+    dn.el.editor.addEventListener('contextmenu', function(e){
         dn.show_error("See the list of keyboard shortcuts for copy/paste, select-all, and undo/redo.")
     });
     dn.editor = ace.edit("the_editor");
@@ -891,6 +890,7 @@ dn.document_ready = function(e){
     });
     
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    dn.pr_file_loaded = new SpecialPromise();
     dn.g_settings.addEventListener("VALUE_CHANGED", dn.settings_changed);
     dn.make_keyboard_shortcuts();
     dn.load_default_settings();
@@ -912,8 +912,6 @@ dn.document_ready = function(e){
             dn.show_error("Bad URL params, creating a new file.");
         }
     }
-
-    dn.pr_file_loaded = new SpecialPromise();
 
     dn.the_file.addEventListener("change", function(e){
         switch(e.property){

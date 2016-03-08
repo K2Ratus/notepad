@@ -628,7 +628,8 @@ min-height: 1em;
 /* --- Recent Changes stuff --- */
 .recent_line_rm8, .recent_line_rm7, .recent_line_rm6, .recent_line_rm5, .recent_line_rm4, .recent_line_rm3, .recent_line_rm2, .recent_line_rm1,
 .recent_line_8, .recent_line_7, .recent_line_6, .recent_line_5, .recent_line_4, .recent_line_3, .recent_line_2, .recent_line_1{
-border-right: 4px solid #FFAD00;
+border-right: 4px solid;
+padding-right: 9px !important; /* compensate for right border protuding into padding */
 }
 .recent_line_rm8{ border-color: #E2F4D4; } 
 .recent_line_rm7{ border-color: #E2E4D4; }
@@ -683,12 +684,15 @@ position: relative;
 display: table;
 table-layout: fixed;
 width: 100%;
+background: #fff;
+height: 3px;
+border-top: 10px solid #3963AB;
+border-bottom: 10px solid #3963AB;
+border-radius: 10px;
 }
 .revision_tick{
 background-color: #fff;
 height: 3px;
-border-top: 10px solid #666;
-border-bottom: 10px solid #666;
 width: 0%; /* odd hack that works in combination with "table-layout: fixed;" above */
 display: table-cell;
 position: relative;
@@ -706,7 +710,10 @@ display: block;
 -webkit-appearance: none !important;
 width: 6px;
 height: 15px;
-background: #FFA300;
+background-color: #5892FD;
+border-radius: 2px;
+box-shadow: 0 0 2px rgba(0,0,0,.12),0 2px 4px rgba(0,0,0,.24);
+cursor: pointer;
 }
 .revision_at_range::-webkit-slider-thumb{
 margin-top: 5px ;
@@ -714,17 +721,18 @@ margin-top: 5px ;
 .revision_from_range::-webkit-slider-thumb{
 margin-bottom: 5px ;
 }
-.revision_tick[downloaded=true]{
+.revision_tick.downloaded{
 background-color: #FFA300;
 }
-.revision_tick[diffed=true]{
-background-color: #CC9430;
+.revision_tick.diffed{
+background-color: #5892FD;
 }
 .revision_caption_from,
 .revision_caption_at{
-padding: 0.3em;
-font-size: 0.8em;
-line-height: 0.9em;
+padding: 4px 3px 4px 3px;
+font-size: 10px;
+line-height: 9px;
+min-height: 18px;
 }
 .revision_caption_from{
 text-align: right;

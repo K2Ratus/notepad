@@ -139,6 +139,9 @@
             this._state = -1;
         }
     }
+    SpecialPromise.prototype.is_resolved = function(){ 
+        return this._state === 1;
+    }
     dn.pr_auth = new SpecialPromise();
     dn.pr_realtime_loaded = new SpecialPromise();
     var make_timeout = function(delay){
@@ -186,47 +189,67 @@
             </div>
 
 
-            <div class='widget_pane' id='pane_file' style="display: none;">
-                <div class='pane_item clickable'>
-                    <div class='details_file_title_text' id='details_file_title_text' title="click to edit">
-                        Title: <span class="editable_text" id='details_file_title_text_inner'></span>
-                    </div>
-                    <input type='text' placeholder='title' class='details_file_title_input' id='details_file_title_input' style='display:none;'/>
-                </div>
-                <div class='pane_item  clickable'>
-                    <div class='details_file_description_text' id='details_file_description_text' title="click to edit">
-                        Description: <span class="editable_text" id='details_file_description_text_inner'></span>
-                    </div>
-                    <textarea placeholder='description' class='details_file_description_input' id='details_file_description_input' style='display:none;'></textarea>
-                </div>
-                <div class='pane_spacer'></div>
-                <div class='pane_item'>
-                    Syntax:
-                    <div class='button inline_button' id='file_ace_mode_detect'>detect</div>
-                    <div class='button inline_button dropdown_button' id='file_ace_mode_choose'></div>
-                    <div class='file_info' id='file_ace_mode_info'></div>
-                </div>
-                <div class='pane_spacer'></div>
-                <div class='pane_item'>
-                    Newline:
-                    <div class='button inline_button' id='file_newline_detect'>detect</div>
-                    <div class='button inline_button' id='file_newline_windows'>windows</div>
-                    <div class='button inline_button' id='file_newline_unix'>unix</div>
-                    <div class='file_info' id='file_newline_info'></div>
-                </div>
-                <div class='pane_spacer'></div>
-                <div class='pane_item'>
-                    Tabs:
-                    <div class='button inline_button' id='file_tab_detect'>detect</div>
-                    <div class='button inline_button' id='file_tab_hard'>hard</div>
-                    <div class='button inline_button' id='file_tab_soft'>
-                        <span id='file_tab_soft_text'>??</span> spaces
-                        <div class='button_up_down_wrapper'>
-                            <div class='button_up' id='file_tab_soft_inc'>&nbsp;</div>
-                            <div class='button_down' id='file_tab_soft_dec'>&nbsp;</div>
+            <div class='widget_pane' id='pane_file' style="display:none;">
+                <div class='widget_pane_inner' id="pane_file_history" style="display:none;">
+                    <div class='widget_box_title'>File History</div>
+                    <div class="pane_item">
+                        <div class="revision_caption_at" id="revision_caption_at"></div>
+                        <div class="revision_timeline">
+                            <input class="revision_at_range" id="revision_at_range" type="range" min="0" max="1" value="0"></input>
+                            <div class="revision_tick_box" id="revision_tick_box"></div>
+                            <input class="revision_from_range" id="revision_from_range" type="range" min="0" max="1" value="0"></input>
                         </div>
+                        <div class="revision_caption_from" id="revision_caption_from"></div>
                     </div>
-                    <div class='file_info' id='file_tab_info'></div>
+                    <div class="pane_item">
+                        Removed lines:
+                        <div class='button inline_button selected' id='revisions_remove_expand'>expand</div>
+                        <div class='button inline_button' id='revisions_remove_collapse'>collapse</div>
+                    </div>
+                    <div class="pane_item no_select" id='revision_info'>Initialising...</div>
+                </div>
+                <div class='widget_pane_inner' id="pane_file_main">
+                    <div class='pane_item clickable'>
+                        <div class='details_file_title_text' id='details_file_title_text' title="click to edit">
+                            Title: <span class="editable_text" id='details_file_title_text_inner'></span>
+                        </div>
+                        <input type='text' placeholder='title' class='details_file_title_input' id='details_file_title_input' style='display:none;'/>
+                    </div>
+                    <div class='pane_item  clickable'>
+                        <div class='details_file_description_text' id='details_file_description_text' title="click to edit">
+                            Description: <span class="editable_text" id='details_file_description_text_inner'></span>
+                        </div>
+                        <textarea placeholder='description' class='details_file_description_input' id='details_file_description_input' style='display:none;'></textarea>
+                    </div>
+                    <div class='pane_spacer'></div>
+                    <div class='pane_item'>
+                        Syntax:
+                        <div class='button inline_button' id='file_ace_mode_detect'>detect</div>
+                        <div class='button inline_button dropdown_button' id='file_ace_mode_choose'></div>
+                        <div class='file_info' id='file_ace_mode_info'></div>
+                    </div>
+                    <div class='pane_spacer'></div>
+                    <div class='pane_item'>
+                        Newline:
+                        <div class='button inline_button' id='file_newline_detect'>detect</div>
+                        <div class='button inline_button' id='file_newline_windows'>windows</div>
+                        <div class='button inline_button' id='file_newline_unix'>unix</div>
+                        <div class='file_info' id='file_newline_info'></div>
+                    </div>
+                    <div class='pane_spacer'></div>
+                    <div class='pane_item'>
+                        Tabs:
+                        <div class='button inline_button' id='file_tab_detect'>detect</div>
+                        <div class='button inline_button' id='file_tab_hard'>hard</div>
+                        <div class='button inline_button' id='file_tab_soft'>
+                            <span id='file_tab_soft_text'>??</span> spaces
+                            <div class='button_up_down_wrapper'>
+                                <div class='button_up' id='file_tab_soft_inc'>&nbsp;</div>
+                                <div class='button_down' id='file_tab_soft_dec'>&nbsp;</div>
+                            </div>
+                        </div>
+                        <div class='file_info' id='file_tab_info'></div>
+                    </div>
                 </div>
                 <div class='widget_pane_bottom_before'></div>
                 <div class='widget_pane_bottom'>
@@ -333,14 +356,14 @@
                         <div class='wiget_item_icon icon_drive'></div> open your Google Drive
                     </a>
                 </div>
-                <div class='pane_help_inner' id='pane_help_tips' style="display:none;">
+                <div class='widget_pane_inner' id='pane_help_tips' style="display:none;">
                     <div class='pane_item no_select'>
                         Drag this widget to reposition it. Click it or press Esc to toggle it open/close. All of the program's controls are contained within the widget's five tabs. <br><br>
                         Changes are not saved as you type: use the save button in the file tab or <span class='ctrl_key'>ctrl</span>-s.<br><br>
                         The help tab gives keyboard shortcuts, links for reporting bugs etc., and the option to view these tips again.
                     </div>
                 </div>
-                <div class='pane_help_inner' id='pane_help_shortcuts' style="display:none;">
+                <div class='widget_pane_inner' id='pane_help_shortcuts' style="display:none;">
                     <div class='widget_box_title'>Keyboard Shortcuts</div>
                 </div>
                 <div class='widget_pane_bottom_before'></div>
@@ -380,5 +403,8 @@
     </div>
 
     <div class="the_editor" id="the_editor"> </div>
+    <div class="revisions_view" id="revisions_view" style="display: none;">
+        <ol id='revisions_ordered_list'></ol>
+    </div>
 </body>
 </html>

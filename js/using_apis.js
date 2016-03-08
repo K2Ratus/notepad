@@ -151,6 +151,23 @@ dn.request_new = function(folderId){
     };
 }
 
+dn.request_revision_list = function(){
+    // returns thenable
+    return gapi.client.request({
+        'path': '/drive/v3/files/' + dn.the_file.file_id + "/revisions"});
+}
+
+dn.request_revision_body = function(revision_id){
+    // returns a function that returns a thenable
+    // note that annoyingly you cant use batch requests with alt=media,
+    return function(){
+        return gapi.client.request({
+          'path': '/download/drive/v3/files/' + dn.the_file.file_id + "/revisions/" + revision_id,
+          'params':{'alt': 'media'}});
+    };
+}
+
+
 dn.request_save = function(parts){
     // this is a factory function for building a function-of-no-args-that-returns-a-thenable
     // note the save process is complicated and should only be done via dn.save in save.js
