@@ -9,6 +9,14 @@ var worker_has_revision = {}; // we cache revision bodies on the worker, recordi
 
 var worker;
 
+var editor;
+
+/*
+this.session._changedWidgets.push(w); // all widgets
+editor.renderer.updateFull()
+*/
+
+var LineWidgets = ace.require("./line_widgets").LineWidgets;
 var start = function(){
     // TODO: add current state to revisions meta and body
 
@@ -19,47 +27,46 @@ var start = function(){
 
     dn.el.editor.style.display = 'none';
     el.revisions_view.style.display = '';
+    el.revisions_view.innerHTML = '';
+    editor = ace.edit("revisions_view");
+    dn.patch_editor_history(editor); 
+    editor.session.setUseWrapMode(true);
+    editor.setReadOnly(true);
     refresh_revisions_list();
 }
 
 var end = function(){
-    dn.el.editor.style.display = '';
+    // destroy the editor, and replace its dom element with a newly cloned instance
+    // this wipes out any event listeners.  https://github.com/ajaxorg/ace/issues/2085
+    // also set the element's contents to be empty
+    editor.destroy();
+    editor = undefined;
+    el.revisions_view.innerHTML = '';
+    var el_old = el.revisions_view;
+    el.revisions_view = el_old.cloneNode(true);
+    el_old.parentNode.replaceChild(el.revisions_view, el_old);
+
+    dn.el.editor.style.display = '';    
     el.revisions_view.style.display = 'none';
-    el.ordered_list.innerHTML = "";
+}
+
+var get_editor = function(){
+    return editor;
 }
 
 var on_worker_message = function(e){
+    var session = editor.getSession();
     if(e.data.diffed_revision){
         if(e.data.diffed_revision.id === "current"){
-            var lines = e.data.diffed_revision.lines;
-            for(var kk=0; kk<lines.length; kk++){
-                var it = document.createElement('li');
-                it.classList.add('rev_line');
-                it.textContent = lines[kk];
-                el.ordered_list.appendChild(it);
-            }
+            session.doc.insertFullLines(-1, e.data.diffed_revision.lines); // resets to supplied lines
         }else {
+            session.doc.insertFullLines(e.data.diffed_revision.sections); // inserts multiple batches of line
             for(var ii=0; ii<revision_meta.length; ii++) if(revision_meta[ii].id == e.data.diffed_revision.id){
                 revision_meta[ii].el_tick.classList.add('diffed');
-                var sections = e.data.diffed_revision.sections;
-                for(var jj=0; jj<sections.length; jj++){
-                    var lines = sections[jj].lines;
-                    var el_before = el.ordered_list.children[sections[jj].at];
-                    for(var kk=0; kk<lines.length; kk++){
-                        var it = document.createElement('li');
-                        it.textContent = lines[kk];
-                        it.classList.add('rev_line');
-                        el.ordered_list.insertBefore(it, el_before.nextSibling);
-                        el_before = it;
-                    }
-                }
-                
                 break;
             }            
         }
     }
-
-
 }
 
 
@@ -73,9 +80,9 @@ var append_tick = function(){
 var send_revisions_order_to_worker = function(resp){
     // TODO: show some kind of status update, to make it clear we have got the list and downloading X or Y total revisions
     var r_to_get = [], id_order = [];
-    revision_meta = revision_meta.concat(resp.result.revisions.reverse()); // the first element was just {id: "current"}
-    el.at_range.max = revision_meta.length - 1;
-    el.from_range.max = revision_meta.length - 1;
+    revision_meta = revision_meta.concat(resp.result.revisions.reverse().splice(0,4)); // the first element was just {id: "current"} // DEBUG just get 1 revisions
+    el.at_range.max = revision_meta.length;
+    el.from_range.max = revision_meta.length;
 
     for(var ii=1; ii<revision_meta.length; ii++){
         id_order.push(revision_meta[ii].id);
@@ -461,7 +468,28 @@ var revision_worker_delivery = function(e){
 return {
     start: start,
     end: end,
-    on_document_ready: on_document_ready
+    on_document_ready: on_document_ready,
+    get_editor: get_editor,
+    debug: function(){
+        m = new Uint8Array(editor.session.doc.getLength());
+        for(var i=0;i<m.length;i++)
+            m[i] = Math.floor(Math.random() * 4)
+        m[0] = 1;
+        m[1] = 1;
+        m[2] = 1;
+        m[3] = 1;
+        m[4] = 0;
+        m[5] = 2;
+        m[6] = 2;
+        m[7] = 1;
+        m[8] = 1;
+        m[9] = 1;
+        m[10] = 3;
+        m[11] = 3;
+        m[12] =1;
+        editor.show_rows(m);
+        console.dir(m);
+    }
 };
 
 

@@ -99,3 +99,8 @@ When the input gets the focus, the goto/search operation is performed, when the 
 
 `dn.find_pane` has special functions for producing exactly the right focus behaviour for find/replace/gtoto keyboard shorcuts, and these functions are registered in `keyboard.js`.  Special behaviour when pressing Esc, but when the focus was on the editor, is implemented in `keyboard.js`.
 
+
+### Ace editor
+
+Currently there are a few additions/changes to ace, which have been implemented as monkey patches in files called `js\patch_ace*.js`.  At some point it might be better to write them up properly in a fork of ace.  It's easy to build ace, so that shouldn't be a problem, but modifying the code "well" is a bit tricky because there's not a lot of documentation about its internals. 
+

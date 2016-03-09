@@ -822,7 +822,6 @@ dn.document_ready = function(e){
     });
     dn.editor = ace.edit("the_editor");
     dn.editor.setHighlightSelectedWord(true);
-    dn.el.ace_content = document.getElementsByClassName('ace_content')[0];
     dn.editor.getSession().addEventListener("change", dn.on_editor_change);
     dn.editor.addEventListener("input", dn.check_unsaved);
     dn.focus_editor = dn.editor.focus.bind(dn.editor);

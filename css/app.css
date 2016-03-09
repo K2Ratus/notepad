@@ -737,88 +737,52 @@ min-height: 18px;
 .revision_caption_from{
 text-align: right;
 }
-.rev_line{
-transition: background-color 0.5s, border-color 0.5s, height 0.5s;
-white-space: pre-wrap;
-border-left: solid 5px;
-border-right: solid 5px;
-font-weight: bold;
-display: block;
-position: relative;
-overflow: hidden;
+
+.revisions_view .ace_line .ace_fold{
+display: none;
 }
-.rev_line:after{
-float: right;
-font-weight: lighter;
-font-size: 0.6em;
-padding-right: 2px;
-padding-top: 2px;
+
+.special_2_first,
+.special_2{
+background-color:#bcebe8;
+border-right: 4px solid #069147;
+color: #069147;
+position: absolute;
+}
+.special_3_first,
+.special_3{
+background-color:#ffcaca;
+border-right: 4px solid #ff0000;
+color: #ff0000;
+position: absolute;
+}
+.special_2_first:after{
+position: absolute;
+right: 4px;
+top: 1px;
+content: 'lines added';
 font-family: sans-serif;
 font-style: italic;
+font-size: 0.6em;
 }
-.rev_line:before{
-position:absolute;
-left: 0px;
+.special_3_first:after{
+position: absolute;
+right: 4px;
+top: 1px;
+content: 'lines removed';
+font-family: sans-serif;
+font-style: italic;
+font-size: 0.6em;
 }
-.rev_line[v='1']:before,
-.rev_line[v='11']:before,
-.rev_line[v='3']:before,
-.rev_line[v='13']:before{
-counter-increment: trueLine;
-content: counter(trueLine) ".";
-display: inline-block;
+.gutter_special_2{
+background: #9EDCD8;
 }
-.rev_line[v='-1']{
-position: fixed;
-top: 0px;
-visibility: hidden;
+.gutter_special_3{
+color: #BFACAC;
 }
-.rev_line[v='0'],
-.revisions_view ol[removed="collapsed"] .rev_line[v='2']{
-height: 0 !important;
-border-color: #fff;
+.revisions_view.ace-tm .ace_marker-layer .ace_selection{
+opacity: 0.75;
 }
-.revisions_view ol[removed="collapsed"] .rev_line[v='12']{
-height: 2px !important;    
-}
-.rev_line[v='1'],
-.rev_line[v='11']{
-font-weight: initial;
-border-color: #fff;
-}
-.rev_line[v='2'],
-.rev_line[v='12']{
-background-color: #ffcaca;
-border-color: #ff0000;
-}
-.rev_line[v='3'],
-.rev_line[v='13']{
-background-color:#bcebe8;
-border-color: #069147;
-}
-.rev_line[v='1'],
-.rev_line[v='11'],
-.revisions_view ol[removed="expanded"] .rev_line[v='2'],
-.revisions_view ol[removed="expanded"] .rev_line[v='12'],
-.rev_line[v='3'],
-.rev_line[v='13']{
--webkit-touch-callout: text !important;
--webkit-user-select: text !important;
--khtml-user-select: text !important;
--moz-user-select: text !important;
--ms-user-select: text !important;
-user-select: text !important;
-}
-.rev_line[v='12']:after{
-content: "lines removed";
-color: #FF0000;
-}
-.rev_line[v='13']:after{
-content: "lines added";
-color: #069147;
-}
-
-
 /* progress width animation */
 @keyframes progress{
 	0%{left: 0%}

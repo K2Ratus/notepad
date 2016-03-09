@@ -37,8 +37,8 @@ self.onmessage = function(e){
 
     if(e.data.show !== undefined){
         // TODO: compute show.at show.from
-        console.log("at: " + r_text_arrays[e.data.show.at]);
-        console.log("from: " + r_text_arrays[e.data.show.from]);
+        //console.log("at: " + r_text_arrays[e.data.show.at]);
+        //console.log("from: " + r_text_arrays[e.data.show.from]);
     }
 
 }
