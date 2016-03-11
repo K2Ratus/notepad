@@ -742,6 +742,10 @@ text-align: right;
 display: none;
 }
 
+.special_1_first,
+.special_1{
+position: absolute;
+}
 .special_2_first,
 .special_2{
 background-color:#bcebe8;

@@ -464,7 +464,6 @@ var revision_worker_delivery = function(e){
 
 */
 
-
 return {
     start: start,
     end: end,
@@ -473,20 +472,7 @@ return {
     debug: function(){
         m = new Uint8Array(editor.session.doc.getLength());
         for(var i=0;i<m.length;i++)
-            m[i] = Math.floor(Math.random() * 4)
-        m[0] = 1;
-        m[1] = 1;
-        m[2] = 1;
-        m[3] = 1;
-        m[4] = 0;
-        m[5] = 2;
-        m[6] = 2;
-        m[7] = 1;
-        m[8] = 1;
-        m[9] = 1;
-        m[10] = 3;
-        m[11] = 3;
-        m[12] =1;
+            m[i] = Math.random() * 4;
         editor.show_rows(m);
         console.dir(m);
     }
