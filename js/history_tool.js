@@ -6,11 +6,14 @@ var el = {};
 
 var revision_meta = []; // we clear this each time we call refresh_revisions_list
 var worker_has_revision = {}; // we cache revision bodies on the worker, recording true here when we do using revision id as the key
+var revision_uses_line = []; // for each revision this has a 1d boolean array, giving 1 if the line is used in that revision.
+                             // every time we get a "delivery" of new lines from the worker we invalidate all of this. In future,
+                             // when we want to display a particular revision we have to ask the worker for the data.
 
 var worker;
-
 var editor;
-
+var at_idx = 0; 
+var from_idx = 0;
 /*
 this.session._changedWidgets.push(w); // all widgets
 editor.renderer.updateFull()
@@ -28,6 +31,7 @@ var start = function(){
     dn.el.editor.style.display = 'none';
     el.revisions_view.style.display = '';
     el.revisions_view.innerHTML = '';
+    el.info_overflow.style.display = '';
     editor = ace.edit("revisions_view");
     dn.patch_editor_history(editor); 
     editor.session.setUseWrapMode(true);
@@ -48,6 +52,7 @@ var end = function(){
 
     dn.el.editor.style.display = '';    
     el.revisions_view.style.display = 'none';
+    el.info_overflow.style.display = 'none';
 }
 
 var get_editor = function(){
@@ -57,18 +62,76 @@ var get_editor = function(){
 var on_worker_message = function(e){
     var session = editor.getSession();
     if(e.data.diffed_revision){
-        if(e.data.diffed_revision.id === "current"){
+        revision_uses_line = []; // invalidate everything we knew about uses_line
+        // TODO: perhaps we should batch up the newly delivered data and only append it when the user requests an earlier revision
+        if(e.data.diffed_revision.idx === 0){
             session.doc.insertFullLines(-1, e.data.diffed_revision.lines); // resets to supplied lines
-        }else {
-            session.doc.insertFullLines(e.data.diffed_revision.sections); // inserts multiple batches of line
-            for(var ii=0; ii<revision_meta.length; ii++) if(revision_meta[ii].id == e.data.diffed_revision.id){
-                revision_meta[ii].el_tick.classList.add('diffed');
-                break;
-            }            
+        } else {
+            session.doc.insertFullLines(e.data.diffed_revision.sections); // inserts multiple batches of lines
+            revision_meta[e.data.diffed_revision.idx].el_tick.classList.add('diffed');
         }
     }
+
+    if(e.data.line_is_used){
+        var idx = e.data.line_is_used.idx;
+        revision_uses_line[idx] = new Uint8Array(e.data.line_is_used.buffer);
+        if(idx === Math.max(at_idx, from_idx)){
+            // hooray, we've got both at and from, lets render 'em, quick!
+            if(at_idx === from_idx)
+                render_single_revision(at_idx);
+            else
+                render_revision_pair(at_idx, from_idx);
+        }else if(Math.max(at_idx, from_idx) >= e.data.line_is_used.diffed_n && idx == Math.min(at_idx, from_idx)){
+            // well, we've got the mroe recent of the two, and the other one is going to be a while, so lets render what we have
+            render_single_revision(Math.min(at_idx, from_idx));
+        }
+    }
+
 }
 
+
+var render_single_revision = function(idx){
+    editor.show_rows(revision_uses_line[idx]); // 1=show, 0=hide, which is exactly what we want
+    var str = "";
+    if(idx === 0){
+        str = "Showing the file:\n\t" + current_version_date_str;
+    }else{
+        var time = date_str_to_local(revision_meta[idx].modifiedTime)
+        str = "Showing file as it was at:\n\t" + time[1] + " on " + time[0];
+    }
+    text_multi(el.info, str);
+}
+
+var fuse = function(at_is_used, from_is_used){
+    // maps: (0,0) => 0   (1,1) => 1   (1,0) => 3   (0,1) => 2
+    // TODO: maybe there would have been a slightly clever maping to have chosen, but it doesn't matter much.
+    var map = new Uint8Array([0,2,3,1]);
+    var show_rows = new Uint8Array(at_is_used.length);
+    for(var ii=0; ii< show_rows.length; ii++)
+        show_rows[ii] = map[at_is_used[ii] | (from_is_used[ii] << 1)];
+    return show_rows;
+}
+
+var current_version_date_str = "as it exists in the editor";
+
+var render_revision_pair = function(at_idx, from_idx){
+    editor.show_rows(fuse(revision_uses_line[at_idx], revision_uses_line[from_idx]));
+
+    var str = ""
+    if(at_idx === 0){
+        str += "Showing the file:\n\t" + current_version_date_str;
+    }else{
+        var time_at = date_str_to_local(revision_meta[at_idx].modifiedTime);
+        str += "Showing file as it was at:\n\t" + time_at[1] + " on " + time_at[0];
+    }
+    if(from_idx === 0){
+        str += "\nWith changes relative to the file:\n\t" + current_version_date_str;
+    }else{
+        var time_from = date_str_to_local(revision_meta[from_idx].modifiedTime);
+        str += "\nWith changes relative to the file at:\n\t" + time_from[1] + " on " + time_from[0];
+    }
+    text_multi(el.info, str);
+}
 
 var append_tick = function(){
     var el_tick = document.createElement('div');
@@ -78,11 +141,10 @@ var append_tick = function(){
 }
 
 var send_revisions_order_to_worker = function(resp){
-    // TODO: show some kind of status update, to make it clear we have got the list and downloading X or Y total revisions
     var r_to_get = [], id_order = [];
-    revision_meta = revision_meta.concat(resp.result.revisions.reverse().splice(0,4)); // the first element was just {id: "current"} // DEBUG just get 1 revisions
-    el.at_range.max = revision_meta.length;
-    el.from_range.max = revision_meta.length;
+    revision_meta = revision_meta.concat(resp.result.revisions.reverse()); 
+    el.at_range.max = revision_meta.length - 1;
+    el.from_range.max = revision_meta.length - 1;
 
     for(var ii=1; ii<revision_meta.length; ii++){
         id_order.push(revision_meta[ii].id);
@@ -139,8 +201,11 @@ var refresh_revisions_list = function(){
     el.from_range.max = 1;
     el.at_range.value = 0;
     el.from_range.value = 0;
+    at_idx = 0; 
+    from_idx = 0;
     revision_meta = [{id: 'current',
                       el_tick: append_tick()}];
+    revision_uses_line = [];
     worker.postMessage({reset_with_current_body: dn.editor.getSession().getValue()});
     worker_has_revision['current'] = true;
     revision_meta[0].el_tick.classList.add('downloaded');
@@ -163,12 +228,13 @@ var refresh_revisions_list = function(){
         var body_promises = []
         for(var ii=0; ii<r_to_get.length; ii++){
             body_promises.push(
-                 until_success(function(succ, fail){
+                 until_success(function(ii, succ, fail){
                             Promise.resolve(dn.pr_auth)
                                    .then(dn.request_revision_body(r_to_get[ii].id))
                                    .then(send_revision_body_to_worker(r_to_get[ii]))
                                    .then(succ, fail);
-                        }).before_retry(dn.filter_api_errors)
+                        }.bind(null, ii)) // need to bind ii, so that it's not the loop iterator object
+                        .before_retry(dn.filter_api_errors)
                         .catch(function(err){
                             console.log("failed to download revision body")
                             dn.show_error(dn.api_error_to_string(err));
@@ -184,36 +250,57 @@ var refresh_revisions_list = function(){
                 console.log("failed to get all bodies")
            });
     });
-
-
  
 }
 
 
+var date_str_to_local = function(d){
+    // returns a 2-tuple of strings like ["11 Mar 2016", "11:45"]
+    d = new Date(Date.parse(d));
+    return [d.toLocaleDateString({}, {month:"short", day:"numeric", year: "numeric"}),
+            d.toLocaleTimeString({}, {hour: "numeric", minute: "numeric"})];
+}
+
 var render_for_settings = function(){
     if(!dn.pr_file_loaded.is_resolved()) return;
 
-    var at_meta = revision_meta[el.at_range.value];
-    var from_meta = revision_meta[el.from_range.value];
+    at_idx = parseInt(el.at_range.value);
+    from_idx = parseInt(el.from_range.value);
+    var at_meta = revision_meta[at_idx];
+    var from_meta = revision_meta[from_idx];
 
-    if(at_meta.id === "current"){
+    if(at_idx === 0){
         text_multi(el.caption_at, "Current\ndocument");
     } else {
-        var at_time = new Date(Date.parse(at_meta.modifiedTime));
-        text_multi(el.caption_at, at_time.toLocaleDateString({}, {month:"short", day:"numeric", year: "numeric"}) + "\n" +
-                                  at_time.toLocaleTimeString({}, {hour: "numeric", minute: "numeric"}));
+        var at_time = date_str_to_local(at_meta.modifiedTime);
+        text_multi(el.caption_at, at_time.join("\n"));
     } 
 
-    if(from_meta.id === "current"){
+    if(from_idx === 0){
         text_multi(el.caption_from, "Current\ndocument");
     } else {
-        var from_time = new Date(Date.parse(from_meta.modifiedTime));
-        text_multi(el.caption_from, from_time.toLocaleDateString({}, {month:"short", day:"numeric", year: "numeric"}) + "\n" +
-                              from_time.toLocaleTimeString({}, {hour: "numeric", minute: "numeric"}));
+        var from_time = date_str_to_local(from_meta.modifiedTime);
+        text_multi(el.caption_from, from_time.join("\n"));
     }
 
-    worker.postMessage({show: {from: from_meta.id,
-                               at: at_meta.id}});
+    // render as much as possible now, and request the rest to be delviered asap!
+    var have_at = revision_uses_line[at_idx] !== undefined;
+    var have_from = revision_uses_line[from_idx] !== undefined;
+    if(have_at && have_from){
+        if(at_idx === from_idx)
+            render_single_revision(at_idx);
+        else
+           render_revision_pair(at_idx, from_idx);
+    } else if(!have_at && have_from){
+        render_single_revision(from_idx);
+        worker.postMessage({uses_line: [at_idx]})
+    } else if(have_at && !have_from){
+        render_single_revision(at_idx);
+        worker.postMessage({uses_line: [from_idx]})
+    } else {
+        worker.postMessage({uses_line: [from_idx, at_idx]});
+    }
+
 
 }
 
@@ -233,6 +320,7 @@ var on_document_ready = function(){
     el.remove_expand  = document.getElementById('revisions_remove_expand');
     el.remove_collapse  = document.getElementById('revisions_remove_collapse');
     el.info = document.getElementById('revision_info');
+    el.info_overflow = document.getElementById('file_info_overflow');
     el.tick_box = document.getElementById('revision_tick_box');
     el.at_range = document.getElementById('revision_at_range');
     el.from_range = document.getElementById('revision_from_range');
@@ -259,125 +347,6 @@ var on_document_ready = function(){
 
 
 /*
-var close_history = function(){
-    dn.file_history.$revisions_display.remove();
-    window.removeEventListener("resize", dn.revisions_window_resize);
-    document.getElementById('the_editor').style.display = '';
-    dn.editor.resize();
-    dn.is_showing_history = false;
-}
-var revisions_window_resize = function(){
-    if(dn.file_history.canShowResizeError){
-        dn.show_error("The history explorer displays poorly if you resize the window while it is open. (This is a bug.)");
-        dn.file_history.canShowResizeError = false; //wait at least dn.const.error_delay_ms until displaying the error again
-        setTimeout(function(){dn.file_history.canShowResizeError = true;},dn.const.error_delay_ms);
-    }    
-}
-
-var start_revisions_worker = function(){
-  
-         dn.file_history = {
-            $revisions_display: $("<div class='revisions_view'><ol></ol></div>"),
-            $view: null, 
-            $new_li: $("<li class='rev_line' v='-1'/>"),
-            $new_tick:  $("<div class='revision_tick'/>"),
-            needToRefindViewChildren: false, //this flag tracks when the $rev_lines_ is out of date relative to children of $view
-            $rev_lines_: [], // this is a single jQuery collection
-            needToFixHeights: $([]),            
-            $timeline: $d.find('.revision_timeline'),
-            $revisions_status: $d.find('#revisions_status'),
-            $revision_caption_from: $d.find('.revision_caption_from'),
-            $revision_caption_at: $d.find('.revision_caption_at'),
-            $expand_removed: $d.find('#expand_removed'),
-            $collapse_removed: $d.find('#collapse_removed'),
-            revisions: [], //array of objects with etag, isDownloaded, modifiedDate, $tick
-            revisionFromEtag: {},
-            at: null, //revision object
-            from: null, //revision object,
-            canShowResizeError: true, //used by Revisions_WindowResize
-            worker: new Worker("js/revisions_worker.js")
-        };
-    
-        dn.file_history.$view = dn.file_history.$revisions_display.find('ol'); 
-        dn.file_history.$expand_removed.addEventListener('click', function(){dn.g_settings.set('historyRemovedIsExpanded',true)});
-        dn.file_history.$collapse_removed.addEventListener('click', function(){dn.g_settings.set('historyRemovedIsExpanded',false)});
-        dn.revision_set_is_expaned(dn.g_settings.get('historyRemovedIsExpanded'))
-
-        var w = dn.file_history.worker;
-        w.onmessage = dn.revision_worker_delivery;
-    }
-    dn.file_history.worker.postMessage({ fileId: dn.the_file.file_id, 
-                                        token: gapi.auth.getToken().access_token,
-                                        init: true});
-    dn.file_history.$revisions_display.appendTo($('body'));
-    $(window).on("resize",dn.revisions_window_resize);
-    dn.el.widget_file_history.style.display = '';
-    dn.file_history.$view.empty();
-    $('#the_editor').style.display = 'none';
-    return false;
-}
-
-var revision_set_at = function(r,fromChangeEvent,fromTimelineCreation){
-    var h = dn.file_history;
-    h.at = r;
-    if(!fromChangeEvent)
-        h.$at_range.value = r.ind;    
-    text_multi(h.$revision_caption_at,
-            r.modifiedDate.toLocaleDateString({},{month:"short",day:"numeric",year: "numeric"}) + "\n" +
-            r.modifiedDate.toLocaleTimeString({},{hour: "numeric",minute: "numeric"})
-        )
-    
-    if(h.from && !fromTimelineCreation)
-        h.worker.postMessage({showEtag: h.at.etag,
-                      fromEtag: h.from.etag  });
-}
-
-var revision_set_from = function(r,fromChangeEvent,fromTimelineCreation){
-    var h = dn.file_history;
-    h.from = r;
-    if(!fromChangeEvent)
-        h.$from_range.value = r.ind;
-    text_multi(h.$revision_caption_from,
-            r.modifiedDate.toLocaleDateString({},{month:"short",day:"numeric",year: "numeric"}) + "\n" +
-            r.modifiedDate.toLocaleTimeString({},{hour: "numeric",minute: "numeric"})
-        )
-    
-    if(h.at && !fromTimelineCreation)
-        h.worker.postMessage({showEtag: h.at.etag,
-                          fromEtag: h.from.etag  });
-}
-
-var display_revision_timeline = function(newRevisions){
-    var h = dn.file_history;
-    var rs = h.revisions;
-    //TODO: update display based on newRevisions rather than starting from scratch
-    
-    h.$at_range = $("<input class='revision_at_range' type='range' min='0' max='" + (rs.length-1) + "'/>");
-    h.$tick_box = $("<div class='tick_box'/>");
-    h.$from_range = $("<input class='revision_from_range' type='range' min='0' max='" + (rs.length-1) + "'/>");
-    
-        
-    var attr = rs.map(function(t){ return { downloaded: t.isDownloaded || false }; });
-    var text = Array.apply(null, Array(attr.length)).map(function () { return "" });
-    var $ticks = h.$tick_box.insertClonedChildren(0,h.$new_tick,text,attr);
-    
-    for(var i=0;i<rs.length;i++){
-        rs[i].ind = i;
-        rs[i].$ = $ticks.eq(i);
-    }
-    
-    h.$timeline.empty().append(h.$at_range).append(h.$tick_box).append(h.$from_range);
-
-    h.$at_range.on("change",function(){
-            dn.revision_set_at(dn.file_history.revisions[this.value],true);
-        })
-    h.$from_range.on("change",function(){
-            dn.revision_set_from(dn.file_history.revisions[this.value],true);
-        })
-
-    dn.revision_set_from(rs.length > 1 ? rs[1] : rs[0],false,true);
-    dn.revision_set_at(rs[0],false,true);
-}
 
 var revision_worker_delivery = function(e){
     if(!e.data)
@@ -440,22 +409,7 @@ var revision_worker_delivery = function(e){
         var vals = new Uint8Array(e.data.vals_ui8buffer)
         $rl_.setAttribute('v',function(i){return vals[i]});
             
-        // We have to manually set the width of the numbers (our version of ace's gutter)
-        switch(e.data.digits){
-            case 0:
-            case 1:
-            case 2:
-                h.$view.setAttribute('digits','');
-                break;
-            case 3:
-                h.$view.setAttribute('digits','###');
-                break;
-            case 4:
-                h.$view.setAttribute('digits','####');
-                break;
-            default:
-                h.$view.setAttribute('digits','#####');
-        }
+        
     }
     
         

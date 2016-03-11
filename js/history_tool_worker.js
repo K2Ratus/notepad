@@ -2,12 +2,13 @@
 
 var order_of_r_ids = []; // list of id's, 0 is "current", 1 is most recent actual revision, 2 the next most recent etc.
 var r_text_arrays = {}; // map by revision id, each entry is an array of strings, one per line
-var dom_lines = []; // list of boxed integers (instances of LineTracker)
-var r_dom_idx_arrays = []; // list ordered by order_of_r_ids, each entry is an array of integers, one per line
-var r_new_dom_lines = []; // list oredered by order_of_r_ids, each entry gives the array of boxed integers that weere created specially for the given revision
+var dom_lines = []; // list of boxed integers (instances of LineTracker), one for each line in the full diff document
+var doc_n_to_dom_lines = undefined; // 1d array mapping from the lines of document revision[diffed_n-1] into the dom_lines array
+var r_new_dom_lines = []; // list ordered by order_of_r_ids, each entry gives the array of boxed integers that were created specially for the given revision
 var r_del_dom_lines = []; // analgous to above, but gives array of boxed integers that were delted as of this revision
 var diffed_n = 0; // incremented after each diff is proceesed
-
+var requested_line_is_used = [0]; // the main thread requests line_is_used for one or more revisions, we attempt to provide the answers as soon as possiblee
+var last_valid_sent_line_is_used = -1; // it's possible for requests to get crossed with the replies to requests, so we have to track what's actually been sent.
 var LineTracker = function(){
     // boxed int class
     this.idx = null;
@@ -19,8 +20,12 @@ self.onmessage = function(e){
     if(e.data.reset_with_current_body !== undefined){
         order_of_r_ids = ["current"];
         dom_lines = [];
-        r_dom_idx_arrays = [];
+        doc_n_to_dom_lines = undefined;
+        r_new_dom_lines = [];
+        r_del_dom_lines = [];
+        requested_line_is_used = [];
         diffed_n = 0;
+        last_valid_sent_line_is_used = -1;
         r_text_arrays["current"] = difflib.stringAsLines(e.data.reset_with_current_body);
         attempt_diffing(); 
     }
@@ -35,15 +40,68 @@ self.onmessage = function(e){
         attempt_diffing();
     }
 
-    if(e.data.show !== undefined){
-        // TODO: compute show.at show.from
-        //console.log("at: " + r_text_arrays[e.data.show.at]);
-        //console.log("from: " + r_text_arrays[e.data.show.from]);
+    if(e.data.uses_line !== undefined){
+        // revision_uses_line is the idx of the revision, not the id
+        // note this overwrites any previous request.
+        requested_line_is_used = e.data.uses_line;
+        requested_line_is_used.sort(function(a,b){return b-a}); // sort in descending order
+        for(var ii=0; ii<requested_line_is_used.length; ii++)
+            if(requested_line_is_used[ii] <= last_valid_sent_line_is_used){
+                requested_line_is_used.splice(ii, Infinity); // we've already sent these, so this request is a bit out of date
+            }
+        if(requested_line_is_used.length>0)
+            attempt_send_line_is_used();
     }
 
 }
  
- 
+
+var attempt_send_line_is_used = function(){
+    // if any of the requests can be dealt with now, then
+    // send the data for everything now.  Anything left over
+    // will have to wait.  Note that we will have to resend 
+    // everything next time, because it will have been invalidated by
+    // the fact we added new data.
+    for(var ii=0; ii<requested_line_is_used.length; ii++){
+        if(requested_line_is_used[ii] < diffed_n){
+            send_line_is_used();
+            requested_line_is_used.splice(ii, Infinity);
+            break;
+        }
+    }
+}
+
+var send_line_is_used = function(target_revision_idx){
+
+    // refresh dom line idx
+    for(var ii=0; ii<dom_lines.length; ii++)
+        dom_lines[ii].idx = ii;
+
+    var line_is_used = new Uint8Array(dom_lines.length); // initialize to 0
+    for(var ii=0; ii<diffed_n; ii++){
+        var new_lines_ii = r_new_dom_lines[ii];
+        for(var jj=0; jj<new_lines_ii.length; jj++)
+            line_is_used[new_lines_ii[jj].idx] = 1;
+        // transfer copy of line_is_used to main thread..even though it didn't necessarily want this specific revision
+        var copy = clone_array(line_is_used);
+        self.postMessage({line_is_used:{idx: ii,
+                          id: order_of_r_ids[ii],
+                          buffer: copy.buffer,
+                          diffed_n: diffed_n}},
+                          [copy.buffer]);
+        last_valid_sent_line_is_used = ii;
+        var del_lines_ii = r_del_dom_lines[ii];
+        for(var jj=0; jj<del_lines_ii.length; jj++)
+            line_is_used[del_lines_ii[jj].idx] = 0;
+    }
+
+}
+
+var clone_array = function(a){
+    var b =  new a.constructor(a.length);
+    b.set(a);
+    return b;
+}
 
 var assign_range = function(dest, stop){
     for(var ii=0; ii<stop; ii++)
@@ -67,16 +125,18 @@ var assign_range_special = function(dest, src, d_ind, s_ind, off, len){
 
 var prepare_current_revision = function(){
     var n = r_text_arrays["current"].length;
-    r_dom_idx_arrays.push(new Uint32Array(n));
-    assign_range(r_dom_idx_arrays[0], n);
+    doc_n_to_dom_lines = new Uint32Array(n);
+    assign_range(doc_n_to_dom_lines, n);
     
     for(var ii=0; ii<n; ii++)
         dom_lines.push(new LineTracker());
     r_new_dom_lines.push(dom_lines.slice(0));
     r_del_dom_lines.push([]);
 
+    last_valid_sent_line_is_used = -1;
     self.postMessage({diffed_revision:
-    {id: "current",
+    {idx: 0,
+     id: "current",
      lines:  r_text_arrays["current"]}}); 
 }
 
@@ -94,8 +154,8 @@ var prepare_revision = function(older_idx){
     var new_stuff_for_dom = [];
     var off = 0;
 
-    var l2d_n = r_dom_idx_arrays[newer_idx];
-    var l2d_o = r_dom_idx_arrays[older_idx] = new Uint32Array(older_text_array.length);
+    var l2d_n = doc_n_to_dom_lines;
+    var l2d_o = new Uint32Array(older_text_array.length);
     
     r_new_dom_lines.push([]);
     r_del_dom_lines.push([]);
@@ -131,22 +191,13 @@ var prepare_revision = function(older_idx){
         }
         
     }
-    /*
-    if(opps[0][0] != 'e' || opps[0][2] < 20)
-        postMessage({   opps0: opps[0].toString(),
-                        opps1: opps[1].toString(),
-                        l2d_n20: Array.prototype.concat.apply([],l2d_n.subarray(0,20)).toString(),
-                        l2d_o20: Array.prototype.concat.apply([],l2d_o.subarray(0,20)).toString(),
-                        newer: newer,
-                        older: older,
-                        opps_all: opps,
-                        l2d_n_all: l2d_n,
-                        l2d_o_all: l2d_o,
-                        debug:"IOR"
-            });
-    */
+
+    doc_n_to_dom_lines = l2d_o;
+
+    last_valid_sent_line_is_used = -1;
     self.postMessage({diffed_revision:
-    {id: order_of_r_ids[older_idx],
+    {idx: older_idx,
+     id: order_of_r_ids[older_idx],
      sections: new_stuff_for_dom}}); 
 }
 
@@ -161,6 +212,7 @@ var attempt_diffing = function(){
         else
             prepare_revision(diffed_n);
         diffed_n++;
+        attempt_send_line_is_used();
     }
 }
 

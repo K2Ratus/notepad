@@ -39,7 +39,7 @@ dn.patch_editor_history = function(editor){
     var first_rendered_row = -1;
     var rendered_row_transitions = []; // array of {from_time, to_time, from_color, to_color}, first element is first_rendered_row
     var colors_background = [0xffffff, 0xffffff, 0xbcebe8, 0xffcaca]; //0,1,2,3, TODO: expose this as a setting, or read from css
-    var transition_duration = 5000; // ms
+    var transition_duration = 1000; // ms
     editor.$blockScrolling = Infinity;
     editor.setHighlightActiveLine(false);
     editor.setHighlightGutterLine(false);
@@ -97,12 +97,14 @@ dn.patch_editor_history = function(editor){
         //  or 1 arg: [{at, lines}, {at, lines}, ...]
         // in the first case, if at=-1, we reset using the new data.
         if(arg_0 === -1){
+            show_row = new Uint8Array(arg_1.length);
             for(var ii=0;ii<arg_1.length; ii++)
-                show_row.push(1);
+                show_row[ii] = 1;
             var len = this.getLength() - 1;
             this.remove(new Range(0, 0, len, this.getLine(len).length));
             this.insertMergedLines({row: 0, column: 0}, arg_1);
         }else{
+            show_row = Array.prototype.slice.call(show_row, 0); // temporarily convert to standard array for splicing
             if(arg_0.length !== undefined){
                 if(arg_1 !== undefined) throw "batched insert takes one array"
                 for(var kk=0; kk<arg_0.length; kk++){
@@ -119,6 +121,7 @@ dn.patch_editor_history = function(editor){
                 Array.prototype.splice.apply(show_row, splice_args);
                 insertFullLines_original.call(this, arg_0, arg_1);
             }
+            show_row = new Uint8Array(show_row);
         }
         editor.show_rows(show_row);
     }
@@ -247,7 +250,7 @@ dn.patch_editor_history = function(editor){
            TODO: check zero-hack for when nothing is showing and/or there are no rows,
            and possibly other variations on that.
         */
-        show_row = show_row_.slice(0);
+        show_row = new Uint8Array(show_row_); //clone from whatever kind of array show_row_ was
 
         var n = editor.session.doc.getLength();
         if(show_row.length !== n) 

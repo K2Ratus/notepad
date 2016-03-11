@@ -28,16 +28,18 @@ dn.is_auth_error = function(err){
     // returns 0 for non-auth errors, 1 for auto refresh and 2 for manual refresh, 3 for network error
     if(!err)
         return 2;
-    if(err.type && err.type === "token_refresh_required")
+    if(err.type === "token_refresh_required" || err.status === 401)
         return 1;
-    if(err.status === 403 || err.status === 401)
-        return 1;
+    if(err.status === 403)
+        return 1; // a variety of things here, TODO: give a more granular response, including exponential backoff
     if(err.status === 404)
-        return 0;
+        return 0; // file not found
     if(err === "timeout")
         return 3;
     if(err.result && err.result.error && err.result.error.code === -1)//network error
         return 3;
+    if(err.status === 400)
+        return 0; // bad request
     return 0;
 }
 

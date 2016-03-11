@@ -301,7 +301,8 @@ color: #1B2C48;
 text-align: right;
 padding-right: 5px;
 }
-.find_info_overflow{
+.find_info_overflow,
+.file_info_overflow{
 vertical-align: top;
 margin-right: 5px;
 }
