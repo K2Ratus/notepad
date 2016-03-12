@@ -423,8 +423,15 @@ dn.show_app_data_document = function(doc){
         dn.g_find_history = dn.g_settings.get('findHistory');
     }
     
-    //Check lastDNVersionUsed at this point - by default it's blank, but could also have an out-of-date value
-    if(dn.g_settings.get('lastDNVersionUsed') != dn.version_str){
+    //Check lastDNVersionUsed at this point - by default it's blank, bust could also have an out-of-date value
+    var last_version = dn.g_settings.get('lastDNVersionUsed') 
+    if(last_version != dn.version_str){
+        if (last_version.length > 0 && parseInt(last_version) !== 2016){
+            // from this point onwards during this page's lifetime, change the tips 
+            // section to show the update message rather than the tips.
+            document.getElementById('tips_old_user').style.display = '';
+            document.getElementById('tips_general').style.display = 'none';
+        }
         dn.g_settings.set('help_inner', 'tips');
         dn.g_settings.set('pane', 'pane_help');
         dn.g_settings.set('pane_open', 'true');

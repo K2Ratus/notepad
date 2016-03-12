@@ -164,6 +164,17 @@
     <script type="text/javascript" src="all.build.js"></script>
     <title>Drive Notepad</title>
     <link rel="shortcut icon" type="image/x-icon" href="favicon.ico?">
+    <!--- Google Analytics -->
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-74999669-1', 'auto');
+      ga('send', 'pageview');
+
+    </script>
 </head>
 
 <body class="noselect">
@@ -360,10 +371,15 @@
                     </a>
                 </div>
                 <div class='widget_pane_inner' id='pane_help_tips' style="display:none;">
-                    <div class='pane_item no_select'>
+                    <div class='pane_item no_select' id='tips_general'>
                         Drag this widget to reposition it. Click it or press Esc to toggle it open/close. All of the program's controls are contained within the widget's five tabs. <br><br>
                         Changes are not saved as you type: use the save button in the file tab or <span class='ctrl_key'>ctrl</span>-s.<br><br>
                         The help tab gives keyboard shortcuts, links for reporting bugs etc., and the option to view these tips again.
+                    </div>
+                    <div class='pane_item no_select' id='tips_old_user' style="display:none;">
+                        Drive Notepad has changed a bit.  It's also moved from appspot.com to github.io.<br><br>
+                        The stability, performance, and usability of the application have (hopefully) been improved. However, if you do encounter bugs or other other issues please report them as soon as possible.<br><br>
+                        Click the lightbulb button below to close this message.
                     </div>
                 </div>
                 <div class='widget_pane_inner' id='pane_help_shortcuts' style="display:none;">
@@ -407,18 +423,6 @@
 
     <div class="the_editor" id="the_editor"> </div>
     <div class="revisions_view" id="revisions_view" style="display: none;"></div>
-
-    <!--- Google Analytics -->
-    <script>
-      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-      ga('create', 'UA-74999669-1', 'auto');
-      ga('send', 'pageview');
-
-    </script>
 
 </body>
 </html>
