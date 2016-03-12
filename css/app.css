@@ -605,6 +605,13 @@ left: 5px;
 top: 6px;
 color: #fff;
 }
+.dropdown_valign_fix{
+width: 0;
+padding: 3px 6px; 
+margin: 0px;
+display: inline-block;
+position: relative;
+}
 .dropdown_button,
 .dropdown_button.selected{
 padding: 0px;
