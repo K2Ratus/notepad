@@ -424,11 +424,13 @@ dn.show_app_data_document = function(doc){
         if(s in old_temp_g_settings.get_keeps() || existing_cloud_keys.indexOf(s) == -1)
             dn.g_settings.set(s, old_temp_g_settings.get(s));
 
-    // TODO: check these history things are right
     dn.g_clipboard = dn.g_settings.get('clipboard');
     if(!dn.g_clipboard){
         dn.g_settings.set('clipboard', doc.getModel().createList());
         dn.g_clipboard = dn.g_settings.get('clipboard');
+    }if(dn.g_clipboard.length > dn.const.clipboard_max_length){
+        // trim clipboard to current length limit, note the oldest stuff is at the 0-end
+        dn.g_clipboard.removeRange(0, dn.g_clipboard.length-dn.const.clipboard_max_length);
     }
 
     dn.g_find_history = dn.g_settings.get('findHistory');
@@ -436,7 +438,7 @@ dn.show_app_data_document = function(doc){
         dn.g_settings.set('findHistory', doc.getModel().createList());
         dn.g_find_history = dn.g_settings.get('findHistory');
     }else if(dn.g_find_history.length > dn.const.find_history_max_len){
-        // old versions of DN stupidly didn't put a limit on the length of the find history!
+        // trim  find history to current length limit, the oldest stuff is at the non-zero end.
         dn.g_find_history.removeRange(dn.const.find_history_max_len, dn.g_find_history.length);
     }
     
@@ -518,12 +520,16 @@ dn.settings_changed = function(e){
             break;
 
             case 'pane_open':
+            if(dn.clipboard_tool.is_active())
+                break;
             dn.toggle_widget(new_value)
             if(dn.g_settings.keep)
                 dn.g_settings.keep('pane_open');
             break;
 
             case 'pane':
+            if(dn.clipboard_tool.is_active())
+                break;
             dn.show_pane(new_value);
             if(dn.g_settings.keep)
                 dn.g_settings.keep('pane');
@@ -541,81 +547,6 @@ dn.settings_changed = function(e){
 dn.get_scroll_line = function(){
     return  dn.editor.getSession().screenToDocumentPosition(dn.editor.renderer.getScrollTopRow(),0).row;
 }
-
-
-
-// ############################
-// Clipboard stuff
-// ############################
-
-dn.document_clipboard_left = function(){
-        if(!dn.clipboard_active)
-            return false;
-
-        if( dn.clipboard_index <= 0)
-            return true;
-        dn.clipboard_index--;
-        dn.editor.undo();
-        dn.editor.insert(dn.g_clipboard.get(dn.clipboard_index));
-        return true;
-}
-
-dn.document_clipboard_right = function(){
-        if(!dn.clipboard_active)
-            return false;
-
-        if( dn.clipboard_index >= dn.g_clipboard.length-1)
-            return true;
-
-        dn.clipboard_index++;
-        dn.editor.undo();
-        dn.editor.insert(dn.g_clipboard.get(dn.clipboard_index));
-        return true;
-}
-
-dn.document_clipboard_keyup = function(e){
-    if(e.which == 17 || e.which == 91 || !e.ctrlKey){
-        $(document).off('keyup',dn.document_clipboard_keyup);
-        dn.clipboard_active = false;
-        dn.el.pane_clipboard.style.display = 'none';
-        if(dn.clipboard_info_timer){
-            clearTimeout(dn.clipboard_info_timer);
-            dn.clipboard_info_timer = null;
-        }
-    }
-}
-
-dn.on_paste = function(text){
-    if (dn.g_clipboard === undefined)
-        return;
-    
-    $(document).on('keyup',dn.document_clipboard_keyup);
-    dn.clipboard_active = true;
-        
-    dn.clipboard_index = dn.g_clipboard.lastIndexOf(text); 
-    if(dn.clipboard_index == -1){ //it's possible the user copied some text from outside the DN, in which case we will add it to the clipboard now
-       dn.clipboard_index = dn.g_clipboard.push(text);
-       while(dn.g_clipboard.length > dn.const.clipboard_max_length) //same as on copy
-         dn.g_clipboard.remove(0);
-    }
-    if(dn.clipboard_info_timer)
-        clearTimeout(dn.clipboard_info_timer);
-
-    dn.clipboard_info_timer = setTimeout(function(){
-        dn.clipboard_info_timer = null;
-        dn.el.pane_clipboard.style.display = '';
-    },dn.const.clipboard_info_delay);
-}
-
-dn.on_copy = function(text){
-    if (dn.g_clipboard === undefined)
-        return;
-    
-    dn.g_clipboard.push(text);
-    while(dn.g_clipboard.length >dn.const.clipboard_max_length)
-        dn.g_clipboard.remove(0);
-}
-
 
 
 // ############################
@@ -850,8 +781,6 @@ dn.document_ready = function(e){
     dn.editor.addEventListener("input", dn.check_unsaved);
     dn.focus_editor = dn.editor.focus.bind(dn.editor);
     dn.focus_editor();
-    dn.editor.on("paste", dn.on_paste);
-    dn.editor.on("copy", dn.on_copy);
     dn.editor.setAnimatedScroll(true);
     ace.require("ace/ext/language_tools");
     dn.editor.setOptions({ 
@@ -859,7 +788,8 @@ dn.document_ready = function(e){
         enableLiveAutocompletion: false
     });
     dn.editor.$blockScrolling = Infinity; // disables scrolling message
-    
+    dn.clipboard_tool.on_document_ready();
+
     // widget menu ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     dn.el.widget_menu = document.getElementById('widget_menu');
     dn.el.menu_open = document.getElementById('menu_open');

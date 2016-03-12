@@ -34,10 +34,10 @@ dn.make_keyboard_shortcuts = function(){
     // it seems like the clipboard history cycling only works the old way, i.e. using ace....
     var HashHandler = require("ace/keyboard/hash_handler").HashHandler
     var extraKeyEvents = new HashHandler([
-        {bindKey: {win: "Ctrl-Left",mac: "Command-Left"}, descr: "Clipboard cyle back on paste", exec: dn.document_clipboard_left},
-        {bindKey: {win: "Ctrl-Down",mac: "Command-Down"}, descr: "Clipboard cyle back on paste", exec: dn.document_clipboard_left},
-        {bindKey: {win: "Ctrl-Right",mac:"Command-Right"}, descr: "Clipboard cyle forward on paste", exec: dn.document_clipboard_right},
-        {bindKey: {win: "Ctrl-Up",mac:"Command-Up"}, descr: "Clipboard cyle forward on paste", exec: dn.document_clipboard_right}
+        {bindKey: {win: "Ctrl-Left",mac: "Command-Left"}, descr: "Clipboard cyle back on paste", exec: dn.clipboard_tool.on_left},
+        {bindKey: {win: "Ctrl-Down",mac: "Command-Down"}, descr: "Clipboard cyle back on paste", exec: dn.clipboard_tool.on_left},
+        {bindKey: {win: "Ctrl-Right",mac:"Command-Right"}, descr: "Clipboard cyle forward on paste", exec: dn.clipboard_tool.on_right},
+        {bindKey: {win: "Ctrl-Up",mac:"Command-Up"}, descr: "Clipboard cyle forward on paste", exec: dn.clipboard_tool.on_right}
     ]);
     dn.editor.keyBinding.addKeyboardHandler(extraKeyEvents);
 
