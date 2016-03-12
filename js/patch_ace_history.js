@@ -27,6 +27,10 @@ not ideal.
 
 insertFullLines has also been overriden to ensure the show_rows is updated when lines are inserted.
 It is intended that the document is only modified using that method, i.e. it is readOnly and no other insertion/deletion methods are used.
+
+
+TODO:
+  transitions possibly dont work on the last line of the document.
 */
 
 dn.patch_editor_history = function(editor){
