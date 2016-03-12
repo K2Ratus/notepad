@@ -11,6 +11,11 @@ var search_current_match_idx = -1;
 var search_markers = [];
 var search_marker_current = undefined;
 var search_str = "";
+var search_history_idx = -1; // when walking the find history this is >=0
+var search_history_left_behind_str = ""; // although we call update_search_history after every change in search string, 
+                                        // it won't always result in modifying the 0th entry in history, in such cases,
+                                        // we record the actual string here so that we can come back to it if we walk the history
+var search_history_last_modified_time = -1; // set each time we change the history
 
 
 
@@ -119,6 +124,11 @@ var find_shortcut_used = function(e){
     dn.g_settings.set('pane', 'pane_find');
     dn.g_settings.set('pane_open', true);
     if(sel){
+        if(sel !== search_str){
+            search_str = sel;
+            search_history_idx = -1;
+            update_search_history();
+        }
         el.find_input.value = sel;
         el.find_input.select();
     }
@@ -227,6 +237,62 @@ var goto_input_keydown = function(e){
 // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
     
+var update_search_history = function(){
+    // called when the user types in the search box, or when we launch find from shortcut with selection
+    var current_str = search_str;
+    search_history_left_behind_str = current_str;
+
+    if(current_str.length === 0 || !dn.g_atomic_exec){   
+        search_history_idx = -1;
+        return;
+    }
+
+    dn.g_atomic_exec(function(){
+        var time_now = Date.now();
+
+        if(dn.g_find_history.length === 0){
+            // create a history entry for the first ever time
+            dn.g_find_history.push(current_str);
+            search_history_idx = 0;
+            search_history_last_modified_time = time_now;
+            return;
+        }
+
+        var top_of_history = dn.g_find_history.get(0);
+
+        if(current_str.length<top_of_history.length 
+           && current_str.toLowerCase() === top_of_history.substr(0, current_str.length).toLowerCase()){
+            // current string is a case-insensitive prefix of top_of_history, leave top_of_history as it was
+            search_history_idx = -1;
+            return;
+        }
+
+        if(current_str.toLowerCase()==top_of_history.toLowerCase()){
+            //case insensitive match, update top_of_history to have same case as current
+            dn.g_find_history.set(0, current_str);
+        }else if(current_str.length>top_of_history.length 
+           && top_of_history.toLowerCase() === current_str.substr(0, top_of_history.length).toLowerCase()){
+            // top_of_history is a case-insensitive prefix of current_str, replace top_of_history with current
+            dn.g_find_history.set(0, current_str);
+        } else if(time_now > search_history_last_modified_time + dn.const.find_history_add_delay){
+            // it's been a while since changes were made, add the current string as the new top
+            dn.g_find_history.insert(0, current_str);
+            if(dn.g_find_history.length > dn.const.find_history_max_len){
+                dn.g_find_history.remove(dn.g_find_history.length-1);
+            }
+        } else {
+            // although the current string is at least somewhat different to the top, it's not been that
+            // long since we modified the top, so lets just replace it with the new string
+            dn.g_find_history.set(0, current_str);
+        }
+        search_history_idx = 0;
+        search_history_last_modified_time = time_now;
+
+        // TODO: we may like to remove duplicates in history, but without allowing recall to obliterate lots of existing memories
+
+    }); // g_atomic_exec
+}
+
 
 var search_inputs_focus = function(e){
     if(e.currentTarget == el.find_input){
@@ -480,7 +546,8 @@ var find_input_keyup = function(e){
         return; 
     if(search_str == el.find_input.value)
         return;
-    perform_search()
+    perform_search();
+    update_search_history();
 }
 
 var find_input_keydown = function(e){ 
@@ -507,6 +574,24 @@ var find_input_keydown = function(e){
         e.preventDefault();
         e.stopPropagation();
         return;   
+    }
+
+    if(e.ctrlKey && dn.g_find_history && (e.which == WHICH.DOWN || e.which == WHICH.UP)){
+        dn.g_atomic_exec(function(){
+            if(e.which == WHICH.UP) // up means go to more recent item
+               search_history_idx = Math.max(-1, search_history_idx-1);
+            else // down means move further into the past
+               search_history_idx++;
+           search_history_idx = Math.min(search_history_idx, dn.g_find_history.length-1);
+           if(search_history_idx == -1){
+                el.find_input.value = search_history_left_behind_str;
+           }else{
+                el.find_input.value = dn.g_find_history.get(search_history_idx);
+           }
+           el.find_input.setSelectionRange(el.find_input.value.length, el.find_input.value.length+10);
+        });
+        perform_search();
+        e.preventDefault();
     }
 
 }
@@ -541,6 +626,9 @@ var replace_result_idx = function(idx){
     dn.editor.$tryReplace(range, el.replace_input.value) // returns true on success, but do we care?
     perform_search();
 }
+
+
+
 
 
 return {

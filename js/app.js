@@ -9,7 +9,6 @@ dn.version_str = '2016a';
 // ############################
 
 dn.can_show_drag_drop_error = true;
-dn.is_showing_history = false;
 dn.save_undo_id = 0;
 
 dn.status = {
@@ -398,6 +397,20 @@ dn.load_default_settings = function(){
 
 
 dn.show_app_data_document = function(doc){
+    // build a wrapper for executing functions atomically on g_settings/g_*_history
+    // TODO: we may need to use this more widely than is currently done.
+    dn.g_atomic_exec = function(foo){
+        var result;
+        try{
+            doc.getModel().beginCompoundOperation();
+            result = foo();
+        }catch(e){
+            console.log("error in atomic update:\n"+ e);
+        }finally{
+            doc.getModel().endCompoundOperation();
+        }
+        return result;
+    }
 
     var old_temp_g_settings = dn.g_settings;
     dn.g_settings = doc.getModel().getRoot();
@@ -417,10 +430,14 @@ dn.show_app_data_document = function(doc){
         dn.g_settings.set('clipboard', doc.getModel().createList());
         dn.g_clipboard = dn.g_settings.get('clipboard');
     }
+
     dn.g_find_history = dn.g_settings.get('findHistory');
     if(!dn.g_find_history){
         dn.g_settings.set('findHistory', doc.getModel().createList());
         dn.g_find_history = dn.g_settings.get('findHistory');
+    }else if(dn.g_find_history.length > dn.const.find_history_max_len){
+        // old versions of DN stupidly didn't put a limit on the length of the find history!
+        dn.g_find_history.removeRange(dn.const.find_history_max_len, dn.g_find_history.length);
     }
     
     //Check lastDNVersionUsed at this point - by default it's blank, bust could also have an out-of-date value

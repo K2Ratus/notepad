@@ -99,6 +99,8 @@ When the input gets the focus, the goto/search operation is performed, when the 
 
 `dn.find_pane` has special functions for producing exactly the right focus behaviour for find/replace/gtoto keyboard shorcuts, and these functions are registered in `keyboard.js`.  Special behaviour when pressing Esc, but when the focus was on the editor, is implemented in `keyboard.js`.
 
+The rules for cycling and modifying the find history list are a bit fiddly - see the `update_search_history` function for how we choose to make modification.  The main thing to note is that this function is only called on keydown (with ctrl-up/down) events in the find input, and when using the ctrl-f shortcut to focus on find with a new search string.
+
 
 ### Ace editor
 

@@ -179,7 +179,8 @@ detect_tabs_n_spaces_frac: 0.99,
 detect_tabs_n_spaces_frac_for_default: 0.6, //check
 font_size_increment: 0.15, //check
 error_delay_ms: 5000,//5 seconds
-find_history_add_delay: 2000, //ms
+find_history_add_delay: 3000, //ms
+find_history_max_len: 100,
 clipboard_info_delay: 500, //ms
 clipboard_max_length: 20, //TODO: decide whether a large clipboard slows page loads and whether we can do anything about it.
 find_max_results_half: 3, 
