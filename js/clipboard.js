@@ -113,5 +113,5 @@ return {
     is_active: function(){return showing_pane}
 };
 
-})(dn.const);
+})(dn.const_);
 

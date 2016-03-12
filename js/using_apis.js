@@ -92,7 +92,7 @@ dn.reauth_auto = function(){
         dn.reauth_auto_timer = setTimeout(function(){
             dn.reauth_auto_timer = undefined;
             console.log("and now running the auto reauth...")
-            Promise.race([gapi.auth.authorize(dn.auth_map(true)), make_timeout(dn.const.auth_timeout)])
+            Promise.race([gapi.auth.authorize(dn.auth_map(true)), make_timeout(dn.const_.auth_timeout)])
                    .then(dn.pr_auth.resolve.bind(dn.pr_auth),
                          dn.pr_auth.reject.bind(dn.pr_auth));
         }, dn.reauth_auto_delay)
@@ -107,7 +107,7 @@ dn.reauth_manual = function(){
     dn.status.popup_active = 1;
     dn.status.authorization = 0;
     dn.show_status();    
-    Promise.race([gapi.auth.authorize(dn.auth_map(false)), make_timeout(dn.const.auth_timeout)])
+    Promise.resolve(gapi.auth.authorize(dn.auth_map(false)))
            .then(dn.pr_auth.resolve.bind(dn.pr_auth),
                  dn.pr_auth.reject.bind(dn.pr_auth));
 }

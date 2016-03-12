@@ -3,6 +3,15 @@
 <head>
     <meta charset="utf-8">
     <link rel="stylesheet" href="app.build.css">
+
+    <!--[if IE 8]><script src="//cdnjs.cloudflare.com/ajax/libs/ie8/0.3.3/ie8.js"/> <![endif]-->
+
+    <!--[if IE]>
+    <script src='node_modules/es6-promise/dist/es6-promise.min.js'/>
+    <script type="text/javascript">require('es6-promise').polyfill();</script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/dom4/1.7.0/dom4.js">/* DOM4 */</script>
+    <![endif]-->
+
     <script type="text/javascript">
     "use strict";
     // Auth stuff gets top priority as it can take a while....
@@ -43,7 +52,7 @@
         }
         return m;
     }
-    dn.const = {auth_timeout: 6000};
+    dn.const_ = {auth_timeout: 6000};
     /* 
     SpecialPromise: a *variation* on the concept of a promise.  Explanation by example:
 
@@ -144,13 +153,13 @@
     }
     dn.pr_auth = new SpecialPromise();
     dn.pr_realtime_loaded = new SpecialPromise();
-    var make_timeout = function(delay){
+    var make_timeout = function(delay, error_msg){
         return new Promise(function(resolve, reject){
-            setTimeout(reject, delay, "timeout");
+            setTimeout(reject, delay, error_msg || "timeout");
         });
     }
     function gapi_loaded() {
-        Promise.race([gapi.auth.authorize(dn.auth_map(true)), make_timeout(dn.const.auth_timeout)])
+        Promise.race([gapi.auth.authorize(dn.auth_map(true)), make_timeout(dn.const_.auth_timeout)])
             .then(dn.pr_auth.resolve.bind(dn.pr_auth),
                   dn.pr_auth.reject.bind(dn.pr_auth));
         gapi.load('drive-realtime', dn.pr_realtime_loaded.resolve.bind(dn.pr_realtime_loaded));
@@ -420,7 +429,7 @@
         </div>
 
         <div class="widget_error" id="widget_error">
-            <div class="widget_error_mark">&#x2718;</div><div class="widget_error_text" id="widget_error_text">Javascript disabled</div>
+            <div class="widget_error_mark">&#x2718;</div><div class="widget_error_text" id="widget_error_text">Javascript disabled or encountering errors.</div>
         </div>
 
     </div>

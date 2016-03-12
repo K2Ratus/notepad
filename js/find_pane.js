@@ -274,10 +274,10 @@ var update_search_history = function(){
            && top_of_history.toLowerCase() === current_str.substr(0, top_of_history.length).toLowerCase()){
             // top_of_history is a case-insensitive prefix of current_str, replace top_of_history with current
             dn.g_find_history.set(0, current_str);
-        } else if(time_now > search_history_last_modified_time + dn.const.find_history_add_delay){
+        } else if(time_now > search_history_last_modified_time + dn.const_.find_history_add_delay){
             // it's been a while since changes were made, add the current string as the new top
             dn.g_find_history.insert(0, current_str);
-            if(dn.g_find_history.length > dn.const.find_history_max_len){
+            if(dn.g_find_history.length > dn.const_.find_history_max_len){
                 dn.g_find_history.remove(dn.g_find_history.length-1);
             }
         } else {
@@ -313,7 +313,6 @@ var search_inputs_focus = function(e){
 var search_inputs_blur = function(e){
     if(e.relatedTarget == el.replace_input  || e.relatedTarget == el.find_input)
         return; // focus is transfering between replace/find inputs
-
     search_inputs_have_focus = false;
 
     // remove all search_markers
@@ -341,8 +340,8 @@ var search_inputs_blur = function(e){
      // we had this on false during find
     dn.editor.setHighlightSelectedWord(true);
 
-    if(!e.relatedTarget)
-        dn.focus_editor();
+    //if(!e.relatedTarget)
+    //        dn.focus_editor();
 }
 
 var build_search_options = function(){
@@ -639,4 +638,4 @@ return {
     on_goto_shortcut: goto_shortcut_used
 }
 
-})(dn.const);
+})(dn.const_);

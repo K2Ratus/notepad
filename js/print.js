@@ -22,7 +22,7 @@ return function(){
     var html = Array(content.length);
 
     for(var i=0; i<content.length;i++)
-        html[i] = "<li><div class='printline'>" + dn.line_to_html(i) + '</div></li>';
+        html[i] = "<li><div class='printline'>" + line_to_html(i) + '</div></li>';
 
     var printWindow = window.open('','');
     printWindow.document.writeln(

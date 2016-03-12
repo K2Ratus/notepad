@@ -14,10 +14,7 @@ var worker;
 var editor;
 var at_idx = 0; 
 var from_idx = 0;
-/*
-this.session._changedWidgets.push(w); // all widgets
-editor.renderer.updateFull()
-*/
+
 
 var LineWidgets = ace.require("./line_widgets").LineWidgets;
 var start = function(){
@@ -33,6 +30,7 @@ var start = function(){
     el.revisions_view.innerHTML = '';
     el.info_overflow.style.display = '';
     editor = ace.edit("revisions_view");
+    editor.setFontSize(dn.editor.getFontSize());
     dn.patch_editor_history(editor); 
     editor.session.setUseWrapMode(true);
     editor.setReadOnly(true);
@@ -60,6 +58,8 @@ var get_editor = function(){
 }
 
 var on_worker_message = function(e){
+    if(!editor) return;  // if we closed history tool while worker was busy, we can safely ignore the two possible types of message it might be sending
+
     var session = editor.getSession();
     if(e.data.diffed_revision){
         revision_uses_line = []; // invalidate everything we knew about uses_line
@@ -86,6 +86,7 @@ var on_worker_message = function(e){
             render_single_revision(Math.min(at_idx, from_idx));
         }
     }
+
 
 }
 
@@ -262,7 +263,7 @@ var date_str_to_local = function(d){
 }
 
 var render_for_settings = function(){
-    if(!dn.pr_file_loaded.is_resolved()) return;
+    if(!dn.pr_file_loaded.is_resolved() || !editor) return;
 
     at_idx = parseInt(el.at_range.value);
     from_idx = parseInt(el.from_range.value);
@@ -341,8 +342,8 @@ var on_document_ready = function(){
         dn.g_settings.set('historyRemovedIsExpanded', false);
     })
 
-    el.at_range.addEventListener("change", render_for_settings);
-    el.from_range.addEventListener("change", render_for_settings);
+    el.at_range.addEventListener("input", render_for_settings);
+    el.from_range.addEventListener("input", render_for_settings);
 }
 
 

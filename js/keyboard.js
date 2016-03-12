@@ -45,7 +45,7 @@ dn.make_keyboard_shortcuts = function(){
     dn.ctrl_key = "crtl"
     if(dn.platform == 'Mac'){
         dn.ctrl_key = 'cmd';
-        var els = dn.getElementsByClassName('ctrl_key');
+        var els = document.getElementsByClassName('ctrl_key');
         for(var ii=0; ii<els.length; ii++)
             els[ii].textContent = 'cmd'
     }

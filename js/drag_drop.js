@@ -18,8 +18,8 @@ dn.document_drag_over = function (evt) {
         evt.dataTransfer.dropEffect = 'none';
         if(dn.can_show_drag_drop_error){
             dn.show_error("File drag-drop is only permitted when the Drive Notpad page is displaying a new and unmodified file.")
-            dn.can_show_drag_drop_error = false; //wait at least dn.const.error_delay_ms until displaying the error again
-            setTimeout(function(){dn.can_show_drag_drop_error = true;},dn.const.error_delay_ms);
+            dn.can_show_drag_drop_error = false; //wait at least dn.const_.error_delay_ms until displaying the error again
+            setTimeout(function(){dn.can_show_drag_drop_error = true;},dn.const_.error_delay_ms);
         }
         return;
     }

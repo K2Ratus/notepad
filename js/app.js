@@ -63,7 +63,7 @@ dn.toggle_permission = function(state){
             el.style.display = '';
             dn.g_settings.set('pane', 'pane_help');
             dn.g_settings.set('pane_open', true);
-            css_animation(dn.el.the_widget, 'shake', function(){}, dn.const.error_delay_ms);
+            css_animation(dn.el.the_widget, 'shake', function(){}, dn.const_.error_delay_ms);
         }
     } else {
         dn.status.permissions_showing = 0;
@@ -113,8 +113,8 @@ dn.document_mouse_move_widget = function(e){
     var x = e.clientX+dn.widget_mouse_down_info.off_left;
     var y = e.clientY+dn.widget_mouse_down_info.off_top;
     if(!dn.widget_mouse_down_info.is_dragging){
-        dn.widget_mouse_down_info.is_dragging = (Date.now() - dn.widget_mouse_down_info.start_time > dn.const.drag_delay_ms)
-                                              || (x*x + y*y > dn.const.drag_shift_px * dn.const.drag_shift_px);
+        dn.widget_mouse_down_info.is_dragging = (Date.now() - dn.widget_mouse_down_info.start_time > dn.const_.drag_delay_ms)
+                                              || (x*x + y*y > dn.const_.drag_shift_px * dn.const_.drag_shift_px);
     }
     if(dn.widget_mouse_down_info.is_dragging)
         translate(dn.el.the_widget, x, y);
@@ -337,7 +337,7 @@ dn.show_error = function(message){
     dn.el.widget_error.style.display = '';
     css_animation(dn.el.the_widget, 'shake', function(){
         dn.el.widget_error.style.display = 'none';
-    }, dn.const.error_delay_ms);
+    }, dn.const_.error_delay_ms);
 }
 
 // ############################
@@ -428,18 +428,18 @@ dn.show_app_data_document = function(doc){
     if(!dn.g_clipboard){
         dn.g_settings.set('clipboard', doc.getModel().createList());
         dn.g_clipboard = dn.g_settings.get('clipboard');
-    }if(dn.g_clipboard.length > dn.const.clipboard_max_length){
+    }if(dn.g_clipboard.length > dn.const_.clipboard_max_length){
         // trim clipboard to current length limit, note the oldest stuff is at the 0-end
-        dn.g_clipboard.removeRange(0, dn.g_clipboard.length-dn.const.clipboard_max_length);
+        dn.g_clipboard.removeRange(0, dn.g_clipboard.length-dn.const_.clipboard_max_length);
     }
 
     dn.g_find_history = dn.g_settings.get('findHistory');
     if(!dn.g_find_history){
         dn.g_settings.set('findHistory', doc.getModel().createList());
         dn.g_find_history = dn.g_settings.get('findHistory');
-    }else if(dn.g_find_history.length > dn.const.find_history_max_len){
+    }else if(dn.g_find_history.length > dn.const_.find_history_max_len){
         // trim  find history to current length limit, the oldest stuff is at the non-zero end.
-        dn.g_find_history.removeRange(dn.const.find_history_max_len, dn.g_find_history.length);
+        dn.g_find_history.removeRange(dn.const_.find_history_max_len, dn.g_find_history.length);
     }
     
     //Check lastDNVersionUsed at this point - by default it's blank, bust could also have an out-of-date value
@@ -1020,8 +1020,8 @@ dn.document_ready = function(e){
     });
 }
 
-
-if (document.readyState != 'loading')
+if (document.readyState != 'loading' && document.getElementById('the_widget')){ //second test is hack for IEi
     dn.document_ready();
-else
+}else{
     document.addEventListener('DOMContentLoaded', dn.document_ready);
+}
