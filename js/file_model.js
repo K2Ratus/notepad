@@ -39,7 +39,7 @@ dn.FileModel.prototype.set = function(obj){
         if(this.is_loaded)
             this.compute_newline(); // will trigger 
     }
-    if(obj.tabs && !(obj.tabs.val === this.properties.tabs.val && obj.tabs.n === this.properties.tabs.n)){
+    if(obj.tabs && !(this.properties.tabs && obj.tabs.val === this.properties.tabs.val && obj.tabs.n === this.properties.tabs.n)){
         this.properties.tabs = obj.tabs;
         if(this.is_loaded)
             this.compute_tabs(); // will trigger 
@@ -156,17 +156,18 @@ dn.FileModel.prototype.compute_tabs = function(){
     // firstly, parse the stored tabs property, getting a valid .val and valid .n value.
     var prop = this.properties.tabs;
     try{
-        prop = JSON.parse(prop)
+        if(prop.val === undefined && prop.n === undefined)
+            prop = JSON.parse(prop)
         prop = {val: prop.val, n: prop.n}; // drop any other nonsense
-        prop.n = parseInt(prop.n) = 10;
+        prop.n = parseInt(prop.n);
         if(!(prop.val === "tab" || prop.val === "spaces")) throw 0
-        if(!(prop.n > dn.const_.min_soft_tab_n && prop.n < dn.const_.max_soft_tab_n))
+        if(!(prop.n >= dn.const_.min_soft_tab_n && prop.n <= dn.const_.max_soft_tab_n))
             prop.n = undefined; 
         if(prop.val === "spaces" && prop.n === undefined) throw 0
     }catch(e){
-        this.properties.tabs = {val: "detect"}; //force it to be valid alternative
         prop = {val: "detect"};
     }
+    this.properties.tabs = prop; // force it to be whatever we parsed
 
     if(prop.val === "tab")
         this.properties_chosen.tabs = prop; // may need to chose n still
@@ -222,7 +223,7 @@ dn.FileModel.prototype.compute_tabs = function(){
                  : "detected mixture of tabs")
             + ", default is " + (this.properties_chosen.tabs.val == 'tabs' ?
                    "hard tabs"
-                 : this.properties_chosen.tabs.n + " spaces");
+                 :  dn.g_settings.get('softTabN') + " spaces");
         
     } else {
         // detected spaces, but exxactly how many? 

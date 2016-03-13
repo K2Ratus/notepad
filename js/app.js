@@ -577,7 +577,8 @@ dn.show_file_meta = function(resp) {
                 props.syntax = resp.result.properties.aceMode;
             if(resp.result.properties.newline !== undefined)
                 props.newline = resp.result.properties.newline;
-            // TODO: set tabs
+            if(resp.result.properties.tabs !== undefined)
+                props.tabs = resp.result.properties.tabs;
         }
     }
     dn.the_file.set(props);

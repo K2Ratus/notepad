@@ -134,21 +134,25 @@ var on_syntax_dropdown_click = function(e){
 }
 
 var on_tab_click = function(e){
-    var val = "detect";
+    var val = {val: "detect"};
 
     if (e.currentTarget === el.tab_soft_inc){
         e.stopPropagation();
-        //val = ??
+        val = {val: "spaces",
+               n: Math.min(dn.the_file.properties_chosen.tabs.n + 1, dn.const_.max_soft_tab_n)};
     } else if (e.currentTarget === el.tab_soft_dec){
         e.stopPropagation();
-        //val = ??
-    }else if(e.currentTarget === el.tab_soft)
-        ;//val = ???
-    else if(e.currentTarget === el.tab_hard)
-        val = 0;
+        var n = dn.the_file.properties_chosen.tabs.n - 1;
+        val = {val: "spaces",
+               n: Math.max(dn.the_file.properties_chosen.tabs.n - 1, dn.const_.min_soft_tab_n)};
+    }else if(e.currentTarget === el.tab_soft){
+        val = {val: "spaces", n: dn.the_file.properties_chosen.tabs.n};
+    } else if(e.currentTarget === el.tab_hard){
+        val = {val: "tab", n: dn.the_file.properties_chosen.tabs.n};
+    }
 
     dn.the_file.set({tabs: val});
-    dn.save({tabs: val});
+    dn.save({tabs: JSON.stringify(val)});
 }
 
 // view functions ::::::::::::::::::::::::::::::::::
@@ -196,10 +200,10 @@ var render_tabs = function(){
     el.tab_hard.classList.remove('selected');
     el.tab_detect.classList.remove('selected');
 
-    if(user_tabs.val === "tabs")
+    if(user_tabs.val === "tab")
         el.tab_hard.classList.add('selected');
     else if(user_tabs.val === "spaces")
-        el.tab_hard.classList.add('selected');
+        el.tab_soft.classList.add('selected');
     else
         el.tab_detect.classList.add('selected');
     
