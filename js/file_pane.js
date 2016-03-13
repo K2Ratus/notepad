@@ -94,8 +94,10 @@ var on_description_end_edit = function(){
     el.description_input.style.display = 'none';
     el.description_text.style.display = '';
     var new_val = el.description_input.value;
-    dn.the_file.set({description: new_val});    
-    dn.save({description: new_val});
+    if(dn.the_file.description !== new_val){
+        dn.the_file.set({description: new_val});    
+        dn.save({description: new_val});
+    }
     dn.focus_editor();
 }
 
@@ -103,8 +105,10 @@ var on_title_end_edit = function(){
     el.title_input.style.display = 'none';
     el.title_text.style.display = '';
     var new_val = el.title_input.value;
-    dn.the_file.set({title: new_val});
-    dn.save({title: new_val});
+    if(dn.the_file.title !== new_val){
+        dn.the_file.set({title: new_val});
+        dn.save({title: new_val});
+    }
     dn.focus_editor();
 }
 

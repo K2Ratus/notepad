@@ -24,7 +24,7 @@ dn.save = function(parts, correction_with_undo_id){
 
     // update the status, and deal undo manager tracking...
     var found_something = false;
-    if(parts.hasOwnProperty('body')){
+    if(parts.body !== undefined){
         var editor_undo_id = correction_with_undo_id === undefined ? 
                               dn.editor.getSession().getUndoManager().getCurrentId()
                             : correction_with_undo_id;
@@ -38,15 +38,17 @@ dn.save = function(parts, correction_with_undo_id){
             dn.status.save_body = 0;
         }
     }
-    if(parts.hasOwnProperty('title')){
+    if(parts.title !== undefined){
         found_something = true;
         dn.status.save_title = 0;
     }
-    for(k in ['syntax', 'description', 'newline', 'tabs'])
-        if(parts.hasOwnProperty(k)){
+    if(parts.syntax !== undefined ||
+       parts.description !== undefined ||
+       parts.newline !== undefined ||
+       parts.tabs !== undefined){
             found_something = true;
-            dn.status.save_other = true;
-        }
+            dn.status.save_other = 0;
+    }
     
     if(!found_something)
         return;
@@ -58,6 +60,7 @@ dn.save = function(parts, correction_with_undo_id){
 }
 
 dn.SaveRequest = function(parts){
+    //console.log("SaveRequest: " + JSON.stringify(parts));
     this._parts = parts
 
     // update save_local_state 
