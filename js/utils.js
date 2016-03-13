@@ -40,6 +40,14 @@ var escape_str = function(str){
     });
 }
 
+var decode_body = function(body){
+    try{
+        return decodeURIComponent(escape(body));
+    }catch(e){
+        return body;
+    }
+}
+
 var css_animation = (function(){
     var timers = []; // we store timers and matching els so we can cancel if needed
     var els = [];

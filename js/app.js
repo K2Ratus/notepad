@@ -600,6 +600,7 @@ dn.show_file_meta = function(resp) {
 } 
 
 dn.show_file_body = function(resp){
+    resp.body = decode_body(resp.body); // fix utf-8 issues
     dn.setting_session_value = true;
     dn.the_file.loaded_body = resp.body; //this gets used for newline and tab detection, i.e. we don't want the editor to mangle it in any way
     dn.editor.session.setValue(resp.body);

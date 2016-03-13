@@ -171,7 +171,8 @@ var send_revision_body_to_worker = function(revision_meta){
             throw resp;
         worker.postMessage({revision: {
             id: revision_meta.id,
-            body: resp.body}});
+            body: decode_body(resp.body) /* fix utf-8 issues*/
+            }});
         worker_has_revision[revision_meta.id] = true;
         revision_meta.el_tick.classList.add('downloaded');
         render_download_status();

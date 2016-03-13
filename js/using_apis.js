@@ -128,7 +128,8 @@ dn.request_file_body = function(){
     // returns thenable
     return gapi.client.request({
         'path': '/drive/v3/files/' + dn.the_file.file_id,
-        'params':{'alt': 'media'}});
+        'params':{'alt': 'media'},
+        'headers': {'contentType': 'charset=utf-8'}});
 }
 
 dn.make_multipart_boundary = function(){
