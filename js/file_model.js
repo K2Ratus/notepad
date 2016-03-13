@@ -233,7 +233,7 @@ dn.FileModel.prototype.compute_tabs = function(){
         for(var ss=dn.const_.min_soft_tab_n; ss<=dn.const_.max_soft_tab_n; ss++){
             for(var ii=ss, m=0; ii<space_hist.length; ii+=ss)
                 m += space_hist[ii] === undefined ? 0 : space_hist[ii];
-            space_mod_hist[ii] = m;
+            space_mod_hist[ss] = m;
         }
         
         // and find the largest indent that passes threshold...
