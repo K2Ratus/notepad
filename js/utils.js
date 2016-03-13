@@ -34,6 +34,7 @@ var text_multi = function(el, text, truncate_long_words){
 
 var escape_str = function(str){
     // http://stackoverflow.com/a/18750001/2399799
+    str = str || "";
     return str.replace(/[\u00A0-\u9999<>\&]/g, function(i) {
         return '&#' + i.charCodeAt(0) + ';';
     });

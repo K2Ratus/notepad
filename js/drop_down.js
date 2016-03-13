@@ -97,7 +97,7 @@ DropDown.prototype.GetVal = function(){
 }
 
 DropDown.prototype.SetInd = function(ind,no_trigger){
-    ind = parseInt(ind)
+    ind = Math.min(Math.max(parseInt(ind), 0), this.val_array.length-1);
     if(ind === this.ind)
         return;
     this.el_list.children[this.ind].classList.remove("selected");

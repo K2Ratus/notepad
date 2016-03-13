@@ -368,7 +368,8 @@ dn.g_settings = (function(){
         }, transfer_to_true_model: function(real_model){
             // issue changes due to differences in the real and mock models
             for(var k in ob)if(ob.hasOwnProperty(k) && !keeps[k])
-                if(JSON.stringify(ob[k]) !== JSON.stringify(real_model.get(k)))
+                if(real_model.get(k) !== null && real_model.get(k) !== undefined
+                    && JSON.stringify(ob[k]) !== JSON.stringify(real_model.get(k)))
                     this.set(k, real_model.get(k)); // will call listeners
             // and then register the listeners on the new model
             while(change_listeners.length)
