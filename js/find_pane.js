@@ -196,8 +196,8 @@ var goto_input_focus = function(){
 var goto_input_blur = function(e){
     goto_input_has_focus = false;
     el.info.textContent = "goto line inactive"; 
-    if(!e.relatedTarget)
-        dn.focus_editor();
+    //if(!e.relatedTarget)
+    //    dn.focus_editor();
 }
 
 var perform_goto = function(){
@@ -228,6 +228,7 @@ var goto_input_keydown = function(e){
         dn.g_settings.set('pane_open', false);
         e.preventDefault();
         e.stopPropagation();
+        dn.focus_editor();
     }
 }
 
@@ -569,7 +570,8 @@ var find_input_keydown = function(e){
     }
 
     if(e.which == WHICH.ESC){
-        dn.g_settings.set('pane_open', false); // this focuses on the editor, and blurs the find_input
+        dn.g_settings.set('pane_open', false); // blurs the find_input
+        dn.focus_editor();
         e.preventDefault();
         e.stopPropagation();
         return;   

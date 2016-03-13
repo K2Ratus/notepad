@@ -5,8 +5,11 @@
 dn.esc_pressed = function(e){
     dn.g_settings.set('pane_open', !dn.g_settings.get('pane_open'));
 
-    if(dn.g_settings.get('pane_open') && dn.g_settings.get('pane') == 'pane_find')
+    if(dn.g_settings.get('pane_open') && dn.g_settings.get('pane') == 'pane_find'){
         dn.find_pane.focus_on_input();
+    }else{
+        dn.focus_editor();
+    }
     e.preventDefault();
 }
 

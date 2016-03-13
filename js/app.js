@@ -235,6 +235,7 @@ dn.toggle_widget = function(state){
         dn.el.widget_menu.style.display = 'none';
         dn.el.widget_content.style.display = 'none';
         dn.file_pane.on_close_pane(); // we could check if it file pane was open, but who cares
+        dn.focus_editor();
     }
 }
 
