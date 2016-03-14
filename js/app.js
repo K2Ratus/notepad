@@ -865,7 +865,9 @@ dn.document_ready = function(e){
     var new_in_folder = undefined;
     if(params['state']){
         try{
-            var state = JSON.parse(params['state']); 
+            state = params['state'];
+            state = state.replace(/,\s*}\s*$/,"}"); // some users have a trailing comma for some reason
+            var state = JSON.parse(state); 
             if(state.action && state.action == "open" && state.ids && state.ids.length > 0)
                dn.the_file.file_id = state.ids[0];
             else if (state.folderId)
