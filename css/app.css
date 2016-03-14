@@ -240,6 +240,7 @@ display: block;
 .pane_item.input{
 display: flex;
 height: 20px;
+min-height: 20px; /* oh IE! */
 flex-flow: row;
 }
 .pane_item.input input{

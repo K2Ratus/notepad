@@ -4,16 +4,17 @@
     <meta charset="utf-8">
     <link rel="stylesheet" href="app.build.css">
 
-    <!--[if IE 8]><script src="//cdnjs.cloudflare.com/ajax/libs/ie8/0.3.3/ie8.js"/> <![endif]-->
-
-    <!--[if IE]>
-    <script src='node_modules/es6-promise/dist/es6-promise.min.js'/>
-    <script type="text/javascript">require('es6-promise').polyfill();</script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/dom4/1.7.0/dom4.js">/* DOM4 */</script>
-    <![endif]-->
-
     <script type="text/javascript">
     "use strict";
+
+    // conditional synchrounous script loading of polyfills, for IE11 (IE 10 and below not supported)
+    if(!window.Promise){
+        var r = new XMLHttpRequest();
+        r.open('GET', 'polyfill/es6-promise.min.js', false);
+        r.send();
+        eval(r.responseText);
+    }
+    
     // Auth stuff gets top priority as it can take a while....
     var window_location_to_params_object = function(){
         // http://stackoverflow.com/a/2880929/2399799
@@ -169,12 +170,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.3/ace.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.3/ext-modelist.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.3/ext-themelist.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.3/ext-language_tools.js"></script> <!-- TODO: load this a bit later, it doesn't need priority -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.3/ext-language_tools.js"></script>
     <script type="text/javascript" src="all.build.js"></script>
     <title>Drive Notepad</title>
     <link rel="shortcut icon" type="image/x-icon" href="favicon.ico?">
-    <!--- Google Analytics -->
     <script>
+       // Google Analytics
       (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
       (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
       m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
