@@ -12,7 +12,7 @@ var clipboard_index = -1;
 var clipboard_info_timer = 0;
 
 var document_clipboard_left = function(e){
-    if(!clipboard_active)
+    if(!is_active)
         return false;
     if(clipboard_index <= 0)
         return true;
@@ -23,7 +23,7 @@ var document_clipboard_left = function(e){
 }
 
 var document_clipboard_right = function(e){
-    if(!clipboard_active)
+    if(!is_active)
         return false;
 
     dn.g_atomic_exec(function(){
@@ -56,7 +56,7 @@ var on_paste = function(e){
     if (dn.g_clipboard === undefined)
         return; // don't bother implementing anything until cloud settings are properly loaded
     var text = e.text || "";
-    clipboard_active = true;    
+    is_active = true;    
     document.addEventListener('keyup', document_clipboard_keyup);
         
     clipboard_index = dn.g_clipboard.lastIndexOf(text); 
