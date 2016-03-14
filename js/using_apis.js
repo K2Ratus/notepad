@@ -206,10 +206,10 @@ dn.request_save = function(parts){
     if(is_multipart){
         var boundary = dn.make_multipart_boundary();
         request_body = "--" + boundary
-                      + "\nContent-Type: application/json; charset=UTF-8\n" 
+                      + "\nContent-Type: application/json; charset=UTF-8\n\n" 
                       + JSON.stringify(meta) 
                       + "\n--" + boundary
-                      + "\nContent-Type: " + parts.mimeType
+                      + "\nContent-Type: " + parts.mimeType + "; charset=UTF-8\n\n" 
                       + parts.body
                       + "\n--" + boundary + "--" ;
         headers['Content-Type'] = 'multipart/related; boundary="' + boundary+'"';
