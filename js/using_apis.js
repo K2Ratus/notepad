@@ -209,7 +209,7 @@ dn.request_save = function(parts){
                       + "\nContent-Type: application/json; charset=UTF-8\n" 
                       + JSON.stringify(meta) 
                       + "\n--" + boundary
-                      + "\nContent-Type: text/plain" // TODO: see if this matters, and if so get it right 
+                      + "\nContent-Type: " + parts.mimeType
                       + parts.body
                       + "\n--" + boundary + "--" ;
         headers['Content-Type'] = 'multipart/related; boundary="' + boundary+'"';
@@ -217,6 +217,7 @@ dn.request_save = function(parts){
         // Content-Length: number_of_bytes_in_entire_request_body
     }else if(has_body){
         request_body = parts.body;
+        headers["Content-Type"] = parts.mimeType;
     } else {
         request_body = JSON.stringify(meta);
     }

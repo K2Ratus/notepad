@@ -113,40 +113,8 @@ var until_success = function(executor){
 
 
 
-/* TODO: ...............................................................
-
-$.fn.fixHeightFromAuto = function(){
-    var heights = [];
-    var d = this.get();
-    for(var i=0;i<d.length;i++)
-        heights.push(getComputedStyle(d[i]).height);
-    
-    this.each(function(ind){this.style.height = heights[ind];});
-
-    return this;
+var ext_from_filename = function(str){
+    // http://stackoverflow.com/a/12900504/2399799
+    str = str || ""
+    return str.slice((Math.max(0, str.lastIndexOf(".")) || Infinity) + 1);
 }
-
-$.fn.insertClonedChildren = function(index,$src,textArray,attrObjArrays){
-    //inserts new nodes before this.children(index)
-    //the new nodes are based on $src, with text set according to the elements of textArray
-    //attrObjArrays is an optional arrays of objects giving key names and values
-    
-    var src = $src.get(0);
-    var frag = document.createDocumentFragment();
-    
-    textArray.map(function(str,ind){
-                    var a = src.cloneNode(false); 
-                    a.textContent = str;
-                    if(attrObjArrays)for(var attr in attrObjArrays[ind])
-                        a.setAttribute(attr,attrObjArrays[ind][attr]);
-                    frag.appendChild(a);
-                });
-    
-    var parent = this.get(0);
-    var new_$els = $(Array.prototype.slice.call(frag.children,0));
-    parent.insertBefore(frag,parent.children[index]);
-    
-    return new_$els;
-}
-
-*/

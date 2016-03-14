@@ -29,12 +29,15 @@ dn.save = function(parts, correction_with_undo_id){
                               dn.editor.getSession().getUndoManager().getCurrentId()
                             : correction_with_undo_id;
         if(dn.save_undo_id === editor_undo_id){ // during correction requests, save_undo_id will already be NaN, so this test will fail
-            delete parts.body;
+            delete parts.body; // no need to save the body if it's already on the server
+            // TODO: actually, saves could be in progress, in which case we don't actually know for sure what is on the server
+            // i.e. you might want to send an "undo" save before a mistake save has completed
         } else {
             found_something = true;
             dn.save_undo_id = NaN; // while we are saving the body the document can only be "dirty"
             parts.undo_id = editor_undo_id; // TODO: when making corrections, we need to copy this across
             dn.check_unsaved();
+            parts.mimeType = parts.mimeType || dn.the_file.chosen_mime_type;
             dn.status.save_body = 0;
         }
     }

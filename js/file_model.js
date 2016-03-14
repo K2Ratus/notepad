@@ -8,6 +8,8 @@ dn.FileModel = function(){
     this.description = '';
     this.ext = '';
     this.loaded_body = '';
+    this.loaded_mime_type = undefined;
+    this.chosen_mime_type = 'text/plain';
     this.is_read_only = false;
     this.is_shared = false;
     this.properties_chosen = {}, // combines detection, settings, and file properties
@@ -45,6 +47,7 @@ dn.FileModel.prototype.set = function(obj){
             this.compute_tabs(); // will trigger 
     }
     if(obj.title && obj.title !== this.title){
+        this.update_mime_type(this.title, obj.title); 
         this.title = obj.title;
         this.trigger("change",{property: 'title'})
         if(this.is_loaded)
@@ -62,6 +65,11 @@ dn.FileModel.prototype.set = function(obj){
         this.is_shared = obj.is_shared;
         this.trigger("change",{property: 'is_shared'});
     }
+    if(obj.loaded_mime_type){
+        this.loaded_mime_type = obj.loaded_mime_type;
+        this.chosen_mime_type = this.loaded_mime_type || "text/plain";
+        // see setting of title 
+    }
     if(obj.is_loaded && ~this.is_loaded){
         this.is_loaded = true;
         this.compute_newline(); // these trigger when they are done
@@ -71,6 +79,15 @@ dn.FileModel.prototype.set = function(obj){
     }
 }
 
+
+dn.FileModel.prototype.update_mime_type = function(old_title, new_title){
+    old_ext = ext_from_filename(old_title);
+    new_ext = ext_from_filename(new_title);
+    if(new_ext !== old_ext){
+        this.loaded_mime_type = undefined; // the loaded mime type is no longer relevant to us
+        this.chosen_mime_type = dn.ext_to_mime_type[new_ext] || "text/plain";
+    }
+}
 
 dn.FileModel.prototype.compute_newline = function(){
     // populates properties _chosen, _detected and _detect_info

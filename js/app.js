@@ -573,6 +573,7 @@ dn.show_file_meta = function(resp) {
     if(dn.status.file_meta === 0){ 
         props.title =  resp.result.name;
         props.description = resp.result.description || '';
+        props.loaded_mime_type = resp.result.mimeType;
         if(resp.result.properties){
             if(resp.result.properties.aceMode !== undefined)
                 props.syntax = resp.result.properties.aceMode;
@@ -583,7 +584,6 @@ dn.show_file_meta = function(resp) {
         }
     }
     dn.the_file.set(props);
-
     if(resp.result.parents && resp.result.parents.length){
         dn.the_file.folder_id = resp.result.parents[0];
         dn.set_drive_link_to_folder();
