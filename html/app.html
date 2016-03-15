@@ -14,7 +14,7 @@
         r.send();
         eval(r.responseText);
     }
-    
+
     // Auth stuff gets top priority as it can take a while....
     var window_location_to_params_object = function(){
         // http://stackoverflow.com/a/2880929/2399799
@@ -185,6 +185,12 @@
       ga('set', 'title', 'app');
       ga('send', 'pageview');
 
+      (function(){
+        var counter = 0;
+        setInterval(function(){
+            ga('send', 'event', 'time', 'tick', 'mins', ++counter);
+          }, 60000);
+      })();
     </script>
 </head>
 
