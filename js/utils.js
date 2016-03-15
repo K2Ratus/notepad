@@ -40,11 +40,39 @@ var escape_str = function(str){
     });
 }
 
+var hex_print_string = function(str){
+    // only for debugging
+    var c = [];
+    for(var ii=0; ii<str.length; ii++)
+        c.push(str.charCodeAt(ii).toString(16))
+    console.log(c.join(" "))
+}
+
+var js_str_from_utf16 = function(str){
+    // There's the endianness of the encoding and the endianness of the current CPU.
+    // we only need to know the "relative" endian-ness in order to make a suitable request to TextDecoder.
+    // I hope!
+    var bom = new Uint16Array((new Uint8Array([str.charCodeAt(0), str.charCodeAt(1)])).buffer);
+    var endian = bom[0] === 0xfffe ? 'be' : 'le';
+
+    var arr = new Uint8Array(str.length-2)
+    for(var ii=2;ii<str.length;ii++)
+        arr[ii-2] = str.charCodeAt(ii);
+    
+    return (new TextDecoder('utf-16' + endian )).decode( new Uint16Array(arr.buffer));
+}
+
 var decode_body = function(body){
-    try{
-        return decodeURIComponent(escape(body));
-    }catch(e){
-        return body;
+    body = body || "";
+    // TODO: it might be better to use TextDecoder for UTF8 as well as 16, but you need a pollyfil for non Chrome/FF
+    try {
+        if(body.substr(0,2) == String.fromCharCode.call(null, 0xff, 0xfe) ||
+           body.substr(0,2) == String.fromCharCode.call(null, 0xfe, 0xff)  )
+            return js_str_from_utf16(body); // reinterpret pairs of single byte chars as actually being utf16
+        else
+           return decodeURIComponent(escape(body)); // reinterpreting single byte chars as actually being utf8
+    } catch (e) {
+       return body;
     }
 }
 

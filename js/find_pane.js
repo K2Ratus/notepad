@@ -336,6 +336,7 @@ var search_inputs_blur = function(e){
     search_current_match_idx = -1;
 
     // forget last selection in input (in preparation for next time it gets focus)
+    // TODO: in IE11 this brings the focus back to the bluring element which isn't what we wanted at all
     el.find_input.setSelectionRange(el.find_input.selectionEnd, el.find_input.selectionEnd);
 
      // we had this on false during find
