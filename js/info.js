@@ -185,7 +185,8 @@ clipboard_info_delay: 500, //ms
 clipboard_max_length: 20, //TODO: decide whether a large clipboard slows page loads and whether we can do anything about it.
 find_max_results_half: 3, 
 find_max_prefix_chars: 10,
-find_max_suffix_chars: 60
+find_max_suffix_chars: 60,
+ad_initial_wait: 4 * 60 * 1000 //ms
 };
 
 dn.platform = (function(){

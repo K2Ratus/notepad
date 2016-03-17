@@ -146,3 +146,12 @@ var ext_from_filename = function(str){
     str = str || ""
     return str.slice((Math.max(0, str.lastIndexOf(".")) || Infinity) + 1);
 }
+
+var load_script_async = function(url){
+    // method used by ga, which seems to work nicely
+    var new_el = document.createElement('script');
+    new_el.async = 1;
+    new_el.src = url;
+    var something_el = document.getElementsByTagName('script')[0];
+    something_el.parentNode.insertBefore(new_el, something_el);     
+}

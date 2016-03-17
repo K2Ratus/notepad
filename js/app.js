@@ -1024,6 +1024,10 @@ dn.document_ready = function(e){
         console.dir(err);
         dn.show_error(dn.api_error_to_string(err));
     });
+
+
+    // load ads at some point in future...
+    setTimeout(load_script_async, dn.const_.ad_initial_wait, 'js/banner_ads.js');
 }
 
 if (document.readyState != 'loading' && document.getElementById('the_widget')){ //second test is hack for IEi

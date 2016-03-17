@@ -1,0 +1,32 @@
+/*  Note that the data on this page is trusted, i.e. it is not escaped when used */
+
+(function(){
+	
+
+	var data = [
+
+		{
+		width: 120,
+		height: 600,
+		alt: "www.1and1.com",
+		href: "http://www.kqzyfj.com/click-8032815-10997354-1458033614000",
+		img: "http://www.tqlkg.com/image-8032815-10997354-1458033614000",
+		ga_id: 1
+		},
+
+		{
+		width: 160,
+		height: 600,
+		alt: "",
+		href: "http://www.kqzyfj.com/click-8032815-11139959-1358368119000",
+		img: "http://www.lduhtrp.net/image-8032815-11139959-1358368119000",
+		ga_id: 2
+		}
+
+	]
+
+
+
+	dn.ads.on_load_data(data);
+
+})();
