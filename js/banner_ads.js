@@ -16,11 +16,7 @@ dn.ads = (function(){
 
 var display_time = 60 *1000;//ms
 var no_display_time = 15 * 60 * 1000; //ms
-
-// debug timings...
-//var display_time = 2 *1000;//ms
-//var no_display_time = 0.25 * 60 * 1000; //ms
-
+var timer = 0;
 
 var data = [];
 var el = {};
@@ -38,6 +34,7 @@ var on_load_data = function(loaded_data){
 }
 
 var display_random = function(){
+	clearTimeout(timer);
 	var d = data[(data.length * Math.random()) | 0];
 	var img = new Image();
 	img.onload = function() { 
@@ -71,22 +68,27 @@ var display_random = function(){
 		setTimeout(function(){
 			el.ad.style.pointerEvents = '';
 		}, 1200);
-		setTimeout(hide_ad, display_time);
+		timer = setTimeout(hide_ad, display_time);
 	}
 	img.src = d.img;
 }
 
 var hide_ad = function(){
+	clearTimeout(timer);
 	el.ad.parentNode.removeChild(el.ad);
 	el.ad.innerHTML = "";
-	setTimeout(display_random, no_display_time);
+	timer = setTimeout(display_random, no_display_time);
 }
 
 // load the data (and run on_load_data callback
 load_script_async('js/ad_data.jsonp');
 
 return {
-	on_load_data: on_load_data
+	on_load_data: on_load_data,
+	debug: function(){
+		display_time = 2000;
+		no_display_time = 2000;
+	}
 }
 
 })();
