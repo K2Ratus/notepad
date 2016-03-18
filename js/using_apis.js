@@ -44,8 +44,17 @@ dn.is_auth_error = function(err){
 
     if(err.type === "token_refresh_required" || err.status === 401)
         return 1;
-    if(err.status === 403)
-        return 1; // a variety of things here, TODO: give a more granular response, including exponential backoff
+
+    if(err.status === 403){
+        var reason = ""
+        try{reason = err.result.error.errors.reason;}catch(_){};
+
+        if(reason === "domainPolicy")
+            return 0;
+        
+        //TODO: handle other specifics, and include exponential backoff where appropriate
+        return 1; // a variety of things here
+    }
     if(err.status === 404)
         return 0; // file not found
     if(err === "timeout")
