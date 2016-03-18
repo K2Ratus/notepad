@@ -180,17 +180,10 @@
       (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
       m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
       })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
       ga('create', 'UA-74999669-1', 'auto');
       ga('set', 'title', 'app');
-      ga('send', 'pageview');
-
-      (function(){
-        var counter = 0;
-        setInterval(function(){
-            ga('send', 'event', 'time', 'tick', 'mins', ++counter);
-          }, 60000);
-      })();
+      // wait till app.js loads before sending the pageview signal
+      // the main reason for doing so is that we can then re-format the url 
     </script>
 </head>
 

@@ -28,6 +28,8 @@ dn.is_auth_error = function(err){
     // returns 0 for non-auth errors, 1 for auto refresh and 2 for manual refresh, 3 for network error
     if(!err)
         return 2;
+
+    /*
     try{
         if(err.status > 200){
                 var str = "status: " + err.status + "   ";
@@ -37,7 +39,8 @@ dn.is_auth_error = function(err){
                 ga('send', 'exception', {'exDescription': str});
         }
     }catch(_){}
-
+    */
+    
     if(err.type === "token_refresh_required" || err.status === 401)
         return 1;
     if(err.status === 403)

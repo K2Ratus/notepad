@@ -19,9 +19,6 @@ dn.save_server_state = {};
 // we construct a new SaveRequest, we update this list.
 dn.save_local_state = { };
 
-dn.save_counter = 0; // used only for ga
-
-
 
 dn.save = function(parts, correction_with_undo_id){
     // this is the only method that should be called by other bits of the program
@@ -71,8 +68,6 @@ dn.save = function(parts, correction_with_undo_id){
         return;
 
     dn.show_status();
-
-    ga('send', 'event', 'file', 'save', 'save_count', ++dn.save_counter);
 
     // and construct the (complicated) request..
     dn.save_pending_requests.push(new dn.SaveRequest(parts));

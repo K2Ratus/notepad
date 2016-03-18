@@ -1023,6 +1023,7 @@ dn.document_ready = function(e){
                 dn.g_settings.set('pane_open', true);
             });
 
+        ga('send', 'pageview', 'app?state={action:"open"}');
     } else {
 
         // create new file :::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -1031,6 +1032,8 @@ dn.document_ready = function(e){
         dn.the_file.set({title: "untitled.txt", is_loaded: true}); // there's nothing to load for this model
         dn.g_settings.set('pane', 'pane_file');
         dn.g_settings.set('pane_open', true);
+
+        ga('send', 'pageview', 'app?state={action:"create"}');
     }
     
     // load cloud settings ::::::::::::::::::::::::::::::::::::::::::::::::
