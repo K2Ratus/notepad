@@ -62,7 +62,7 @@ var on_description_keydown = function(e){
 }
 
 var do_share = function(){
-    Promise.resolve(dn.pr_the_file_loaded)
+    Promise.resolve(dn.pr_file_loaded)
            .then(function(){
         dn.status.file_sharing = -1; //TODO: see SO question about no callback for share dialog...how are we supposed to know when it's closed and what happened?
         dn.the_file.is_shared = 0;
@@ -224,13 +224,16 @@ var end_history = function(){
 }
 
 var do_history = function(){
-    el.button_history.classList.add('selected');
-    el.button_save.style.display = 'none';
-    el.button_print.style.display = 'none';
-    el.inner_pane_history.style.display = '';
-    el.inner_pane_main.style.display = 'none';
-    dn.history_tool.start();
-    history_active = true;
+    Promise.resolve(dn.pr_file_loaded)
+        .then(function(){
+            el.button_history.classList.add('selected');
+            el.button_save.style.display = 'none';
+            el.button_print.style.display = 'none';
+            el.inner_pane_history.style.display = '';
+            el.inner_pane_main.style.display = 'none';
+            dn.history_tool.start();
+            history_active = true;            
+        });
 }
 
 var syntax_drop_down;

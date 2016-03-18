@@ -21,8 +21,20 @@ dn.save_local_state = { };
 
 dn.save_counter = 0; // used only for ga
 
+
+
 dn.save = function(parts, correction_with_undo_id){
     // this is the only method that should be called by other bits of the program
+
+    if(!dn.status.user_wants_file){
+        // this is the first sign the user has given that they actually want a file 
+        // i.e. they want a new file to be created.
+        // This is different to all other saves because we wait for it to return before
+        // issuing any later requests, although we can still put requests into the queue.
+        dn.create_file(); // this only saves the title, it will set user_wants_file to 1, 
+                          // and evetunally settle the Promise dn.pr_file_loaded.
+        parts.title = undefined; // we don't need to deal with title here
+    }
 
     // update the status, and deal undo manager tracking...
     var found_something = false;

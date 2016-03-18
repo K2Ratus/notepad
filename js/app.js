@@ -32,7 +32,8 @@ dn.status = {
     save_title: 1,
     save_other: 1,
 
-    unsaved_changes: 0 // 1 true, 0 false
+    unsaved_changes: 0, // 1 true, 0 false
+    user_wants_file: 0 // 1 when page loads with open request, or when users initially saves a new file, 0 otherwise
 }
 
 dn.the_file = new dn.FileModel();
@@ -54,6 +55,86 @@ dn.change_line_classes_rm =(function(rootStr,trueN,factor){
 
 
 dn.el = dn.el || {};
+
+dn.show_status = function(){
+    // TODO: drag-drop from disk
+    var s = ''
+
+    if(!dn.status.user_wants_file){
+        if(dn.status.unsaved_changes)
+            s = "unsaved file";
+        else
+            s = "ex nihilo omnia.";
+    } else if (dn.status.file_new === 1 && dn.status.file_meta === 1 && dn.status.file_body === 1){
+        s = "" + dn.the_file.title;
+        var extra = [];
+        if(dn.the_file.is_read_only)
+            extra.push("read-only");
+        if(dn.the_file.is_shared)
+            extra.push("shared");
+        if(dn.status.file_sharing == -1)
+            extra.push("sharing status unknown");
+        if(dn.status.unsaved_changes)
+            extra.push("unsaved changes");
+        if(dn.status.save_body == 0){
+            extra.push("saving document"); // this means that *at least* the body is being saved, possibly more
+        } else {
+            if(dn.status.save_title == 0)
+                extra.push("updating title");
+            if(dn.status.save_other == 0)
+                extra.push("updating file properties")
+        } 
+        if(extra.length)
+            s += "\n[" + extra.join(', ') + "]"; 
+    }else if(dn.status.file_new === 0)
+        s = "Creating new file";
+    else if(dn.status.file_new === -1)
+        s = "Failed to create new file";
+    else if(dn.status.file_meta === 0 && dn.status.file_body === 0)
+        s = "Loading file:\n" + dn.the_file.file_id;
+    else if(dn.status.file_meta === 1 && dn.status.file_body === 0)
+        s = "Loading " + (dn.the_file.is_read_only? 'read-only ' : '' ) + 
+                "file:\n" + dn.the_file.title;
+    else if(dn.status.file_meta === 0 && dn.status.file_body === 1)
+        s = "Loading metadata for file:\n" + dn.the_file.file_id;
+    else if(dn.status.file_meta === 1) // and -1
+        s = "Failed to download " + (dn.the_file.is_read_only? 'read-only ' : '' )
+                +  "file:\n" + dn.the_file.title;
+    else if(dn.status.file_body === 1) // and -1
+        s = "Failed to download metadata for file:\n" + dn.the_file.file_id;
+    else // file_body and file_meta both -1
+        s = "Failed to load file:\n" + dn.the_file.file_id;
+    
+
+    if(dn.status.authentication != 1){
+        // auth in progress or failed
+        if (s)
+            s += "\n";
+        if(dn.status.authorization == -1)
+            s += "Authorization required...";
+        else if(dn.status.popup_active)
+            s += "Login/authenticate with popup...";
+        else
+            s += "Authenticating...";
+    }
+
+    text_multi(dn.el.widget_text, s, true);
+
+    if(dn.status.save_body == 0 || dn.status.save_title == 0 || dn.status.save_other == 0)
+        dn.el.widget_pending.style.display = '';
+    else
+        dn.el.widget_pending.style.display = 'none';
+}
+
+dn.show_error = function(message){
+    console.log(message); //it's just useful to do this too
+    text_multi(dn.el.widget_error_text, message,true);
+    dn.el.widget_error.style.display = '';
+    css_animation(dn.el.the_widget, 'shake', function(){
+        dn.el.widget_error.style.display = 'none';
+    }, dn.const_.error_delay_ms);
+}
+
 
 dn.toggle_permission = function(state){
     var el = dn.el.pane_permissions;
@@ -265,81 +346,6 @@ dn.check_unsaved = function(){
 }
 
 
-dn.show_status = function(){
-    // TODO: drag-drop from disk
-    var s = ''
-
-    if (dn.status.file_new === 1 && dn.status.file_meta === 1 && dn.status.file_body === 1){
-        s = "" + dn.the_file.title;
-        var extra = [];
-        if(dn.the_file.is_brand_new)
-            extra.push("ex nihilo omnia...");
-        if(dn.the_file.is_read_only)
-            extra.push("read-only");
-        if(dn.the_file.is_shared)
-            extra.push("shared");
-        if(dn.status.file_sharing == -1)
-            extra.push("sharing status unknown");
-        if(dn.status.unsaved_changes)
-            extra.push("unsaved changes");
-        if(dn.status.save_body == 0){
-            extra.push("saving document"); // this means that *at least* the body is being saved, possibly more
-        } else {
-            if(dn.status.save_title == 0)
-                extra.push("updating title");
-            if(dn.status.save_other == 0)
-                extra.push("updating file properties")
-        } 
-        if(extra.length)
-            s += "\n[" + extra.join(', ') + "]"; 
-    }else if(dn.status.file_new === 0)
-        s = "Creating new file";
-    else if(dn.status.file_new === -1)
-        s = "Failed to create new file";
-    else if(dn.status.file_meta === 0 && dn.status.file_body === 0)
-        s = "Loading file:\n" + dn.the_file.file_id;
-    else if(dn.status.file_meta === 1 && dn.status.file_body === 0)
-        s = "Loading " + (dn.the_file.is_read_only? 'read-only ' : '' ) + 
-                "file:\n" + dn.the_file.title;
-    else if(dn.status.file_meta === 0 && dn.status.file_body === 1)
-        s = "Loading metadata for file:\n" + dn.the_file.file_id;
-    else if(dn.status.file_meta === 1) // and -1
-        s = "Failed to download " + (dn.the_file.is_read_only? 'read-only ' : '' )
-                +  "file:\n" + dn.the_file.title;
-    else if(dn.status.file_body === 1) // and -1
-        s = "Failed to download metadata for file:\n" + dn.the_file.file_id;
-    else // file_body and file_meta both -1
-        s = "Failed to load file:\n" + dn.the_file.file_id;
-    
-
-    if(dn.status.authentication != 1){
-        // auth in progress or failed
-        if (s)
-            s += "\n";
-        if(dn.status.authorization == -1)
-            s += "Authorization required...";
-        else if(dn.status.popup_active)
-            s += "Login/authenticate with popup...";
-        else
-            s += "Authenticating...";
-    }
-
-    text_multi(dn.el.widget_text, s, true);
-
-    if(dn.status.save_body == 0 || dn.status.save_title == 0 || dn.status.save_other == 0)
-        dn.el.widget_pending.style.display = '';
-    else
-        dn.el.widget_pending.style.display = 'none';
-}
-
-dn.show_error = function(message){
-    console.log(message); //it's just useful to do this too
-    text_multi(dn.el.widget_error_text, message,true);
-    dn.el.widget_error.style.display = '';
-    css_animation(dn.el.the_widget, 'shake', function(){
-        dn.el.widget_error.style.display = 'none';
-    }, dn.const_.error_delay_ms);
-}
 
 // ############################
 // Settings stuff
@@ -702,7 +708,10 @@ dn.on_editor_change = function(e){
 
 dn.query_unload = function(){
     if(dn.status.unsaved_changes)
-        return "If you leave the page now you will loose the unsaved " + (dn.the_file.is_brand_new ? "new " : "changes to ") + "file '" + dn.the_file.title + "'."
+        return "If you leave the page now you will loose the unsaved " + 
+                ( dn.status.user_wants_file && dn.status.file_new === 1 && dn.status.file_body === 1 ?
+                  "changes to " : "new ")  +
+                "file '" + dn.the_file.title + "'."
 }
 
 dn.set_drive_link_to_folder = function(){
@@ -751,6 +760,38 @@ dn.set_editor_syntax = function(){
     dn.show_error("unrecognised syntax mode requested");
 }
 
+
+dn.create_file = function(){
+    // called by first dn.save if a file wasn't loaded.
+    // the job here is only to save the title of the file,
+    // anything else that was to be saved will have to wait until
+    // this request compeltes.
+
+    dn.status.user_wants_file = 1;
+    dn.status.file_new = 0;
+    dn.show_status();
+
+    until_success(function(succ, fail){
+    Promise.resolve(dn.pr_auth)
+           .then(dn.request_new(dn.new_in_folder, dn.the_file.title))
+           .then(dn.show_file_meta)
+           .then(succ, fail);
+    }).before_retry(dn.filter_api_errors)
+    .then(function(result){
+        console.log("suceeded creating file")
+        dn.pr_file_loaded.resolve();
+    }).catch(function(err){
+        console.log("failed to create new file");
+        console.dir(err);
+        dn.show_error(dn.api_error_to_string(err));
+        document.title = "Drive Notepad";
+        dn.status.file_new = -1;
+        dn.show_status();
+        dn.g_settings.set('pane', 'pane_help');
+        dn.g_settings.set('pane_open', true);
+        console.dir(err);
+    });
+}
 
 dn.document_ready = function(e){
 
@@ -862,7 +903,7 @@ dn.document_ready = function(e){
 
     //work out whether a fileid was specified in page load, and if not, whether a folderid was.
     var params = window_location_to_params_object(); 
-    var new_in_folder = undefined;
+    dn.new_in_folder = undefined;
     if(params['state']){
         try{
             state = params['state'];
@@ -871,9 +912,9 @@ dn.document_ready = function(e){
             if(state.action && state.action == "open" && state.ids && state.ids.length > 0)
                dn.the_file.file_id = state.ids[0];
             else if (state.folderId)
-               new_in_folder = state.folderId; // could be invalid nonsense
+               dn.new_in_folder = state.folderId; // could be invalid nonsense
         }catch(e){
-            dn.show_error("Bad URL params, creating a new file.");
+            dn.show_error("Bad URL. This will be treated as a new file.");
         }
     }
 
@@ -934,6 +975,8 @@ dn.document_ready = function(e){
         // load existing file :::::::::::::::::::::::::::::::::::::::::::::::::::
         dn.status.file_meta = 0;
         dn.status.file_body = 0;
+        dn.status.user_wants_file = 1;
+
         dn.show_status();
         dn.editor.setReadOnly(true);
         // metadata...
@@ -983,31 +1026,11 @@ dn.document_ready = function(e){
     } else {
 
         // create new file :::::::::::::::::::::::::::::::::::::::::::::::::::
-        dn.status.file_new = 0;
+        // or rather, wait for the first save action before creating.
         dn.show_status();
         dn.the_file.set({title: "untitled.txt", is_loaded: true}); // there's nothing to load for this model
-
-        until_success(function(succ, fail){
-            Promise.resolve(dn.pr_auth)
-                   .then(dn.request_new(new_in_folder))
-                   .then(dn.show_file_meta)
-                   .then(succ, fail);
-            }).before_retry(dn.filter_api_errors)
-            .then(function(result){
-                console.log("suceeded creating file")
-                dn.g_settings.set('pane', 'pane_file');
-                dn.pr_file_loaded.resolve();
-            }).catch(function(err){
-                console.log("failed to create new file");
-                console.dir(err);
-                dn.show_error(dn.api_error_to_string(err));
-                document.title = "Drive Notepad";
-                dn.status.file_new = -1;
-                dn.show_status();
-                dn.g_settings.set('pane', 'pane_help');
-                dn.g_settings.set('pane_open', true);
-                console.dir(err);
-            });
+        dn.g_settings.set('pane', 'pane_file');
+        dn.g_settings.set('pane_open', true);
     }
     
     // load cloud settings ::::::::::::::::::::::::::::::::::::::::::::::::

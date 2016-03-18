@@ -139,11 +139,11 @@ dn.make_multipart_boundary = function(){
     return (new Date).getTime() + "" + Math.random()*10;
 }
 
-dn.request_new = function(folderId){
+dn.request_new = function(folder_id, title){
     // this is a factory function for building a function-of-no-args-that-returns-a-thenable
-    var meta = {name: 'untitled.txt'};
-    if(folderId !== undefined)
-        meta['parents'] = [folderId];
+    var meta = {name: title};
+    if(folder_id !== undefined)
+        meta['parents'] = [folder_id];
     return function(){
        return gapi.client.request({
                 'path': '/drive/v3/files/',
