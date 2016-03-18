@@ -29,18 +29,19 @@ dn.is_auth_error = function(err){
     if(!err)
         return 2;
 
-    /*
+    
     try{
         if(err.status > 200){
                 var str = "status: " + err.status + "   ";
                 if(err.result && err.result.error)
                     str += JSON.stringify(err.result.error);
-                str += " stack: " + (new Error()).stack
+                str += " dn.status: " + JSON.stringify(dn.status);
+                str += " stack: " + (new Error()).stack;
                 ga('send', 'exception', {'exDescription': str});
         }
     }catch(_){}
-    */
     
+
     if(err.type === "token_refresh_required" || err.status === 401)
         return 1;
     if(err.status === 403)

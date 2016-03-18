@@ -182,8 +182,7 @@
       })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
       ga('create', 'UA-74999669-1', 'auto');
       ga('set', 'title', 'app');
-      // wait till app.js loads before sending the pageview signal
-      // the main reason for doing so is that we can then re-format the url 
+      ga('send', 'pageview', document.location.pathname);
     </script>
 </head>
 
