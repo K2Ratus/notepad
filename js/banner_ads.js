@@ -14,7 +14,7 @@
 
 dn.ads = (function(){
 
-var display_time = 60 *1000;//ms
+var display_time = 75 *1000;//ms
 var no_display_time = 15 * 60 * 1000; //ms
 var timer = 0;
 
