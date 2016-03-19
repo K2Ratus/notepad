@@ -68,6 +68,10 @@ var DropDown = function(val_array){
 DropDown.FakeEvent = function(){//static subclass
     this.is_stopped = false;
 }
+DropDown.FakeEvent.prototype.preventDefault = function(){
+    this.is_stopped = true;
+}
+
 DropDown.FakeEvent.prototype.stopImmediatePropagation = function(){
     this.is_stopped = true;
 }

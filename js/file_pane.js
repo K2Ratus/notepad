@@ -23,7 +23,7 @@ var read_only_bail = function(e){
 
 var on_title_begin_edit = function(e){  
     if(dn.the_file.is_read_only)
-        return dn.read_only_bail(e);  
+        return read_only_bail(e);  
     el.title_text.style.display = 'none';
     el.title_input.style.display = '';
     el.title_input.focus();
@@ -43,7 +43,7 @@ var on_title_keydown = function(e){
 
 var on_description_begin_edit =function(e){  
     if(dn.the_file.is_read_only)
-        return dn.read_only_bail(e);  
+        return read_only_bail(e);  
     el.description_text.style.display = 'none';
     el.description_input.style.display = '';
     el.description_input.focus();
@@ -113,6 +113,9 @@ var on_title_end_edit = function(){
 }
 
 var on_newline_click = function(e){
+    if(dn.the_file.is_read_only)
+        return read_only_bail(e);  
+
     var val = "detect";
     if(e.currentTarget === el.newline_unix)
         val = "unix";
@@ -123,17 +126,26 @@ var on_newline_click = function(e){
 }
 
 var on_syntax_detect_click = function(e){
+    if(dn.the_file.is_read_only)
+        return read_only_bail(e);  
+
     dn.the_file.set({syntax: "detect"});
     dn.save({syntax: "detect"});
 }
 
 var on_syntax_dropdown_click = function(e){
+    if(dn.the_file.is_read_only)
+        return read_only_bail(e);  
+
     var val =  syntax_drop_down.GetVal();
     dn.save({syntax: val}); 
     dn.the_file.set({syntax: val});
 }
 
 var on_tab_click = function(e){
+    if(dn.the_file.is_read_only)
+        return read_only_bail(e);  
+
     var val = {val: "detect"};
 
     if (e.currentTarget === el.tab_soft_inc){

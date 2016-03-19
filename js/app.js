@@ -33,7 +33,8 @@ dn.status = {
     save_other: 1,
 
     unsaved_changes: 0, // 1 true, 0 false
-    user_wants_file: 0 // 1 when page loads with open request, or when users initially saves a new file, 0 otherwise
+    user_wants_file: 0, // 1 when page loads with open request, or when users initially saves a new file, 0 otherwise
+    warned_read_only: 0 // if file is read-only this is set to 1 when user first tries editing the document body
 }
 
 dn.the_file = new dn.FileModel();
@@ -627,13 +628,10 @@ dn.on_editor_change = function(e){
     if(!e.start || !e.end || dn.setting_session_value)
         return;
 
-    /*
-    if(!dn.status.unsaved_changes){
-        dn.status.unsaved_changes = true;
-        dn.render_document_title();
-        dn.show_status();
+    if(dn.the_file.is_read_only && dn.status.warned_read_only === 0){
+        dn.show_error("Warning: you cannot save changes. File loaded as read-only.")
+        dn.status.warned_read_only = 1;
     }
-    */
 
     if(!dn.g_settings.get('showGutterHistory'))
         return;
