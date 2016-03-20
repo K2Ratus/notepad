@@ -152,7 +152,7 @@ dn.SaveRequest.prototype._on_finally = function(){
     // though at this point we don't care what happened exactly.
 
     if(this._error !== undefined){
-        dn.show_error("Saving failed. File in unknown state on server. See developer console.");
+        dn.show_error("Saving failed. " + dn.api_error_to_string(this._error));
         console.dir(this._error);
         // abandon all requests, but note they may still continue executing
         while(dn.save_pending_requests.length)

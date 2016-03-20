@@ -25,19 +25,25 @@ dn.filter_api_errors = function(err){
 }
 
 dn.is_auth_error = function(err){
-    // returns 0 for non-auth errors, 1 for auto refresh and 2 for manual refresh, 3 for network error
+    // returns :
+    // 0 for fatal errors
+    // 1 for recommended auto refresh
+    // 2 for recommended manual refresh
+    // 3 for network error/timeout, recommend test network and retry
+    // 4 for server error, recommend retry (ideally with exponential backoff)
+
     if(!err)
         return 2;
 
     
     try{
         if(err.status > 200){
-                var str = "status: " + err.status + "   ";
-                if(err.result && err.result.error)
-                    str += JSON.stringify(err.result.error);
-                str += " dn.status: " + JSON.stringify(dn.status);
-                str += " stack: " + (new Error()).stack;
-                ga('send', 'exception', {'exDescription': str});
+            var str = "status: " + err.status + "   ";
+            if(err.result && err.result.error)
+                str += JSON.stringify(err.result.error);
+            str += " dn.status: " + JSON.stringify(dn.status);
+            str += " stack: " + (new Error()).stack;
+            ga('send', 'exception', {'exDescription': str});
         }
     }catch(_){}
     
@@ -47,11 +53,15 @@ dn.is_auth_error = function(err){
 
     if(err.status === 403){
         var reason = ""
-        try{reason = err.result.error.errors.reason;}catch(_){};
+        try{reason = err.result.error.errors[0].reason;}catch(_){};
 
         if(reason === "domainPolicy")
             return 0;
-        
+        if(reason === "insufficientFilePermissions")
+            return 0; // should only happen if file becomes read-only after the page loads
+        if(reason === "cannotDownloadAbusiveFile")
+            return 0; // this is not documented but appears in logs
+
         //TODO: handle other specifics, and include exponential backoff where appropriate
         return 1; // a variety of things here
     }
@@ -63,12 +73,21 @@ dn.is_auth_error = function(err){
         return 3;
     if(err.status === 400)
         return 0; // bad request
+    if(err.status === 500)
+        return 4;
     return 0;
 }
 
 dn.api_error_to_string = function(err){
     if(!err)
         return "Error.";
+    var reason = ""
+    try{reason = err.result.error.errors[0].reason;}catch(_){};
+    if(reason === "insufficientFilePermissions")
+        return "You do not have permission to modify the file.";
+    if(reason === "domainPolicy")
+        return "Your domain administrators have disabled Drive apps."
+
     if(err.result && err.result.error && err.result.error.message !== undefined){
         return "" + err.result.error.message;
     } else {
