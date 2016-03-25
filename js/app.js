@@ -1048,7 +1048,7 @@ dn.document_ready = function(e){
 
 
     // load ads at some point in future...
-    setTimeout(load_script_async, dn.const_.ad_initial_wait, 'js/banner_ads.js');
+    //setTimeout(load_script_async, dn.const_.ad_initial_wait, 'js/banner_ads.js');
 }
 
 if (document.readyState != 'loading' && document.getElementById('the_widget')){ //second test is hack for IEi
